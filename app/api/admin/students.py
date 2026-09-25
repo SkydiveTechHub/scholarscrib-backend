@@ -3,7 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.deps import require_admin, require_super_admin
-from app.api.responses import OkOut, StudentDetailOut, StudentsPageOut
+from app.api.responses import (
+    DeletionImpactOut,
+    OkOut,
+    StudentDetailOut,
+    StudentsPageOut,
+)
 from app.api.schemas import StudentProfileIn, StudentStatusIn, StudentTierIn
 from app.database.db import AnSession
 from app.database.models import Admin
@@ -16,6 +21,7 @@ from app.services.admin import (
     SetStudentTierService,
     UpdateStudentService,
 )
+from app.services.console import GetStudentDeletionImpactService
 
 router = APIRouter(prefix="/students", tags=["Admin / Students"])
 
@@ -36,6 +42,13 @@ async def student_detail(
     user_id: str, session: AnSession, admin: Annotated[Admin, Depends(require_admin)]
 ):
     return await GetStudentDetailService(session, user_id).process()
+
+
+@router.get("/{user_id}/deletion-impact", response_model=DeletionImpactOut)
+async def deletion_impact(
+    user_id: str, session: AnSession, admin: Annotated[Admin, Depends(require_admin)]
+):
+    return await GetStudentDeletionImpactService(session, user_id).process()
 
 
 @router.patch("/{user_id}", response_model=OkOut)

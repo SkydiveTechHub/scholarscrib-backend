@@ -6,6 +6,7 @@ from app.api.deps import require_admin
 from app.api.responses import (
     AdminQuestionsOut,
     DeleteQuestionsOut,
+    FormOptionsOut,
     IdOut,
     ImportQuestionsOut,
     QuestionOut,
@@ -28,6 +29,7 @@ from app.services.admin import (
 )
 from app.services.console import (
     DeleteQuestionsService,
+    GetQuestionFormOptionsService,
     GetQuestionUsageService,
     ImportQuestionsService,
     UpdateQuestionService,
@@ -61,6 +63,13 @@ async def list_questions(
             "search": search,
         },
     ).process()
+
+
+@router.get("/form-options", response_model=FormOptionsOut)
+async def question_form_options(
+    session: AnSession, admin: Annotated[Admin, Depends(require_admin)]
+):
+    return await GetQuestionFormOptionsService(session).process()
 
 
 @router.post("", status_code=201, response_model=IdOut)

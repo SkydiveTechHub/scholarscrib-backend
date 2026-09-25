@@ -28,6 +28,9 @@ class SubjectRepository(BaseRepository[Subject]):
     async def ordered(self, session: AsyncSession) -> list[Subject]:
         return await self.all_ordered(session, Subject.name)
 
+    async def ordered_by_track(self, session: AsyncSession) -> list[Subject]:
+        return await self.all_ordered(session, Subject.track_category, Subject.name)
+
 
 class TopicRepository(BaseRepository[Topic]):
     model = Topic
@@ -51,6 +54,31 @@ class TopicRepository(BaseRepository[Topic]):
         if not topic_ids:
             return []
         return await self.list_where(session, Topic.id.in_(topic_ids))
+
+    async def with_levels(
+        self,
+        session: AsyncSession,
+        *,
+        subject_id: str | None = None,
+        class_level: str | None = None,
+        term: str | None = None,
+    ) -> list[tuple]:
+        statement = select(
+            Topic, CurriculumLevel.class_level, CurriculumLevel.term
+        ).outerjoin(CurriculumLevel, CurriculumLevel.id == Topic.curriculum_level_id)
+        if subject_id:
+            statement = statement.where(Topic.subject_id == subject_id)
+        if class_level:
+            statement = statement.where(CurriculumLevel.class_level == class_level)
+        if term:
+            statement = statement.where(CurriculumLevel.term == term)
+        statement = statement.order_by(
+            CurriculumLevel.class_level,
+            CurriculumLevel.term,
+            Topic.order_index,
+        )
+        rows = (await self.rows(session, statement)).all()
+        return [(row[0], row[1], row[2]) for row in rows]
 
 
 class CurriculumLevelRepository(BaseRepository[CurriculumLevel]):
@@ -137,6 +165,23 @@ class LessonRepository(BaseRepository[Lesson]):
             found.setdefault(topic_id, lesson_id)
         return found
 
+    async def latest_for_topics(
+        self, session: AsyncSession, topic_ids: list[str]
+    ) -> dict[str, Lesson]:
+        if not topic_ids:
+            return {}
+        rows = await self.rows(
+            session,
+            select(Subtopic.topic_id, Lesson)
+            .join(Lesson, Lesson.subtopic_id == Subtopic.id)
+            .where(Subtopic.topic_id.in_(topic_ids))
+            .order_by(Lesson.updated_at.desc()),
+        )
+        found: dict[str, Lesson] = {}
+        for topic_id, lesson in rows.all():
+            found.setdefault(topic_id, lesson)
+        return found
+
 
 class LessonResourceRepository(BaseRepository[LessonResource]):
     model = LessonResource
@@ -153,6 +198,17 @@ class SubjectResourceRepository(BaseRepository[SubjectResource]):
             SubjectResource.subject_id == subject_id,
             order_by=(SubjectResource.order_index,),
         )
+
+    async def counts_by_subject(self, session: AsyncSession) -> dict[str, int]:
+        rows = (
+            await self.rows(
+                session,
+                select(
+                    SubjectResource.subject_id, func.count(SubjectResource.id)
+                ).group_by(SubjectResource.subject_id),
+            )
+        ).all()
+        return {subject_id: count for subject_id, count in rows}
 
     async def max_order_index(self, session: AsyncSession, subject_id: str) -> int:
         value = await session.scalar(

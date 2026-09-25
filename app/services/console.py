@@ -26,15 +26,24 @@ from app.database.models import (
     Announcement,
     AnnouncementDelivery,
     AnnouncementDismissal,
+    AssessmentAttempt,
+    FlashcardDeck,
+    FlashcardReview,
+    LearningEvent,
     Lesson,
     Question,
+    StudentProgress,
     SubjectResource,
     Subtopic,
     Topic,
+    TopicMastery,
     User,
 )
-from app.database.repositories.admin import audits_repository
-from app.database.repositories.assessment import attempts_repository
+from app.database.repositories.admin import admins_repository, audits_repository
+from app.database.repositories.assessment import (
+    attempts_repository,
+    responses_repository,
+)
 from app.database.repositories.curriculum import (
     lessons_repository,
     subject_resources_repository,
@@ -42,7 +51,13 @@ from app.database.repositories.curriculum import (
     subtopics_repository,
     topics_repository,
 )
+from app.database.repositories.flashcard import decks_repository, reviews_repository
 from app.database.repositories.identity import users_repository
+from app.database.repositories.learning import (
+    learning_events_repository,
+    progress_repository,
+    topic_mastery_repository,
+)
 from app.database.repositories.notification import (
     announcement_deliveries_repository,
     announcement_dismissals_repository,
@@ -914,9 +929,7 @@ class GetLessonTreeService:
 
     async def process(self) -> dict:
         subject_rows = await subjects_repository.ordered(self.session)
-        topic_rows = await topics_repository.all_ordered(
-            self.session, Topic.order_index
-        )
+        topic_rows = await topics_repository.with_levels(self.session)
         counts = await lessons_repository.counts_by_topic(self.session)
         return {
             "subjects": [
@@ -930,13 +943,222 @@ class GetLessonTreeService:
                             "title": topic.title,
                             "slug": topic.slug,
                             "lessonCount": counts.get(topic.id, 0),
+                            "curriculumLevel": {
+                                "classLevel": class_level or "",
+                                "term": term or "",
+                            },
                         }
-                        for topic in topic_rows
+                        for topic, class_level, term in topic_rows
                         if topic.subject_id == subject.id
                     ],
                 }
                 for subject in subject_rows
             ]
+        }
+
+
+class GetAdminOverviewService:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def process(self) -> dict:
+        subjects = await subjects_repository.ordered(self.session)
+        counts = await questions_repository.counts_by_subject(self.session)
+        by_exam = await questions_repository.counts_by(self.session, Question.exam_type)
+        by_difficulty = await questions_repository.counts_by(
+            self.session, Question.difficulty
+        )
+        return {
+            "total": sum(counts.values()),
+            "subjectCount": len(subjects),
+            "topicCount": await topics_repository.count(self.session),
+            "unlinkedCount": await questions_repository.count(
+                self.session, Question.topic_id.is_(None)
+            ),
+            "subjects": [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "code": subject.code,
+                    "questionCount": counts.get(subject.id, 0),
+                }
+                for subject in subjects
+            ],
+            "byExam": [
+                {"key": key, "label": key, "count": count} for key, count in by_exam
+            ],
+            "byDifficulty": [
+                {"key": key, "label": key, "count": count}
+                for key, count in by_difficulty
+            ],
+            "examYears": await questions_repository.distinct_exam_years(self.session),
+        }
+
+
+class GetQuestionFormOptionsService:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def process(self) -> dict:
+        subjects = await subjects_repository.ordered(self.session)
+        topics = await topics_repository.all_ordered(self.session, Topic.title)
+        return {
+            "subjects": [
+                {"id": subject.id, "name": subject.name, "code": subject.code}
+                for subject in subjects
+            ],
+            "topics": [
+                {
+                    "id": topic.id,
+                    "title": topic.title,
+                    "subjectId": topic.subject_id,
+                }
+                for topic in topics
+            ],
+        }
+
+
+class GetLessonBrowseService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        subject_id: str | None,
+        class_level: str | None,
+        term: str | None,
+    ) -> None:
+        self.session = session
+        self.subject_id = subject_id
+        self.class_level = class_level
+        self.term = term
+
+    async def process(self) -> dict:
+        subjects = await subjects_repository.ordered(self.session)
+        payload: dict = {
+            "subjects": [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "trackCategory": subject.track_category,
+                }
+                for subject in subjects
+            ],
+            "rows": [],
+            "levels": [],
+        }
+        if not self.subject_id:
+            return payload
+        levels = await topics_repository.with_levels(
+            self.session, subject_id=self.subject_id
+        )
+        seen: set[tuple[str, str]] = set()
+        for _topic, class_level, term in levels:
+            if not class_level or not term or (class_level, term) in seen:
+                continue
+            seen.add((class_level, term))
+            payload["levels"].append({"classLevel": class_level, "term": term})
+        rows = await topics_repository.with_levels(
+            self.session,
+            subject_id=self.subject_id,
+            class_level=self.class_level,
+            term=self.term,
+        )
+        lessons = await lessons_repository.latest_for_topics(
+            self.session, [topic.id for topic, _level, _term in rows]
+        )
+        payload["rows"] = [
+            _lesson_row(topic, class_level, term, lessons.get(topic.id))
+            for topic, class_level, term in rows
+        ]
+        return payload
+
+
+def _lesson_row(
+    topic: Topic, class_level: str | None, term: str | None, lesson: Lesson | None
+) -> dict:
+    blocks = lesson.blocks if lesson is not None else None
+    return {
+        "topicId": topic.id,
+        "topicTitle": topic.title,
+        "classLevel": class_level or "",
+        "term": term or "",
+        "blockCount": len(blocks) if isinstance(blocks, list) else 0,
+        "authored": lesson is not None and lesson.created_by not in (None, "system"),
+    }
+
+
+class GetMaterialSubjectsService:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def process(self) -> dict:
+        subjects = await subjects_repository.ordered_by_track(self.session)
+        counts = await subject_resources_repository.counts_by_subject(self.session)
+        return {
+            "subjects": [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "code": subject.code,
+                    "trackCategory": subject.track_category,
+                    "resourceCount": counts.get(subject.id, 0),
+                }
+                for subject in subjects
+            ]
+        }
+
+
+class GetAuditActorsService:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def process(self) -> dict:
+        actors = await admins_repository.actors(self.session)
+        return {
+            "actors": [
+                {
+                    "id": actor.id,
+                    "email": actor.email,
+                    "username": actor.username,
+                    "label": actor.email or actor.username or actor.id,
+                }
+                for actor in actors
+            ]
+        }
+
+
+class GetStudentDeletionImpactService:
+    def __init__(self, session: AsyncSession, user_id: str) -> None:
+        self.session = session
+        self.user_id = user_id
+
+    async def process(self) -> dict:
+        user = await users_repository.by_id(self.session, self.user_id)
+        if user is None or user.role != "STUDENT":
+            raise ApiError(404, "Student not found")
+        return {
+            "impact": {
+                "assessment_attempts": await attempts_repository.count(
+                    self.session, AssessmentAttempt.student_id == self.user_id
+                ),
+                "question_responses": await responses_repository.answered_count(
+                    self.session, self.user_id
+                ),
+                "student_progress": await progress_repository.count(
+                    self.session, StudentProgress.student_id == self.user_id
+                ),
+                "topic_mastery": await topic_mastery_repository.count(
+                    self.session, TopicMastery.student_id == self.user_id
+                ),
+                "learning_events": await learning_events_repository.count(
+                    self.session, LearningEvent.student_id == self.user_id
+                ),
+                "flashcard_reviews": await reviews_repository.count(
+                    self.session, FlashcardReview.student_id == self.user_id
+                ),
+                "flashcard_decks": await decks_repository.count(
+                    self.session, FlashcardDeck.created_by == self.user_id
+                ),
+            }
         }
 
 

@@ -19,6 +19,15 @@ class AdminRepository(BaseRepository[Admin]):
     async def list_created(self, session: AsyncSession) -> list[Admin]:
         return await self.all_ordered(session, Admin.created_at)
 
+    async def actors(self, session: AsyncSession) -> list[Admin]:
+        actor_ids = select(AdminAudit.actor_id).distinct()
+        return await self.many(
+            session,
+            select(Admin)
+            .where(Admin.id.in_(actor_ids))
+            .order_by(Admin.email, Admin.username),
+        )
+
 
 class AdminAuditRepository(BaseRepository[AdminAudit]):
     model = AdminAudit

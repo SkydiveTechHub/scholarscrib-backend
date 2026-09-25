@@ -532,6 +532,40 @@ class StatsOut(ApiOut):
     attempts: int
 
 
+class OverviewOut(ApiOut):
+    total: int
+    subjectCount: int
+    topicCount: int
+    unlinkedCount: int
+    subjects: list[dict]
+    byExam: list[dict]
+    byDifficulty: list[dict]
+    examYears: list[int]
+
+
+class FormOptionsOut(ApiOut):
+    subjects: list[dict]
+    topics: list[dict]
+
+
+class LessonBrowseOut(ApiOut):
+    subjects: list[dict]
+    rows: list[dict]
+    levels: list[dict]
+
+
+class MaterialSubjectsOut(ApiOut):
+    subjects: list[dict]
+
+
+class AuditActorsOut(ApiOut):
+    actors: list[dict]
+
+
+class DeletionImpactOut(ApiOut):
+    impact: dict
+
+
 class BackfillOut(ApiOut):
     ledger: dict
     wasReset: bool

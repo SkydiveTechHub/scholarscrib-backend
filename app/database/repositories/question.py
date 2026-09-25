@@ -307,5 +307,39 @@ class QuestionRepository(BaseRepository[Question]):
         )
         return rows, total
 
+    async def counts_by_subject(self, session: AsyncSession) -> dict[str, int]:
+        rows = (
+            await self.rows(
+                session,
+                select(Question.subject_id, func.count(Question.id)).group_by(
+                    Question.subject_id
+                ),
+            )
+        ).all()
+        return {subject_id: count for subject_id, count in rows}
+
+    async def counts_by(self, session: AsyncSession, column) -> list[tuple]:
+        rows = (
+            await self.rows(
+                session,
+                select(column, func.count(Question.id))
+                .group_by(column)
+                .order_by(column),
+            )
+        ).all()
+        return [(row[0], int(row[1])) for row in rows]
+
+    async def distinct_exam_years(self, session: AsyncSession) -> list[int]:
+        rows = (
+            await self.rows(
+                session,
+                select(Question.exam_year)
+                .where(Question.exam_year.is_not(None))
+                .distinct()
+                .order_by(Question.exam_year.desc()),
+            )
+        ).all()
+        return [int(year) for (year,) in rows]
+
 
 questions_repository = QuestionRepository()
