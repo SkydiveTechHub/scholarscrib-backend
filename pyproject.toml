@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[project]
+name = "scholarscrib-api"
+version = "0.1.0"
+description = "ScholarsCrib exam preparation API"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.31.0",
+    "bcrypt>=4.2.0",
+    "email-validator>=2.2.0",
+    "fastapi[standard]>=0.141.1",
+    "httpx>=0.28.0",
+    "pyjwt>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pywebpush>=2.0.0",
+    "redis>=8.1.0",
+    "ruff>=0.16.8",
+    "scalar-fastapi>=1.9.0",
+    "sqlalchemy>=2.0.54",
+    "pyright>=1.1.414",
+    "greenlet>=3.5.6",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+
+[tool.fastapi]
+entrypoint = "main:app"
