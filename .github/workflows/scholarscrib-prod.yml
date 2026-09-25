@@ -1,4 +1,4 @@
-name: Workflow for Lifteller API Production
+name: Workflow for ScholarScrib API Production
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
       - main
 
 env:
-  LIFTELLER_ENV: prod
+  SCHOLARSCRIB_ENV: prod
 
 jobs:
 

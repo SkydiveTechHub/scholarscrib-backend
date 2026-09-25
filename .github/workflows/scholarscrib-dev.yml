@@ -1,4 +1,4 @@
-name: Workflow for Lifteller API Development
+name: Workflow for ScholarScrib API Development
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
       - develop
 
 env:
-  LIFTELLER_ENV: dev
+  SCHOLARSCRIB_ENV: dev
 
 jobs:
 

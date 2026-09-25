@@ -1,6 +1,7 @@
 """SQLAlchemy models for this domain."""
 
-from datetime import date, datetime
+from datetime import date as date_type
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
@@ -37,14 +38,14 @@ class StudyPlan(Base):
     )
     subject_ids: Mapped[list] = mapped_column("subjectIds", JSONB)
     target_exam: Mapped[str | None] = mapped_column("targetExam", ExamType)
-    target_date: Mapped[date | None] = mapped_column("targetDate", Date)
+    target_date: Mapped[date_type | None] = mapped_column("targetDate", Date)
     force_exam_mode: Mapped[bool] = mapped_column(
         "forceExamMode", Boolean, default=False
     )
     study_days: Mapped[list] = mapped_column("studyDays", ARRAY(Integer))
     weekday_minutes: Mapped[int] = mapped_column("weekdayMinutes", Integer)
     weekend_minutes: Mapped[int] = mapped_column("weekendMinutes", Integer)
-    planned_through: Mapped[date | None] = mapped_column("plannedThrough", Date)
+    planned_through: Mapped[date_type | None] = mapped_column("plannedThrough", Date)
     last_replanned_at: Mapped[datetime | None] = mapped_column(
         "lastReplannedAt", DateTime(timezone=True)
     )
@@ -61,7 +62,7 @@ class StudyPlanItem(Base):
     study_plan_id: Mapped[str] = mapped_column(
         "studyPlanId", ForeignKey("StudyPlan.id", ondelete="CASCADE")
     )
-    date: Mapped[date] = mapped_column(Date)
+    date: Mapped[date_type] = mapped_column(Date)
     subject_id: Mapped[str] = mapped_column("subjectId", ForeignKey("Subject.id"))
     topic_id: Mapped[str | None] = mapped_column("topicId", ForeignKey("Topic.id"))
     activity_type: Mapped[str] = mapped_column("activityType", PlanItemActivity)
@@ -74,7 +75,7 @@ class StudyPlanItem(Base):
     completion_source: Mapped[str | None] = mapped_column(
         "completionSource", PlanCompletionSource
     )
-    carried_from_date: Mapped[date | None] = mapped_column("carriedFromDate", Date)
+    carried_from_date: Mapped[date_type | None] = mapped_column("carriedFromDate", Date)
 
 
 class StudyPlanPosition(Base):
@@ -96,5 +97,5 @@ class AcademicTerm(Base):
     id: Mapped[str] = id_column()
     session: Mapped[str] = mapped_column(String)
     term: Mapped[str] = mapped_column(Term)
-    starts_on: Mapped[date] = mapped_column("startsOn", Date)
-    ends_on: Mapped[date] = mapped_column("endsOn", Date)
+    starts_on: Mapped[date_type] = mapped_column("startsOn", Date)
+    ends_on: Mapped[date_type] = mapped_column("endsOn", Date)
