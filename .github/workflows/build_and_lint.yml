@@ -1,0 +1,35 @@
+name: Build and Lint Workflow (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version-file:
+        description: "Path to .python-version file"
+        required: true
+        type: string
+
+jobs:
+  build_and_lint:
+    name: Build and Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.11"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ${{ inputs.python-version-file }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run Linter
+        run: uv run ruff check

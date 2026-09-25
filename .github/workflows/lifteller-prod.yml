@@ -1,0 +1,21 @@
+name: Workflow for Lifteller API Production
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+env:
+  LIFTELLER_ENV: prod
+
+jobs:
+
+  build_and_lint:
+    uses: ./.github/workflows/build_and_lint.yml
+    with:
+      python-version-file: ".python-version"
+    secrets: inherit
