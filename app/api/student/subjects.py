@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 
-from app.api.responses import SubjectsOut, TopicSummaryOut
+from app.api.responses import SubjectCurriculumOut, SubjectsOut, TopicSummaryOut
 from app.core.errors import ApiError
 from app.database.db import AnSession
 from app.services.catalogue import (
+    GetSubjectCurriculumService,
     GetTopicSummaryService,
     ListSubjectsService,
     visible_subjects,
@@ -18,6 +19,14 @@ async def subjects(
 ):
     rows = await ListSubjectsService(session).process()
     return {"subjects": visible_subjects(rows, track, examType)}
+
+
+@router.get("/{subject_slug}/curriculum", response_model=SubjectCurriculumOut)
+async def subject_curriculum(subject_slug: str, session: AnSession):
+    found = await GetSubjectCurriculumService(session, subject_slug).process()
+    if found is None:
+        raise ApiError(404, "Subject not found")
+    return found
 
 
 @router.get(

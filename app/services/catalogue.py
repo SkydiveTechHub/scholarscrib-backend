@@ -70,6 +70,53 @@ class ListSubjectsService:
         return payload
 
 
+class GetSubjectCurriculumService:
+    def __init__(self, session: AsyncSession, subject_slug: str) -> None:
+        self.session = session
+        self.subject_slug = subject_slug
+
+    async def process(self) -> dict | None:
+        subject = await subjects_repository.by_slug(self.session, self.subject_slug)
+        if subject is None:
+            return None
+        rows = await topics_repository.with_levels(self.session, subject_id=subject.id)
+        levels: list[dict] = []
+        index: dict[tuple[str, str], dict] = {}
+        for topic, class_level, term in rows:
+            if not class_level or not term:
+                continue
+            key = (class_level, term)
+            level = index.get(key)
+            if level is None:
+                level = {"classLevel": class_level, "term": term, "topics": []}
+                index[key] = level
+                levels.append(level)
+            level["topics"].append(
+                {
+                    "id": topic.id,
+                    "title": topic.title,
+                    "slug": topic.slug,
+                    "orderIndex": topic.order_index,
+                    "estimatedMinutes": topic.estimated_minutes,
+                    "waecWeight": topic.waec_weight,
+                    "jambWeight": topic.jamb_weight,
+                }
+            )
+        return {
+            "subject": {
+                "id": subject.id,
+                "name": subject.name,
+                "slug": subject.slug,
+                "code": subject.code,
+                "isWaec": subject.is_waec,
+                "isJamb": subject.is_jamb,
+                "isNeco": subject.is_neco,
+                "trackCategory": subject.track_category,
+            },
+            "levels": levels,
+        }
+
+
 class GetTopicSummaryService:
     def __init__(
         self, session: AsyncSession, subject_slug: str, topic_slug: str

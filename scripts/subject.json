@@ -1,0 +1,354 @@
+[
+  {
+    "name": "English Language",
+    "code": "ENG",
+    "trackCategory": "CORE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Mathematics",
+    "code": "MTH",
+    "trackCategory": "CORE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Civic Education",
+    "code": "CVE",
+    "trackCategory": "CORE",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Physics",
+    "code": "PHY",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Chemistry",
+    "code": "CHM",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Biology",
+    "code": "BIO",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Further Mathematics",
+    "code": "FMT",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Agricultural Science",
+    "code": "AGR",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Computer Studies",
+    "code": "CMP",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Technical Drawing",
+    "code": "TDR",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Geography",
+    "code": "GEO",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Health Education",
+    "code": "HED",
+    "trackCategory": "SCIENCE",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Literature in English",
+    "code": "LIT",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Government",
+    "code": "GOV",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "History",
+    "code": "HIS",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Christian Religious Studies",
+    "code": "CRS",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Islamic Studies",
+    "code": "IRS",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "French",
+    "code": "FRN",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Yoruba",
+    "code": "YOR",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Igbo",
+    "code": "IGB",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Hausa",
+    "code": "HAU",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Fine Art",
+    "code": "FNA",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Music",
+    "code": "MUS",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Arabic",
+    "code": "ARB",
+    "trackCategory": "ARTS",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Economics",
+    "code": "ECO",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Commerce",
+    "code": "COM",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Financial Accounting",
+    "code": "ACC",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": true,
+    "isNeco": true
+  },
+  {
+    "name": "Marketing",
+    "code": "MKT",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Insurance",
+    "code": "INS",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Office Practice",
+    "code": "OFP",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Store Management",
+    "code": "STM",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Business Management",
+    "code": "BUM",
+    "trackCategory": "COMMERCIAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Data Processing",
+    "code": "DTP",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Foods and Nutrition",
+    "code": "FNT",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Home Management",
+    "code": "HMG",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": true
+  },
+  {
+    "name": "Catering",
+    "code": "CAT",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Textiles",
+    "code": "TXT",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Tourism",
+    "code": "TRM",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Building Construction",
+    "code": "BLD",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Woodwork",
+    "code": "WDW",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Welding",
+    "code": "WLD",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Auto Mechanical Work",
+    "code": "AMW",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Basic Electricity",
+    "code": "BEL",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  },
+  {
+    "name": "Book Keeping",
+    "code": "BKP",
+    "trackCategory": "VOCATIONAL",
+    "isWaec": true,
+    "isJamb": false,
+    "isNeco": false
+  }
+]

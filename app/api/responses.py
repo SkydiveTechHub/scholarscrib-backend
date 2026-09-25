@@ -116,6 +116,27 @@ class SubjectsOut(ApiOut):
     subjects: list[SubjectOut]
 
 
+class CurriculumTopicOut(ApiOut):
+    id: str
+    title: str
+    slug: str
+    orderIndex: int
+    estimatedMinutes: int
+    waecWeight: float
+    jambWeight: float
+
+
+class CurriculumLevelOut(ApiOut):
+    classLevel: str
+    term: str
+    topics: list[CurriculumTopicOut]
+
+
+class SubjectCurriculumOut(ApiOut):
+    subject: SubjectOut
+    levels: list[CurriculumLevelOut]
+
+
 class TopicSummaryOut(ApiOut):
     subjectId: str
     subjectName: str

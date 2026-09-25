@@ -84,6 +84,20 @@ class TopicRepository(BaseRepository[Topic]):
 class CurriculumLevelRepository(BaseRepository[CurriculumLevel]):
     model = CurriculumLevel
 
+    async def for_subject_term(
+        self,
+        session: AsyncSession,
+        subject_id: str,
+        class_level: str,
+        term: str,
+    ) -> CurriculumLevel | None:
+        return await self.first(
+            session,
+            CurriculumLevel.subject_id == subject_id,
+            CurriculumLevel.class_level == class_level,
+            CurriculumLevel.term == term,
+        )
+
 
 class TopicEdgeRepository(BaseRepository[TopicEdge]):
     model = TopicEdge

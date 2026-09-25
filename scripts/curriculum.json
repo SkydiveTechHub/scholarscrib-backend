@@ -1,0 +1,6180 @@
+{
+  "PHY": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Physics",
+          "estimatedMinutes": 30,
+          "waecWeight": 0.2,
+          "jambWeight": 0.1
+        },
+        {
+          "title": "Measurement and Units",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Scalar and Vector Quantities",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Distance, Displacement, Speed, Velocity and Acceleration",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Equations of Motion",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Motion Under Gravity",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Position, Distance and Displacement",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Force",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Friction",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Viscosity and Terminal Velocity",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.3
+        },
+        {
+          "title": "Simple Machines",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Work, Energy and Power",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Pressure",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Density and Relative Density",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Elasticity: Hooke's Law",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Temperature and Thermometers",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Heat Energy and Heat Transfer",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Linear and Volume Expansivity",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Specific Heat Capacity and Latent Heat",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Vapour Pressure and Humidity",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Gas Laws",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Wave Motion and Types of Waves",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Properties of Waves",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Sound Waves",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Light: Reflection at Plane and Curved Surfaces",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Refraction of Light",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Optical Instruments",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Dispersion of Light and Electromagnetic Spectrum",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Electrostatics: Electric Charges and Fields",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Capacitors and Capacitance",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Current Electricity: Ohm's Law",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Electrical Circuits: Series and Parallel",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Electrical Energy and Power",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Magnets and Magnetic Fields",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Electromagnetic Induction",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Alternating Current Circuits",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Electromagnetic Waves",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Atomic Structure and Radioactivity",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Nuclear Reactions: Fission and Fusion",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Photoelectric Effect",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Wave-Particle Duality",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Electronics: Semiconductors and Logic Gates",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.6,
+          "jambWeight": 0.6
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Revision: Mechanics",
+          "estimatedMinutes": 90,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Revision: Waves and Optics",
+          "estimatedMinutes": 90,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Revision: Electricity and Magnetism",
+          "estimatedMinutes": 90,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Past Question Drill",
+          "estimatedMinutes": 120,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Mock WAEC Practice",
+          "estimatedMinutes": 150,
+          "waecWeight": 1.0,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "JAMB CBT Simulation",
+          "estimatedMinutes": 120,
+          "waecWeight": 0.5,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Final Revision and Exam Strategy",
+          "estimatedMinutes": 60,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        }
+      ]
+    }
+  ],
+  "MTH": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Number Bases",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Modular Arithmetic",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Indices and Logarithms",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Sets",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Simple Equations and Inequalities",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Algebraic Expressions: Factorization",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Quadratic Equations",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Surds",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Logical Reasoning",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.3
+        },
+        {
+          "title": "Plane Geometry: Angles and Polygons",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Circle Theorems",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Construction and Loci",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.3
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Trigonometric Ratios",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Mensuration: Perimeter, Area",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Mensuration: Volume and Surface Area",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Statistics: Mean, Median, Mode",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Probability",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Simultaneous Linear and Quadratic Equations",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Variation: Direct, Inverse, Joint, Partial",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Polynomial Functions",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Matrices and Determinants",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Arithmetic and Geometric Progressions",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Coordinate Geometry: Straight Lines",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Coordinate Geometry: Circles and Curves",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Trigonometric Functions and Graphs",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Sine and Cosine Rules",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Bearings and Distances",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.7,
+          "jambWeight": 0.6
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Statistics: Grouped Data and Standard Deviation",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Probability: Compound Events",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Introduction to Calculus: Differentiation",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.9,
+          "jambWeight": 0.9
+        },
+        {
+          "title": "Application of Differentiation",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        },
+        {
+          "title": "Integration",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.8,
+          "jambWeight": 0.8
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Application of Integration",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Vectors in Two Dimensions",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        },
+        {
+          "title": "Transformation Geometry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Linear Inequalities and Linear Programming",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.6,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Binary Operations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Revision: Algebra and Number",
+          "estimatedMinutes": 90,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Revision: Geometry and Trigonometry",
+          "estimatedMinutes": 90,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Revision: Statistics, Probability, Calculus",
+          "estimatedMinutes": 90,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Past Question Drill",
+          "estimatedMinutes": 120,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Mock WAEC Practice",
+          "estimatedMinutes": 150,
+          "waecWeight": 1.0,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "JAMB CBT Simulation",
+          "estimatedMinutes": 120,
+          "waecWeight": 0.5,
+          "jambWeight": 1.0
+        },
+        {
+          "title": "Final Revision and Exam Strategy",
+          "estimatedMinutes": 60,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        }
+      ]
+    }
+  ],
+  "BIO": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Classification of Living Things",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Cell Structure and Organization",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Cell Division",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Nutrition in Plants",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.6,
+          "jambWeight": 0.6
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Nutrition in Animals",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.6,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Transport System in Plants",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Transport System in Animals",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.6,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Respiration",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Excretion",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Skeletal and Muscular Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Nervous System and Sense Organs",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Endocrine System",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Homeostasis and Coordination",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Reproduction in Plants",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Reproduction in Animals",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Growth and Development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Genetics and Heredity",
+          "estimatedMinutes": 90,
+          "waecWeight": 0.7,
+          "jambWeight": 0.7
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Evolution",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.4,
+          "jambWeight": 0.4
+        },
+        {
+          "title": "Microorganisms and Disease",
+          "estimatedMinutes": 60,
+          "waecWeight": 0.6,
+          "jambWeight": 0.6
+        },
+        {
+          "title": "Ecology",
+          "estimatedMinutes": 90,
+          "waecWeight": 1.0,
+          "jambWeight": 1.0
+        }
+      ]
+    }
+  ],
+  "ENG": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Comprehension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Summary Writing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Essay Writing: Narrative",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Oral English: Vowel Sounds",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Parts of Speech",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Tenses and Aspects",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Essay Writing: Descriptive",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Comprehension Practice",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Summary Techniques",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Oral English: Consonant Sounds",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Active and Passive Voice",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Clauses and Sentence Structure",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Idioms and Figures of Speech",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Essay Writing: Argumentative",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Speech Work and Stress Patterns",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Grammar and Usage",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Comprehension Drills",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Summary Drills",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Past Question Practice",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "CVE": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Citizenship",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Nigerian Constitution",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Rule of Law",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Fundamental Human Rights",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Democracy and National Development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Civic Responsibilities",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Government and Governance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "National Consciousness",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Values and Integrity",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Electoral Processes",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Public Service",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Civil Society Organizations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "International Organizations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "National Security",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Examination Ethics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "CHM": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Chemistry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Separation Techniques",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Particulate Nature of Matter",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Atomic Structure",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Periodic Table",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Chemical Bonding",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Chemical Reactions and Equations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Acids, Bases and Salts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Oxidation and Reduction",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Electrolysis",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Organic Chemistry: Hydrocarbons",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Rates of Chemical Reactions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Organic Chemistry: Alkanols and Alkanoic Acids",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Fats, Oils and Soaps",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Qualitative Analysis",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Quantitative Analysis",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Nuclear Chemistry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Industrial Chemistry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "FMT": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Set Theory and Logic",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Surds and Indices",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Polynomials",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Trigonometric Ratios and Identities",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Coordinate Geometry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Differentiation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Application of Differentiation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Integration",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Vectors",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Mechanics: Force and Equilibrium",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Statistics and Probability",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Matrices and Determinants",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Complex Numbers",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Differential Equations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Mechanics: Motion",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "AGR": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Agriculture",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Farm Tools and Equipment",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Soil Science",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Crop Production",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Animal Production",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Agricultural Ecology",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Farm Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Agricultural Economics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Livestock Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Fishery and Forestry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Agricultural Extension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Modern Agricultural Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Agricultural Marketing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Agricultural Records and Book Keeping",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "CMP": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Fundamentals of Computer",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "History of Computing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Computer Hardware",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Computer Software",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Data and Information",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Computer Networks",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Internet and World Wide Web",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Word Processing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Spreadsheets",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Databases",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Programming Fundamentals",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "System Development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Computer Ethics and Safety",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Emerging Technologies",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "TDR": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Technical Drawing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Geometric Construction",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Lines and Lettering",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Plane Figures",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Orthographic Projection",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Isometric Drawing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Oblique Drawing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Dimensioning",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Building Drawing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Mechanical Drawing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Pictorial Sketching",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Production Drawing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "GEO": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Geography",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Earth as a Planet",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Weather and Climate",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Landforms",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Map Reading",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "World Population",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agriculture",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Transportation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Industrialization",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Settlement",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Nigeria: Physical and Human Geography",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Economic Geography",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Environmental Problems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Regional Geography",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "HED": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Health Education",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Personal Hygiene",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Nutrition and Health",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Communicable Diseases",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Non-communicable Diseases",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Reproductive Health",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "First Aid",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Environmental Health",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Community Health",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Health Services",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Drug Abuse",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Family Life Education",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "LIT": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Literature",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Prose",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Poetry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Drama",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Figures of Speech",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "African Prose",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Non-African Prose",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "African Poetry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Non-African Poetry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "African Drama",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Non-African Drama",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Comprehension of Literary Works",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Essay Writing in Literature",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Literary Appreciation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "GOV": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Government",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Basic Concepts of Government",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Constitution and Constitutionalism",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Citizenship",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Rule of Law",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Political Parties",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Electoral Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Pressure Groups",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Public Opinion",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Federalism",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Nigerian Government and Politics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "International Relations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Foreign Policy",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Economic Communities",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "HIS": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to History",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Pre-colonial Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "The Trans-Atlantic Slave Trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Scramble for Africa",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Colonial Rule in Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nationalism",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Independence Movements",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Post-independence Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "The Nigerian Civil War",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Military Rule",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Democratic Transitions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Contemporary African History",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "CRS": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "The Sovereignty of God",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Creation Stories",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Faith and Covenant",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Leadership in Israel",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "The Life and Teachings of Jesus Christ",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Sermon on the Mount",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "The Parables of Jesus",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Miracles of Jesus",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "The Early Church",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Epistles",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Christian Living",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Second Coming of Christ",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "IRS": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "The Quran: Revelation and Content",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Hadith: Classification",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Tawhid: Oneness of God",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Prayer and Worship",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Islamic Law: Fiqh",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Marriage and Family in Islam",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Morality in Islam",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Life of Prophet Muhammad",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Islamic Economics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Islamic Civilization",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Contemporary Issues in Islam",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "FRN": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Greetings and Introductions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Alphabet and Numbers",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Family and School",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Basic Grammar",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Daily Activities",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Food and Shopping",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Travel and Transport",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "French Literature",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Essay Writing in French",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Comprehension in French",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Translation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "YOR": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Yoruba Language",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Yoruba Alphabet and Tones",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Greetings and Courtesies",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Basic Grammar",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Yoruba Literature: Prose and Poetry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Yoruba Drama",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Oral Literature",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Culture and Tradition",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Essay Writing in Yoruba",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Comprehension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Proverbs and Idioms",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "IGB": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Igbo Language",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Igbo Alphabet and Tones",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Greetings and Courtesies",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Basic Grammar",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Igbo Literature: Prose and Poetry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Igbo Drama",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Oral Literature",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Culture and Tradition",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Essay Writing in Igbo",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Comprehension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Proverbs and Idioms",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "HAU": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Hausa Language",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Hausa Alphabet and Tones",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Greetings and Courtesies",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Basic Grammar",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Hausa Literature: Prose and Poetry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Hausa Drama",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Oral Literature",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Culture and Tradition",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Essay Writing in Hausa",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Comprehension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Proverbs and Idioms",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "FNA": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Fine Art",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Drawing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Painting",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Colour Theory",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Design",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Sculpture",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Art History",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Crafts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Creative Composition",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Art Appreciation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Portfolio Development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "MUS": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Music",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Musical Notation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Rhythm and Pitch",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Musical Instruments",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Music Theory",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Harmony",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "African Music",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Western Music",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Composition",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Music History",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Performance Practice",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "ARB": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Arabic Alphabet",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Basic Vocabulary",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Arabic Grammar",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Reading and Comprehension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Arabic Literature",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Translation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Essay Writing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Advanced Arabic",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Comprehension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Revision and Past Questions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "ECO": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Economics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Basic Economic Concepts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Demand and Supply",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Production",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Market Structures",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Money and Banking",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Financial Institutions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "National Income",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Inflation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "International Trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Economic Development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agriculture and Industry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Population",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Economic Planning",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "COM": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Commerce",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Production",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Transportation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Warehousing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Communication",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Banking and Finance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Marketing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Advertising and Sales Promotion",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Stock Exchange",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Business Organizations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Business Environment",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Business Finance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Business Law",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Management and Organization",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Labour and Trade Unions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "International Trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Consumer Protection",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Economic Integration",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Information Technology",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Government and Business",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Accounting Basics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "ACC": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Accounting",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Source Documents",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Books of Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Ledger",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Trial Balance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Final Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Adjustments",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Depreciation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Control Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Bank Reconciliation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Partnership Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Company Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Manufacturing Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Interpretation of Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Public Sector Accounting",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "MKT": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Marketing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Marketing Concept",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Market Segmentation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Marketing Mix",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Product Decisions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Pricing Decisions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Distribution Decisions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Promotion Decisions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Consumer Behaviour",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Marketing Research",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Digital Marketing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Marketing Strategy",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "INS": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Principles of Insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Types of Insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Insurance Contracts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Underwriting",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Claims",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Marine and Aviation Insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Life Assurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Insurance Law and Regulation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "OFP": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Office Practice",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Office Environment",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Office Equipment",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Office Correspondence",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Filing and Records Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Communication in the Office",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "The Receptionist",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Office Machines",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Office Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Meetings and Minutes",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "The Computerized Office",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Secretarial Duties",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "STM": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Store Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Store Layout",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Stock Control",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Receiving and Issuing Stock",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Store Records",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Storage Methods",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Stock Taking",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Store Security",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Store Personnel",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Materials Handling",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "BUM": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Business Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Management Functions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Business Ownership",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Human Resource Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Marketing Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Production Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Financial Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Business Communication",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Small Business Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Business Ethics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "DTP": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Data Processing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "History of Computing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Computer Hardware",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Computer Software",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Data and Information",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Data Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Word Processing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Spreadsheets",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Presentation Software",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Databases",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Networking",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Internet",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Programming Basics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Data Processing Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "FNT": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Foods and Nutrition",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Food Groups",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Nutrients",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Food Hygiene",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Meal Planning",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Food Preparation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Food Preservation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Kitchen Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Dietetics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nutrition Across the Lifespan",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Nigerian Foods",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Food Technology",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "HMG": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Home Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The Family",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "The Home",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Household Resources",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Housing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Home Furnishing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Household Equipment",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Family Finance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Home Maintenance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Interior Decoration",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Consumer Education",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Home Management Projects",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "CAT": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Catering",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Catering Establishments",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Food Service",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Kitchen Operations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Menu Planning",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Food Preparation for Catering",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Catering Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Event Catering",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Catering Hygiene and Safety",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "TXT": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Textiles",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Textile Fibres",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Fabric Construction",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Textile Finishing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Dyeing and Printing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Clothing Construction",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Textile Care",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Garment Design",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Textile Industry in Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "TRM": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Tourism",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "The Tourism Industry",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Tourist Attractions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Tourism Products",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Travel and Transport in Tourism",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Hospitality",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Tourism Marketing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Tourism Management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Sustainable Tourism",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "BLD": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Building Construction",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Building Materials",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Site Preparation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Foundations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Walls",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Concrete Work",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Roofing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Finishing Works",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Building Services",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Building Inspection",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "WDW": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Woodwork",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Wood Materials",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Woodworking Tools",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Woodwork Processes",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Wood Joints",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Woodworking Machines",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Furniture Construction",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Finishing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Woodwork Projects",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "WLD": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Welding",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Welding Safety",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Welding Tools and Equipment",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Arc Welding",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Gas Welding",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Weld Joints",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Welding Defects",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Advanced Welding Techniques",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Welding Projects",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "AMW": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Auto Mechanics",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Vehicle Components",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Workshop Safety",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Engine Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Fuel Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Electrical Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Transmission Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Braking Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Vehicle Servicing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "BEL": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Electricity",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Electrical Safety",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Simple Circuits",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Ohm's Law",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Series and Parallel Circuits",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Electrical Measurements",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Electrical Power",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Wiring Systems",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Electric Motors",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ],
+  "BKP": [
+    {
+      "classLevel": "SS1",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Introduction to Book Keeping",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Source Documents",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "The Cash Book",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Ledger Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Trial Balance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Petty Cash",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Final Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Control Accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS3",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Correction of Errors",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    }
+  ]
+}
