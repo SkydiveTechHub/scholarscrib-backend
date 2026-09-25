@@ -22,12 +22,21 @@ from app.database.models import (
     AcademicTerm,
     Admin,
     AdminAudit,
+    AssessmentAttempt,
+    FlashcardReview,
     PushSubscription,
     Question,
 )
 from app.database.repositories.admin import admins_repository, audits_repository
+from app.database.repositories.assessment import attempts_repository
 from app.database.repositories.curriculum import subjects_repository, topics_repository
-from app.database.repositories.identity import devices_repository, users_repository
+from app.database.repositories.flashcard import reviews_repository
+from app.database.repositories.identity import (
+    devices_repository,
+    schools_repository,
+    users_repository,
+)
+from app.database.repositories.learning import learning_events_repository
 from app.database.repositories.notification import push_subscriptions_repository
 from app.database.repositories.question import questions_repository
 from app.services.auth import ADMIN_IDENTIFIER
@@ -36,6 +45,7 @@ from app.services.billing import (
     RevokeSubscriptionService,
 )
 from app.services.catalogue import bust_catalogue
+from app.services.learning.mastery_store import GetTopicMasteryService
 from app.services.planner.term_context import TermRange, validate_term_ranges
 from app.services.provider.rules import objective_ok
 
@@ -464,6 +474,12 @@ class CreateQuestionService:
         return question
 
 
+def _iso(value) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat()
+
+
 class SearchStudentsService:
     def __init__(
         self,
@@ -471,21 +487,44 @@ class SearchStudentsService:
         query: str | None,
         page: int,
         page_size: int,
+        *,
+        class_level: str | None = None,
+        track: str | None = None,
+        tier: str | None = None,
+        status: str | None = None,
+        state: str | None = None,
     ) -> None:
         self.session = session
         self.query = query
         self.page = page
         self.page_size = page_size
+        self.class_level = class_level
+        self.track = track
+        self.tier = tier
+        self.status = status
+        self.state = state
 
     async def process(self) -> dict:
         rows, total = await users_repository.search_students(
-            self.session, self.query, self.page, self.page_size
+            self.session,
+            self.query,
+            self.page,
+            self.page_size,
+            class_level=self.class_level,
+            track=self.track,
+            tier=self.tier,
+            status=self.status,
+            state=self.state,
+        )
+        last_active = await learning_events_repository.last_active(
+            self.session, [user.id for user in rows]
         )
         return {
             "students": [
                 {
                     "id": user.id,
                     "email": user.email,
+                    "phone": user.phone,
                     "firstName": user.first_name,
                     "lastName": user.last_name,
                     "classLevel": user.class_level,
@@ -493,6 +532,8 @@ class SearchStudentsService:
                     "tier": user.tier,
                     "isActive": user.is_active,
                     "state": user.state,
+                    "createdAt": _iso(user.created_at),
+                    "lastActiveAt": _iso(last_active.get(user.id)),
                 }
                 for user in rows
             ],
@@ -514,6 +555,15 @@ class GetStudentDetailService:
         if user is None:
             raise ApiError(404, "Student not found")
         device_rows = await devices_repository.for_user(self.session, self.user_id)
+        school = (
+            await schools_repository.by_id(self.session, user.school_id)
+            if user.school_id
+            else None
+        )
+        last_active = await learning_events_repository.last_active(
+            self.session, [user.id]
+        )
+        states = await GetTopicMasteryService(self.session, user.id).process()
         return {
             "id": user.id,
             "email": user.email,
@@ -523,9 +573,24 @@ class GetStudentDetailService:
             "classLevel": user.class_level,
             "track": user.track,
             "state": user.state,
+            "schoolId": user.school_id,
+            "schoolName": school.name if school else None,
             "tier": user.tier,
+            "tierUpdatedAt": _iso(user.tier_updated_at),
             "isActive": user.is_active,
+            "suspendedAt": _iso(user.suspended_at),
             "suspendedReason": user.suspended_reason,
+            "createdAt": _iso(user.created_at),
+            "lastActiveAt": _iso(last_active.get(user.id)),
+            "attemptCount": await attempts_repository.count(
+                self.session, AssessmentAttempt.student_id == user.id
+            ),
+            "masteredTopicCount": sum(
+                1 for state in states.values() if state.level == "STRONG"
+            ),
+            "flashcardReviewCount": await reviews_repository.count(
+                self.session, FlashcardReview.student_id == user.id
+            ),
             "devices": [
                 {
                     "id": device.id,

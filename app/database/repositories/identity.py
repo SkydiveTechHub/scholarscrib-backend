@@ -63,6 +63,12 @@ class UserRepository(BaseRepository[User]):
         query: str | None,
         page: int,
         page_size: int,
+        *,
+        class_level: str | None = None,
+        track: str | None = None,
+        tier: str | None = None,
+        status: str | None = None,
+        state: str | None = None,
     ) -> tuple[list[User], int]:
         statement = select(User).where(User.role == "STUDENT")
         if query:
@@ -70,10 +76,25 @@ class UserRepository(BaseRepository[User]):
             statement = statement.where(
                 or_(
                     User.email.ilike(like),
+                    User.phone.ilike(like),
                     User.first_name.ilike(like),
                     User.last_name.ilike(like),
                 )
             )
+        if class_level:
+            statement = statement.where(User.class_level == class_level)
+        if track:
+            statement = statement.where(User.track == track)
+        if tier:
+            statement = statement.where(User.tier == tier)
+        if status == "active":
+            statement = statement.where(User.is_active.is_(True))
+        elif status == "suspended":
+            statement = statement.where(User.is_active.is_(False))
+        if state == "none":
+            statement = statement.where(User.state.is_(None))
+        elif state:
+            statement = statement.where(User.state == state)
         total = await session.scalar(
             select(func.count()).select_from(statement.subquery())
         )

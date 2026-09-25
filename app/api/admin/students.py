@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import require_admin, require_super_admin
 from app.api.responses import (
@@ -33,8 +33,23 @@ async def students(
     q: str | None = None,
     page: int = 1,
     pageSize: int = 20,
+    class_level: Annotated[str | None, Query(alias="class")] = None,
+    track: str | None = None,
+    tier: str | None = None,
+    status: str | None = None,
+    state: str | None = None,
 ):
-    return await SearchStudentsService(session, q, page, min(pageSize, 100)).process()
+    return await SearchStudentsService(
+        session,
+        q,
+        max(page, 1),
+        min(max(pageSize, 1), 100),
+        class_level=class_level,
+        track=track,
+        tier=tier,
+        status=status,
+        state=state,
+    ).process()
 
 
 @router.get("/{user_id}", response_model=StudentDetailOut)

@@ -1,6 +1,6 @@
 """Repositories for progress, mastery, and achievements."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
@@ -109,6 +109,24 @@ class LearningEventRepository(BaseRepository[LearningEvent]):
         if topic_ids is not None:
             statement = statement.where(LearningEvent.topic_id.in_(topic_ids))
         return await self.many(session, statement)
+
+    async def last_active(
+        self, session: AsyncSession, student_ids: list[str]
+    ) -> dict[str, object]:
+        if not student_ids:
+            return {}
+        rows = (
+            await self.rows(
+                session,
+                select(
+                    LearningEvent.student_id,
+                    func.max(LearningEvent.occurred_at),
+                )
+                .where(LearningEvent.student_id.in_(student_ids))
+                .group_by(LearningEvent.student_id),
+            )
+        ).all()
+        return {student_id: moment for student_id, moment in rows}
 
 
 class TopicMasteryRepository(BaseRepository[TopicMastery]):
