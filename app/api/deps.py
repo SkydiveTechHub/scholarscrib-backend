@@ -121,7 +121,7 @@ async def require_admin(request: Request, session: AnSession) -> Admin:
     return admin
 
 
-async def require_owner(admin: Annotated[Admin, Depends(require_admin)]) -> Admin:
+async def require_super_admin(admin: Annotated[Admin, Depends(require_admin)]) -> Admin:
     if not admin.is_owner:
         raise ApiError(403, "Owner access required")
     return admin

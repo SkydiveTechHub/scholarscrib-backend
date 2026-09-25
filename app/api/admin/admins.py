@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import require_owner
+from app.api.deps import require_super_admin
 from app.api.responses import AdminCreatedOut, AdminsOut, OkOut
 from app.api.schemas import ActiveIn, AdminCreateIn
 from app.database.db import AnSession
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/admins", tags=["Admin / Admins"])
 
 @router.get("", response_model=AdminsOut)
 async def list_admins(
-    session: AnSession, admin: Annotated[Admin, Depends(require_owner)]
+    session: AnSession, admin: Annotated[Admin, Depends(require_super_admin)]
 ):
     rows = await admins_repository.list_created(session)
     return {"admins": [admin_row(row) for row in rows]}
@@ -25,7 +25,7 @@ async def list_admins(
 async def create_admin(
     body: AdminCreateIn,
     session: AnSession,
-    admin: Annotated[Admin, Depends(require_owner)],
+    admin: Annotated[Admin, Depends(require_super_admin)],
 ):
     return await CreateAdminService(
         session, admin.id, body.identifier, body.password
@@ -37,7 +37,7 @@ async def admin_status(
     admin_id: str,
     body: ActiveIn,
     session: AnSession,
-    actor: Annotated[Admin, Depends(require_owner)],
+    actor: Annotated[Admin, Depends(require_super_admin)],
 ):
     return await SetAdminStatusService(
         session, actor.id, admin_id, body.isActive

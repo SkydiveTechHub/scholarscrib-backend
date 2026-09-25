@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import require_admin, require_owner
+from app.api.deps import require_admin, require_super_admin
 from app.api.responses import OkOut, StudentDetailOut, StudentsPageOut
 from app.api.schemas import StudentProfileIn, StudentStatusIn, StudentTierIn
 from app.database.db import AnSession
@@ -50,7 +50,9 @@ async def update_student(
 
 @router.delete("/{user_id}", response_model=OkOut)
 async def delete_student(
-    user_id: str, session: AnSession, admin: Annotated[Admin, Depends(require_owner)]
+    user_id: str,
+    session: AnSession,
+    admin: Annotated[Admin, Depends(require_super_admin)],
 ):
     return await DeleteStudentService(session, admin.id, user_id).process()
 
@@ -77,6 +79,8 @@ async def student_tier(
 
 @router.post("/{user_id}/force-signout", response_model=OkOut)
 async def force_signout(
-    user_id: str, session: AnSession, admin: Annotated[Admin, Depends(require_owner)]
+    user_id: str,
+    session: AnSession,
+    admin: Annotated[Admin, Depends(require_super_admin)],
 ):
     return await ForceSignOutService(session, admin.id, user_id).process()

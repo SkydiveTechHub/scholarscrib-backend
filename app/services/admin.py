@@ -134,6 +134,20 @@ class CreateAdminService:
             raise ApiError(409, "That email or username is already taken") from exc
         return admin
 
+    async def _create_superuser(self, email: str | None, username: str | None) -> Admin:
+        admin = Admin(
+            id=cuid(),
+            email=email,
+            username=username,
+            password_hash=hash_password(self.password),
+            is_owner=True,
+        )
+        try:
+            await admins_repository.add(self.session, admin, flush=False)
+        except IntegrityError as exc:
+            raise ApiError(409, "That email or username is already taken") from exc
+        return admin
+
 
 class SetAdminStatusService:
     def __init__(
