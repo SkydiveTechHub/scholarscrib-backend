@@ -131,6 +131,7 @@ async def mock_options(
     examType: str,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
+    examType = examType.strip().upper()
     if examType not in {"WAEC", "JAMB", "NECO"}:
         raise ApiError(400, "examType must be WAEC, JAMB, or NECO")
     return await GetMockOptionsService(session, examType).process()

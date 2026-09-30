@@ -3,7 +3,9 @@ from typing import Annotated
 from fastapi import APIRouter, Path
 
 from app.api.responses import CoverageOut, DiscoveryOut, PapersOut, QuestionPageOut
+from app.api.schemas import Difficulty, ExamType
 from app.database.db import AnSession
+from app.database.repositories.curriculum import subjects_repository
 from app.database.repositories.question import questions_repository
 from app.services.catalogue import ListPastPapersService, public_question
 from app.services.provider import (
@@ -24,14 +26,16 @@ async def list_questions(
     session: AnSession,
     subjectId: str | None = None,
     topicId: str | None = None,
-    examType: str | None = None,
+    examType: ExamType | None = None,
     examYear: int | None = None,
-    difficulty: str | None = None,
+    difficulty: Difficulty | None = None,
     page: int = 1,
     limit: int = 20,
 ):
     limit = min(max(limit, 1), 50)
     page = max(page, 1)
+    if subjectId:
+        subjectId = await subjects_repository.resolve_id(session, subjectId)
     rows, total = await questions_repository.list_page(
         session,
         subject_id=subjectId,
@@ -57,9 +61,11 @@ async def list_questions(
 @router.get("/past-papers", response_model=PapersOut)
 async def past_papers(
     session: AnSession,
-    examType: str | None = None,
+    examType: ExamType | None = None,
     subjectId: str | None = None,
 ):
+    if subjectId:
+        subjectId = await subjects_repository.resolve_id(session, subjectId)
     return await ListPastPapersService(session, examType, subjectId).process()
 
 

@@ -9,7 +9,14 @@ from app.api.responses import (
     StudentDetailOut,
     StudentsPageOut,
 )
-from app.api.schemas import StudentProfileIn, StudentStatusIn, StudentTierIn
+from app.api.schemas import (
+    ClassLevelIn,
+    StudentProfileIn,
+    StudentStatusIn,
+    StudentTierIn,
+    Tier,
+    TrackIn,
+)
 from app.database.db import AnSession
 from app.database.models import Admin
 from app.services.admin import (
@@ -33,9 +40,9 @@ async def students(
     q: str | None = None,
     page: int = 1,
     pageSize: int = 20,
-    class_level: Annotated[str | None, Query(alias="class")] = None,
-    track: str | None = None,
-    tier: str | None = None,
+    class_level: Annotated[ClassLevelIn | None, Query(alias="class")] = None,
+    track: TrackIn | None = None,
+    tier: Tier | None = None,
     status: str | None = None,
     state: str | None = None,
 ):

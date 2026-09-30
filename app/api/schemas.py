@@ -1,20 +1,30 @@
 from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field, model_validator
 
 from app.domain import PHONE_PATTERN, ClassLevel, NigerianState, Term, Track
 
-type ExamType = Literal["WAEC", "JAMB", "NECO", "CUSTOM"]
-type Board = Literal["WAEC", "JAMB", "NECO"]
-type Difficulty = Literal["BASIC", "INTERMEDIATE", "ADVANCED"]
-type QuestionType = Literal["OBJECTIVE", "THEORY", "FILL_IN_BLANK"]
-type Tier = Literal["FREEMIUM", "STANDARD", "PREMIUM"]
-type BillingPeriod = Literal["MONTHLY", "YEARLY"]
-type ReviewRating = Literal["AGAIN", "HARD", "GOOD", "EASY"]
-type PlanItemStatus = Literal["COMPLETED", "SKIPPED", "PENDING"]
-type ProgressStatus = Literal["NOT_STARTED", "IN_PROGRESS", "COMPLETED"]
-type MaterialType = Literal["PDF", "IMAGE", "VIDEO", "LINK"]
+
+def upper_enum(value: object) -> object:
+    return value.strip().upper() if isinstance(value, str) else value
+
+
+# Postgres enum labels are uppercase; accept any casing from clients.
+Caps = BeforeValidator(upper_enum)
+
+ExamType = Annotated[Literal["WAEC", "JAMB", "NECO", "CUSTOM"], Caps]
+Board = Annotated[Literal["WAEC", "JAMB", "NECO"], Caps]
+Difficulty = Annotated[Literal["BASIC", "INTERMEDIATE", "ADVANCED"], Caps]
+QuestionType = Annotated[Literal["OBJECTIVE", "THEORY", "FILL_IN_BLANK"], Caps]
+Tier = Annotated[Literal["FREEMIUM", "STANDARD", "PREMIUM"], Caps]
+BillingPeriod = Annotated[Literal["MONTHLY", "YEARLY"], Caps]
+ReviewRating = Annotated[Literal["AGAIN", "HARD", "GOOD", "EASY"], Caps]
+PlanItemStatus = Annotated[Literal["COMPLETED", "SKIPPED", "PENDING"], Caps]
+ProgressStatus = Annotated[Literal["NOT_STARTED", "IN_PROGRESS", "COMPLETED"], Caps]
+MaterialType = Annotated[Literal["PDF", "IMAGE", "VIDEO", "LINK"], Caps]
+ClassLevelIn = Annotated[ClassLevel, Caps]
+TrackIn = Annotated[Track, Caps]
 type Weekday = Literal[1, 2, 3, 4, 5, 6, 7]
 type Phone = Annotated[str, Field(pattern=PHONE_PATTERN)]
 

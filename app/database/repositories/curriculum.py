@@ -1,6 +1,6 @@
 """Repositories for subjects, topics, and lessons."""
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
@@ -24,6 +24,10 @@ class SubjectRepository(BaseRepository[Subject]):
 
     async def by_code(self, session: AsyncSession, code: str) -> Subject | None:
         return await self.first(session, Subject.code == code)
+
+    async def resolve_id(self, session: AsyncSession, key: str) -> str:
+        subject = await self.first(session, or_(Subject.id == key, Subject.slug == key))
+        return subject.id if subject else key
 
     async def ordered(self, session: AsyncSession) -> list[Subject]:
         return await self.all_ordered(session, Subject.name)

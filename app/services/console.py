@@ -313,12 +313,18 @@ class ImportQuestionsService:
                 400,
                 "Question text and explanation must be at least 5 characters",
             )
-        exam_type = row.examType
+        exam_type = (row.examType or "").strip().upper()
         if exam_type not in {"WAEC", "JAMB", "NECO", "CUSTOM"}:
             raise ApiError(400, "Unknown exam type")
+        question_type = (row.questionType or "OBJECTIVE").strip().upper()
+        if question_type not in {"OBJECTIVE", "THEORY", "FILL_IN_BLANK"}:
+            raise ApiError(400, "Unknown question type")
+        difficulty = (row.difficulty or "INTERMEDIATE").strip().upper()
+        if difficulty not in {"BASIC", "INTERMEDIATE", "ADVANCED"}:
+            raise ApiError(400, "Unknown difficulty")
         if (
             not objective_ok(row.options, row.correctAnswer)
-            and (row.questionType or "OBJECTIVE") == "OBJECTIVE"
+            and question_type == "OBJECTIVE"
         ):
             raise ApiError(
                 400,
@@ -346,11 +352,11 @@ class ImportQuestionsService:
                 exam_year=row.examYear,
                 question_number=row.questionNumber,
                 question_text=text,
-                question_type=row.questionType or "OBJECTIVE",
+                question_type=question_type,
                 options=row.options,
                 correct_answer=str(row.correctAnswer).upper(),
                 explanation=row.explanation,
-                difficulty=row.difficulty or "INTERMEDIATE",
+                difficulty=difficulty,
                 marks=row.marks or 1,
                 time_estimate_seconds=row.timeEstimateSeconds or 90,
             ),

@@ -221,7 +221,7 @@ def visible_subjects(
         rows = [
             row
             for row in rows
-            if row["trackCategory"] == "CORE" or row["trackCategory"] == track
+            if row["trackCategory"] in {"CORE", track.strip().upper()}
         ]
     flag = {"waec": "isWaec", "jamb": "isJamb", "neco": "isNeco"}.get(
         (exam_type or "").lower()

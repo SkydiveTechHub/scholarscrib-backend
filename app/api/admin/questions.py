@@ -14,6 +14,8 @@ from app.api.responses import (
 )
 from app.api.schemas import (
     DeleteQuestionsIn,
+    Difficulty,
+    ExamType,
     ImportQuestionsIn,
     QuestionCreateIn,
     QuestionPatchIn,
@@ -45,9 +47,9 @@ async def list_questions(
     page: int = 1,
     pageSize: int = 20,
     subjectId: str | None = None,
-    examType: str | None = None,
+    examType: ExamType | None = None,
     examYear: int | None = None,
-    difficulty: str | None = None,
+    difficulty: Difficulty | None = None,
     search: str | None = None,
 ):
     page_size = min(max(pageSize, 1), 100)
