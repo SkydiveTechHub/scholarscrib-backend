@@ -20,6 +20,9 @@ dev-setup :
 	$ pre-commit install --hook-type commit-msg  
 
 
+shell :
+	uv run fastapi-repl
+
 format : 
 	$ ruff format
 

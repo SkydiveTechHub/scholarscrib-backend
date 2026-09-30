@@ -23,7 +23,7 @@ Term = pg_enum("Term", "FIRST", "SECOND", "THIRD")
 ExamType = pg_enum("ExamType", "WAEC", "JAMB", "NECO", "CUSTOM")
 QuestionType = pg_enum("QuestionType", "OBJECTIVE", "THEORY", "FILL_IN_BLANK")
 Difficulty = pg_enum("Difficulty", "BASIC", "INTERMEDIATE", "ADVANCED")
-QuestionProvider = pg_enum("QuestionProvider", "SDASH")
+QuestionProvider = pg_enum("QuestionProvider", "SDASH", "ALOC")
 ProviderFetchStatus = pg_enum("ProviderFetchStatus", "PENDING", "SATURATED", "FAILED")
 ProviderQuestionStatus = pg_enum(
     "ProviderQuestionStatus", "PENDING", "PROMOTED", "REJECTED"

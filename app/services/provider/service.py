@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -21,21 +20,27 @@ from app.database.repositories.provider import (
 )
 from app.database.repositories.question import questions_repository
 from app.services.catalogue import bust_catalogue
+from app.services.provider.base import DrawResult, QuestionProvider
+from app.services.provider.factory import ProviderFactory
 from app.services.provider.rules import (
+    COOLDOWN_MINUTES,
     LEASE_WINDOW_MS,
     MAPPER_VERSION,
+    MAX_DRAWS,
     cache_key,
     fingerprint,
     next_circuit,
     objective_ok,
-    should_saturate,
 )
 
 
-async def load_provider_state(session: AsyncSession) -> ProviderState:
-    state = await states_repository.by_id(session, "SDASH")
+async def load_provider_state(
+    session: AsyncSession, provider_name: str | None = None
+) -> ProviderState:
+    name = (provider_name or settings.question_provider).upper()
+    state = await states_repository.by_id(session, name)
     if state is None:
-        state = ProviderState(provider="SDASH", circuit="OK")
+        state = ProviderState(provider=name, circuit="OK")
         await states_repository.add(session, state, flush=True)
     return state
 
@@ -48,17 +53,21 @@ class EnsureProviderQuestionsService:
         exam_type: str,
         exam_year: int,
         limit: int = 50,
+        provider: QuestionProvider | None = None,
     ) -> None:
         self.session = session
         self.subject_slug = subject_slug
         self.exam_type = exam_type
         self.exam_year = exam_year
         self.limit = limit
+        self.provider = provider or ProviderFactory.create()
 
     async def process(self) -> dict:
         subject = await subjects_repository.by_slug(self.session, self.subject_slug)
         key = cache_key(self.subject_slug, self.exam_type, self.exam_year)
-        row = await fetches_repository.by_cache_key(self.session, "SDASH", key)
+        row = await fetches_repository.by_cache_key(
+            self.session, self.provider.name, key
+        )
         if subject is None:
             return await self._unknown_subject(row, key)
         if row and row.status in {"SATURATED", "FAILED"}:
@@ -74,7 +83,7 @@ class EnsureProviderQuestionsService:
                 }
         row = await self._lease(row, subject, key, now)
         await self.session.flush()
-        state = await load_provider_state(self.session)
+        state = await load_provider_state(self.session, self.provider.name)
         if state.circuit == "BLOCKED" or (
             state.circuit == "EXHAUSTED"
             and state.cooldown_until
@@ -85,7 +94,7 @@ class EnsureProviderQuestionsService:
                 "circuit": state.circuit,
                 "cacheKey": key,
             }
-        if not settings.sdash_access_token:
+        if not self.provider.configured:
             return {"status": row.status, "cacheKey": key}
         await self._draw(row, subject)
         return {
@@ -98,7 +107,7 @@ class EnsureProviderQuestionsService:
         if row is None:
             row = ProviderFetch(
                 id=cuid(),
-                provider="SDASH",
+                provider=self.provider.name,
                 cache_key=key,
                 status="FAILED",
                 exam_type=self.exam_type,
@@ -119,7 +128,7 @@ class EnsureProviderQuestionsService:
         if row is None:
             row = ProviderFetch(
                 id=cuid(),
-                provider="SDASH",
+                provider=self.provider.name,
                 cache_key=key,
                 status="PENDING",
                 started_at=now,
@@ -134,90 +143,83 @@ class EnsureProviderQuestionsService:
         return row
 
     async def _draw(self, row: ProviderFetch, subject: Subject) -> None:
-        url = f"{settings.sdash_base_url.rstrip('/')}/questions"
-        try:
-            async with httpx.AsyncClient(timeout=20) as client:
-                response = await client.get(
-                    url,
-                    params={
-                        "subject": subject.slug,
-                        "exam": self.exam_type.lower(),
-                        "year": self.exam_year,
-                        "limit": self.limit,
-                    },
-                    headers={
-                        "Authorization": (f"Bearer {settings.sdash_access_token}")
-                    },
-                )
-        except httpx.HTTPError:
-            return
-        state = await load_provider_state(self.session)
-        if response.status_code >= 400:
-            state.circuit = next_circuit(
-                response.status_code, response.text, state.circuit
-            )
-            if state.circuit == "EXHAUSTED":
-                state.cooldown_until = utcnow() + timedelta(minutes=15)
-            if response.status_code == 404:
-                row.status = "SATURATED"
-            return
-        await self._ingest(row, subject, response.json())
-
-    async def _ingest(self, row: ProviderFetch, subject: Subject, payload) -> None:
-        items = (
-            payload
-            if isinstance(payload, list)
-            else payload.get("data") or payload.get("questions") or []
+        result = await self.provider.draw(
+            subject.slug, self.exam_type, self.exam_year, self.limit
         )
+        if result is None:
+            return
+        state = await load_provider_state(self.session, self.provider.name)
+        if result.credits_remaining is not None:
+            state.credits_remaining = result.credits_remaining
+        if result.failed:
+            state.circuit = next_circuit(result.status_code, result.body, state.circuit)
+            if state.circuit == "EXHAUSTED":
+                state.cooldown_until = utcnow() + timedelta(minutes=COOLDOWN_MINUTES)
+            if result.status_code == 404:
+                row.status = "SATURATED"
+            if not result.items:
+                return
+        await self._ingest(row, subject, result)
+
+    async def _ingest(
+        self, row: ProviderFetch, subject: Subject, result: DrawResult
+    ) -> None:
         new_count = 0
-        for item in items:
+        for item in result.items:
             if not isinstance(item, dict):
                 continue
             if await self._stage_item(row, subject, item):
                 new_count += 1
         row.draw_count += 1
-        row.raw_count += len(items)
+        row.raw_count += len(result.items)
         row.new_in_last_draw = new_count
-        if should_saturate(row.draw_count, len(items), new_count):
+        if not result.failed and self.provider.should_saturate(row, result, new_count):
             row.status = "SATURATED"
             bust_catalogue()
 
     async def _stage_item(
         self, row: ProviderFetch, subject: Subject, item: dict
     ) -> bool:
-        provider_id = str(item.get("id") or item.get("questionId") or "")
-        text = str(item.get("question") or item.get("questionText") or "")
-        options = item.get("options") or {}
-        if isinstance(options, list):
-            options = {chr(65 + index): value for index, value in enumerate(options)}
-        digest = fingerprint(
-            text, {str(key): str(value) for key, value in options.items()}
-        )
+        normalized = self.provider.normalize(item)
+        digest = fingerprint(normalized.text, normalized.options)
         staged = ProviderQuestion(
             id=cuid(),
             fetch_id=row.id,
-            provider_question_id=provider_id or digest[:16],
+            provider_question_id=normalized.provider_id or digest[:16],
             fingerprint=digest,
             payload=item,
             mapper_version=MAPPER_VERSION,
         )
-        answer = str(item.get("answer") or item.get("correctAnswer") or "")
-        if not objective_ok(options, answer) or not text:
+        if (
+            not objective_ok(normalized.options, normalized.answer)
+            or not normalized.text
+        ):
             staged.status = "REJECTED"
             staged.rejection_reasons = ["incomplete"]
             row.rejected_count += 1
             await provider_questions_repository.add(self.session, staged)
             return False
+        explanation = normalized.explanation
+        if (
+            not explanation
+            and normalized.provider_id
+            and self.provider.fetch_explanations
+        ):
+            bought = await self.provider.explain(normalized.provider_id)
+            if bought:
+                staged.payload = {**item, "explain": bought}
+                explanation = self.provider.flatten_explanation(bought)
         question = Question(
             id=cuid(),
             subject_id=subject.id,
             exam_type=self.exam_type,
             exam_year=self.exam_year,
-            question_text=text,
+            question_text=normalized.text,
+            question_image_url=normalized.image_url or None,
             question_type="OBJECTIVE",
-            options=options,
-            correct_answer=answer.upper(),
-            explanation=(item.get("explanation") or item.get("solution") or ""),
+            options=normalized.options,
+            correct_answer=normalized.answer.upper(),
+            explanation=explanation,
             difficulty="INTERMEDIATE",
         )
         await questions_repository.add(self.session, question)
@@ -236,15 +238,15 @@ class SaturateProviderService:
         subject_slug: str,
         exam_type: str,
         exam_year: int,
+        provider: QuestionProvider | None = None,
     ) -> None:
         self.session = session
         self.subject_slug = subject_slug
         self.exam_type = exam_type
         self.exam_year = exam_year
+        self.provider = provider or ProviderFactory.create()
 
     async def process(self) -> dict:
-        from app.services.provider.rules import MAX_DRAWS
-
         last = {}
         for _ in range(MAX_DRAWS):
             last = await EnsureProviderQuestionsService(
@@ -252,6 +254,7 @@ class SaturateProviderService:
                 self.subject_slug,
                 self.exam_type,
                 self.exam_year,
+                provider=self.provider,
             ).process()
             if last.get("status") in {"SATURATED", "FAILED"}:
                 break
@@ -265,15 +268,19 @@ class ResetFailedFetchService:
         subject_slug: str,
         exam_type: str,
         exam_year: int,
+        provider: QuestionProvider | None = None,
     ) -> None:
         self.session = session
         self.subject_slug = subject_slug
         self.exam_type = exam_type
         self.exam_year = exam_year
+        self.provider = provider or ProviderFactory.create()
 
     async def process(self) -> bool:
         key = cache_key(self.subject_slug, self.exam_type, self.exam_year)
-        row = await fetches_repository.by_cache_key(self.session, "SDASH", key)
+        row = await fetches_repository.by_cache_key(
+            self.session, self.provider.name, key
+        )
         if row and row.status == "FAILED":
             row.status = "PENDING"
             row.started_at = None
@@ -282,11 +289,14 @@ class ResetFailedFetchService:
 
 
 class ClearProviderBlockService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self, session: AsyncSession, provider: QuestionProvider | None = None
+    ) -> None:
         self.session = session
+        self.provider = provider or ProviderFactory.create()
 
     async def process(self) -> bool:
-        state = await load_provider_state(self.session)
+        state = await load_provider_state(self.session, self.provider.name)
         if state.circuit != "BLOCKED":
             return False
         state.circuit = "OK"

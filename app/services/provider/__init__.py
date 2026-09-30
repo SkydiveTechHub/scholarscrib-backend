@@ -1,3 +1,5 @@
+from app.services.provider.base import QuestionProvider
+from app.services.provider.factory import ProviderFactory
 from app.services.provider.service import (
     ClearProviderBlockService,
     EnsureProviderQuestionsService,
@@ -12,4 +14,6 @@ __all__ = [
     "SaturateProviderService",
     "ResetFailedFetchService",
     "ClearProviderBlockService",
+    "ProviderFactory",
+    "QuestionProvider",
 ]

@@ -29,6 +29,7 @@ dependencies = [
     "pyright>=1.1.414",
     "greenlet>=3.5.6",
     "pre-commit>=4.6.2",
+    "fastapi-repl>=0.1.0",
 ]
 
 [tool.pytest.ini_options]
@@ -42,3 +43,13 @@ target-version = "py314"
 
 [tool.fastapi]
 entrypoint = "main:app"
+
+[tool.fastapi-repl]
+env_file = ".env"
+models = ["app.database.models"]
+base = "app.database.db:Base"
+imports = ["from app.core.config import settings"]
+
+[tool.fastapi-repl.sqlalchemy]
+engine = "app.database.db:async_engine"
+session_factory = "app.database.db:async_session"

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -38,8 +39,12 @@ class Settings(BaseSettings):
     cloudinary_api_key: str | None
     cloudinary_api_secret: str | None
 
-    sdash_base_url: str
+    sdash_base_url: str = "https://sdashapi.com/api"
     sdash_access_token: str | None
+    aloc_base_url: str = "https://dev.aloc.com.ng/api/v1"
+    aloc_api_key: str | None = None
+    aloc_fetch_explanations: bool = False
+    question_provider: Literal["SDASH", "ALOC"] = "ALOC"
     question_provider_enabled: str
 
     upstash_redis_rest_url: str | None
