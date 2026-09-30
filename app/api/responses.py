@@ -337,6 +337,17 @@ class PapersOut(ApiOut):
     papers: list[dict]
 
 
+class CoverageOut(ApiOut):
+    provider: str
+    summary: dict
+    examBodies: list[dict]
+
+
+class DiscoveryOut(ApiOut):
+    provider: str
+    data: dict | list[dict]
+
+
 class PretestOut(ApiOut):
     passed: bool | None = None
     alreadyPassed: bool | None = None

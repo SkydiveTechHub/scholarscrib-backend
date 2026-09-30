@@ -1,11 +1,22 @@
-from fastapi import APIRouter
+from typing import Annotated
 
-from app.api.responses import PapersOut, QuestionPageOut
+from fastapi import APIRouter, Path
+
+from app.api.responses import CoverageOut, DiscoveryOut, PapersOut, QuestionPageOut
 from app.database.db import AnSession
 from app.database.repositories.question import questions_repository
 from app.services.catalogue import ListPastPapersService, public_question
+from app.services.provider import (
+    DiscoveryResource,
+    ProviderCoverageService,
+    ProviderDiscoveryService,
+)
 
 router = APIRouter(prefix="/questions", tags=["Student / Questions"])
+
+SubjectKey = Annotated[
+    str, Path(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
+]
 
 
 @router.get("", response_model=QuestionPageOut)
@@ -50,3 +61,39 @@ async def past_papers(
     subjectId: str | None = None,
 ):
     return await ListPastPapersService(session, examType, subjectId).process()
+
+
+@router.get("/coverage", response_model=CoverageOut)
+async def provider_coverage():
+    return await ProviderCoverageService().process()
+
+
+@router.get("/coverage/subjects", response_model=DiscoveryOut)
+async def provider_subjects():
+    return await ProviderDiscoveryService(DiscoveryResource.SUBJECTS).process()
+
+
+@router.get("/coverage/subjects/{subject}", response_model=DiscoveryOut)
+async def provider_subject(subject: SubjectKey):
+    return await ProviderDiscoveryService(DiscoveryResource.SUBJECT, subject).process()
+
+
+@router.get("/coverage/subjects/{subject}/topics", response_model=DiscoveryOut)
+async def provider_subject_topics(subject: SubjectKey):
+    return await ProviderDiscoveryService(
+        DiscoveryResource.SUBJECT_TOPICS, subject
+    ).process()
+
+
+@router.get("/coverage/subjects/{subject}/years", response_model=DiscoveryOut)
+async def provider_subject_years(subject: SubjectKey):
+    return await ProviderDiscoveryService(
+        DiscoveryResource.SUBJECT_YEARS, subject
+    ).process()
+
+
+@router.get("/coverage/years/{year}", response_model=DiscoveryOut)
+async def provider_year_subjects(year: Annotated[int, Path(ge=1980, le=2100)]):
+    return await ProviderDiscoveryService(
+        DiscoveryResource.YEAR_SUBJECTS, year
+    ).process()

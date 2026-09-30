@@ -4,15 +4,22 @@ import httpx
 import pytest
 
 from app.core.config import Settings, settings
+from app.core.errors import ApiError
 from app.database.models import ProviderFetch
-from app.services.provider import ProviderFactory
+from app.services.provider import (
+    DiscoveryResource,
+    ProviderCoverageService,
+    ProviderDiscoveryService,
+    ProviderFactory,
+)
+from app.services.provider import service as provider_service
 from app.services.provider.aloc import (
     ALOC_MAX_PAGES,
     ALOC_PAGE_LIMIT,
     AlocProvider,
     flatten_explanation,
 )
-from app.services.provider.base import DrawResult
+from app.services.provider.base import DrawResult, ProviderNotFound
 from app.services.provider.sdash import SdashProvider
 
 
@@ -202,3 +209,117 @@ def test_flatten_explanation_to_markdown():
         "### Steps\n1. Take 1\n2. Add 1\n\n"
         "### Common mistakes\n- **Picking A**: That subtracts.\n- **Picking C**"
     )
+
+
+_COVERAGE = {
+    "data": {
+        "summary": {"totalQuestions": 12645, "minYear": 1988, "maxYear": 2025},
+        "examBodies": [
+            {"slug": "jamb", "name": "JAMB / UTME", "subjects": [{"slug": "physics"}]},
+            {"slug": "post_utme", "name": "Post-UTME", "subjects": []},
+        ],
+    }
+}
+
+
+async def test_aloc_coverage_maps_exam_types():
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json=_COVERAGE)
+
+    provider = AlocProvider(transport=httpx.MockTransport(handler), api_key="key")
+    coverage = await provider.discover(DiscoveryResource.COVERAGE)
+
+    assert isinstance(coverage, dict)
+    assert seen[0].url.path.endswith("/coverage")
+    assert coverage["summary"]["totalQuestions"] == 12645
+    assert [body["examType"] for body in coverage["examBodies"]] == ["JAMB", None]
+    assert coverage["examBodies"][0]["subjects"] == [{"slug": "physics"}]
+
+
+@pytest.mark.parametrize(
+    ("resource", "key", "path"),
+    [
+        (DiscoveryResource.SUBJECTS, None, "/subjects"),
+        (DiscoveryResource.SUBJECT, "Mathematics", "/subjects/mathematics"),
+        (DiscoveryResource.SUBJECT, "english", "/subjects/english-language"),
+        (DiscoveryResource.SUBJECT_TOPICS, "physics", "/subjects/physics/topics"),
+        (DiscoveryResource.SUBJECT_YEARS, "MTH", "/subjects/mth/years"),
+        (DiscoveryResource.YEAR_SUBJECTS, 2019, "/subjects/years/2019"),
+    ],
+)
+async def test_aloc_discovery_paths(resource, key, path):
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"data": [{"name": "x"}], "meta": {}})
+
+    provider = AlocProvider(transport=httpx.MockTransport(handler), api_key="key")
+    assert await provider.discover(resource, key) == [{"name": "x"}]
+    assert seen[0].url.path == f"/api/v1{path}"
+    assert seen[0].headers["X-API-Key"] == "key"
+
+
+async def test_aloc_discovery_unknown_subject_raises_not_found():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"error": "not_found"})
+
+    provider = AlocProvider(transport=httpx.MockTransport(handler), api_key="key")
+    with pytest.raises(ProviderNotFound):
+        await provider.discover(DiscoveryResource.SUBJECT, "nope")
+
+
+async def test_coverage_service_caches_and_serves_stale_on_failure():
+    provider_service._DISCOVERY_CACHE.clear()
+    responses = [httpx.Response(200, json=_COVERAGE), httpx.Response(500)]
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return responses[min(calls - 1, 1)]
+
+    provider = AlocProvider(transport=httpx.MockTransport(handler), api_key="key")
+    first = await ProviderCoverageService(provider).process()
+    assert first["provider"] == "ALOC"
+    assert "examBodies" in first
+    assert await ProviderCoverageService(provider).process() == first
+    assert calls == 1
+
+    for cache_id, (_, value) in list(provider_service._DISCOVERY_CACHE.items()):
+        provider_service._DISCOVERY_CACHE[cache_id] = (0.0, value)
+    assert await ProviderCoverageService(provider).process() == first
+    assert calls == 2
+    provider_service._DISCOVERY_CACHE.clear()
+
+
+async def test_discovery_service_wraps_data_and_maps_not_found():
+    provider_service._DISCOVERY_CACHE.clear()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/nope"):
+            return httpx.Response(404, json={"error": "not_found"})
+        return httpx.Response(200, json={"data": {"name": "mathematics"}})
+
+    provider = AlocProvider(transport=httpx.MockTransport(handler), api_key="key")
+    found = await ProviderDiscoveryService(
+        DiscoveryResource.SUBJECT, "mathematics", provider
+    ).process()
+    assert found == {"provider": "ALOC", "data": {"name": "mathematics"}}
+
+    with pytest.raises(ApiError) as caught:
+        await ProviderDiscoveryService(
+            DiscoveryResource.SUBJECT, "nope", provider
+        ).process()
+    assert caught.value.status_code == 404
+    provider_service._DISCOVERY_CACHE.clear()
+
+
+async def test_coverage_service_raises_when_unsupported():
+    provider_service._DISCOVERY_CACHE.clear()
+    with pytest.raises(ApiError) as caught:
+        await ProviderCoverageService(SdashProvider(access_token="t")).process()
+    assert caught.value.status_code == 503

@@ -1,8 +1,16 @@
+from urllib.parse import quote
+
 import httpx
 
 from app.core.config import settings
 from app.database.models import ProviderFetch
-from app.services.provider.base import DrawResult, NormalizedQuestion, QuestionProvider
+from app.services.provider.base import (
+    DiscoveryResource,
+    DrawResult,
+    NormalizedQuestion,
+    ProviderNotFound,
+    QuestionProvider,
+)
 
 ALOC_PAGE_LIMIT = 15
 ALOC_MAX_PAGES = 20
@@ -154,3 +162,52 @@ class AlocProvider(QuestionProvider):
 
     def flatten_explanation(self, payload: dict) -> str:
         return flatten_explanation(payload)
+
+    def _discovery_path(
+        self, resource: DiscoveryResource, key: str | int | None
+    ) -> str:
+        if resource == DiscoveryResource.COVERAGE:
+            return "coverage"
+        if resource == DiscoveryResource.SUBJECTS:
+            return "subjects"
+        if resource == DiscoveryResource.YEAR_SUBJECTS:
+            return f"subjects/years/{int(key or 0)}"
+        slug = str(key or "").strip().lower()
+        subject = quote(SUBJECT_ALIASES.get(slug, slug), safe="")
+        if resource == DiscoveryResource.SUBJECT_TOPICS:
+            return f"subjects/{subject}/topics"
+        if resource == DiscoveryResource.SUBJECT_YEARS:
+            return f"subjects/{subject}/years"
+        return f"subjects/{subject}"
+
+    async def discover(
+        self, resource: DiscoveryResource, key: str | int | None = None
+    ) -> dict | list | None:
+        headers = self.headers if self.api_key else {}
+        try:
+            async with self.client() as client:
+                response = await client.get(
+                    f"{self.base_url}/{self._discovery_path(resource, key)}",
+                    headers=headers,
+                )
+        except httpx.HTTPError:
+            return None
+        if response.status_code == 404 and resource != DiscoveryResource.COVERAGE:
+            raise ProviderNotFound(str(key))
+        if response.status_code >= 400:
+            return None
+        data = response.json().get("data")
+        if resource == DiscoveryResource.COVERAGE:
+            return self._coverage(data) if isinstance(data, dict) else None
+        return data if isinstance(data, dict | list) else None
+
+    def _coverage(self, data: dict) -> dict:
+        exam_types = {value: key for key, value in EXAM_ALIASES.items()}
+        return {
+            "summary": data.get("summary") or {},
+            "examBodies": [
+                {**body, "examType": exam_types.get(str(body.get("slug")))}
+                for body in data.get("examBodies") or []
+                if isinstance(body, dict)
+            ],
+        }

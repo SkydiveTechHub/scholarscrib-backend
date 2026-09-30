@@ -1,9 +1,23 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 import httpx
 
 from app.database.models import ProviderFetch
+
+
+class DiscoveryResource(StrEnum):
+    COVERAGE = "coverage"
+    SUBJECTS = "subjects"
+    SUBJECT = "subject"
+    SUBJECT_TOPICS = "subject_topics"
+    SUBJECT_YEARS = "subject_years"
+    YEAR_SUBJECTS = "year_subjects"
+
+
+class ProviderNotFound(Exception):
+    pass
 
 
 @dataclass
@@ -68,3 +82,12 @@ class QuestionProvider(ABC):
 
     def flatten_explanation(self, payload: dict) -> str:
         return ""
+
+    async def discover(
+        self, resource: DiscoveryResource, key: str | int | None = None
+    ) -> dict | list | None:
+        """Return ``None`` when unsupported or unreachable.
+
+        Raises ``ProviderNotFound`` when the provider says ``key`` does not exist.
+        """
+        return None

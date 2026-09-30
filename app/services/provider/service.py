@@ -1,8 +1,10 @@
+import time
 from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.errors import ApiError
 from app.core.ids import cuid
 from app.core.timeutil import utcnow
 from app.database.models import (
@@ -20,7 +22,12 @@ from app.database.repositories.provider import (
 )
 from app.database.repositories.question import questions_repository
 from app.services.catalogue import bust_catalogue
-from app.services.provider.base import DrawResult, QuestionProvider
+from app.services.provider.base import (
+    DiscoveryResource,
+    DrawResult,
+    ProviderNotFound,
+    QuestionProvider,
+)
 from app.services.provider.factory import ProviderFactory
 from app.services.provider.rules import (
     COOLDOWN_MINUTES,
@@ -302,3 +309,55 @@ class ClearProviderBlockService:
         state.circuit = "OK"
         state.cooldown_until = None
         return True
+
+
+_DISCOVERY_CACHE: dict[tuple[str, str, str], tuple[float, dict | list]] = {}
+DISCOVERY_TTL_SECONDS = 600
+
+
+class ProviderDiscoveryService:
+    def __init__(
+        self,
+        resource: DiscoveryResource,
+        key: str | int | None = None,
+        provider: QuestionProvider | None = None,
+    ) -> None:
+        self.resource = resource
+        self.key = key
+        self.provider = provider or ProviderFactory.create()
+
+    async def process(self) -> dict:
+        return {"provider": self.provider.name, "data": await self._fetch()}
+
+    async def _fetch(self) -> dict | list:
+        cache_id = (
+            self.provider.name,
+            self.resource.value,
+            str(self.key or "").strip().lower(),
+        )
+        cached = _DISCOVERY_CACHE.get(cache_id)
+        if cached and time.monotonic() - cached[0] < DISCOVERY_TTL_SECONDS:
+            return cached[1]
+        try:
+            data = await self.provider.discover(self.resource, self.key)
+        except ProviderNotFound as missing:
+            raise ApiError(
+                404, "Not found in the question provider's catalogue."
+            ) from missing
+        if data is None:
+            if cached:
+                return cached[1]
+            raise ApiError(503, "Question coverage is unavailable right now.")
+        _DISCOVERY_CACHE[cache_id] = (time.monotonic(), data)
+        return data
+
+
+class ProviderCoverageService(ProviderDiscoveryService):
+    def __init__(self, provider: QuestionProvider | None = None) -> None:
+        super().__init__(DiscoveryResource.COVERAGE, provider=provider)
+
+    async def process(self) -> dict:
+        coverage = await self._fetch()
+        if not isinstance(coverage, dict):
+            raise ApiError(503, "Question coverage is unavailable right now.")
+        return {"provider": self.provider.name, **coverage}
