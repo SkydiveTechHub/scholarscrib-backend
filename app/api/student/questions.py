@@ -1,17 +1,18 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Depends, Path, Request
+from redis_fastapi import cache
 
 from app.api.responses import CoverageOut, DiscoveryOut, PapersOut, QuestionPageOut
-from app.api.schemas import Difficulty, ExamType
+from app.api.schemas import ExamType
 from app.database.db import AnSession
 from app.database.repositories.curriculum import subjects_repository
-from app.database.repositories.question import questions_repository
-from app.services.catalogue import ListPastPapersService, public_question
+from app.services.catalogue import ListPastPapersService
 from app.services.provider import (
     DiscoveryResource,
     ProviderCoverageService,
     ProviderDiscoveryService,
+    SearchProviderQuestionsService,
 )
 
 router = APIRouter(prefix="/questions", tags=["Student / Questions"])
@@ -21,41 +22,82 @@ SubjectKey = Annotated[
 ]
 
 
-@router.get("", response_model=QuestionPageOut)
+QUESTIONS_CACHE_TTL = 24 * 60 * 60
+
+
+def _page_limit(limit: int) -> int:
+    return min(max(limit, 1), 50)
+
+
+def questions_cache_key(request: Request, eviction_group: str = "", prefix: str = ""):
+    query = request.query_params
+    limit = query.get("limit", "")
+    parts = {
+        "subject": query.get("subjectId", "").strip().lower(),
+        "exam": query.get("examType", "").strip().upper(),
+        "year": query.get("examYear", "").strip(),
+        "limit": str(_page_limit(int(limit))) if limit.isdigit() else "20",
+        "cursor": query.get("cursor", "").strip(),
+    }
+    normalized = ":".join(f"{key}={value}" for key, value in parts.items() if value)
+    return f"{prefix}:{{{eviction_group}}}:questions:{normalized}"
+
+
+@router.get(
+    "",
+    response_model=QuestionPageOut,
+    dependencies=[
+        Depends(
+            cache(
+                ttl=QUESTIONS_CACHE_TTL,
+                eviction_group="questions",
+                key_builder=questions_cache_key,
+            )
+        )
+    ],
+)
 async def list_questions(
     session: AnSession,
     subjectId: str | None = None,
-    topicId: str | None = None,
     examType: ExamType | None = None,
     examYear: int | None = None,
-    difficulty: Difficulty | None = None,
-    page: int = 1,
     limit: int = 20,
+    cursor: str | None = None,
 ):
-    limit = min(max(limit, 1), 50)
-    page = max(page, 1)
-    if subjectId:
-        subjectId = await subjects_repository.resolve_id(session, subjectId)
-    rows, total = await questions_repository.list_page(
+    return await SearchProviderQuestionsService(
         session,
-        subject_id=subjectId,
-        topic_id=topicId,
+        subject_key=subjectId,
         exam_type=examType,
         exam_year=examYear,
-        difficulty=difficulty,
-        page=page,
-        limit=limit,
-    )
-    pages = max(1, (total + limit - 1) // limit)
-    return {
-        "questions": [public_question(row, include_answers=True) for row in rows],
-        "pagination": {
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "totalPages": pages,
-        },
-    }
+        limit=_page_limit(limit),
+        cursor=cursor,
+    ).process()
+    # Database-backed listing, paused while questions come straight from ALOC.
+    # Restore the topicId, difficulty and page params above when re-enabling.
+    # limit = _page_limit(limit)
+    # page = max(page, 1)
+    # if subjectId:
+    #     subjectId = await subjects_repository.resolve_id(session, subjectId)
+    # rows, total = await questions_repository.list_page(
+    #     session,
+    #     subject_id=subjectId,
+    #     topic_id=topicId,
+    #     exam_type=examType,
+    #     exam_year=examYear,
+    #     difficulty=difficulty,
+    #     page=page,
+    #     limit=limit,
+    # )
+    # pages = max(1, (total + limit - 1) // limit)
+    # return {
+    #     "questions": [public_question(row, include_answers=True) for row in rows],
+    #     "pagination": {
+    #         "page": page,
+    #         "limit": limit,
+    #         "total": total,
+    #         "totalPages": pages,
+    #     },
+    # }
 
 
 @router.get("/past-papers", response_model=PapersOut)

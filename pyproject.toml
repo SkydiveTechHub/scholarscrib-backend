@@ -30,6 +30,7 @@ dependencies = [
     "greenlet>=3.5.6",
     "pre-commit>=4.6.2",
     "fastapi-repl>=0.1.0",
+    "fastapi-redis-sdk>=0.8.1",
 ]
 
 [tool.pytest.ini_options]

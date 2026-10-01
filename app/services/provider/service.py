@@ -27,6 +27,7 @@ from app.services.provider.base import (
     DrawResult,
     ProviderNotFound,
     QuestionProvider,
+    SearchPage,
 )
 from app.services.provider.factory import ProviderFactory
 from app.services.provider.rules import (
@@ -309,6 +310,89 @@ class ClearProviderBlockService:
         state.circuit = "OK"
         state.cooldown_until = None
         return True
+
+
+class SearchProviderQuestionsService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        *,
+        subject_key: str | None,
+        exam_type: str | None,
+        exam_year: int | None,
+        limit: int,
+        cursor: str | None = None,
+        provider: QuestionProvider | None = None,
+    ) -> None:
+        self.session = session
+        self.subject_key = subject_key
+        self.exam_type = exam_type
+        self.exam_year = exam_year
+        self.limit = limit
+        self.cursor = cursor
+        self.provider = provider or ProviderFactory.create()
+
+    async def process(self) -> dict:
+        if not (self.subject_key or self.exam_type or self.exam_year):
+            raise ApiError(400, "Pass at least one of subjectId, examType or examYear")
+        if not self.provider.configured:
+            raise ApiError(503, "Questions are unavailable right now.")
+        subject = (
+            await subjects_repository.by_id_or_slug(self.session, self.subject_key)
+            if self.subject_key
+            else None
+        )
+        page = await self.provider.search(
+            subject_slug=subject.slug if subject else self.subject_key,
+            exam_type=self.exam_type,
+            exam_year=self.exam_year,
+            limit=self.limit,
+            cursor=self.cursor,
+        )
+        if page is None:
+            raise ApiError(503, "Questions are unavailable right now.")
+        if page.status_code == 404:
+            page = SearchPage()
+        elif page.status_code == 429:
+            raise ApiError(503, "Too many question requests. Try again shortly.")
+        elif page.failed:
+            raise ApiError(503, "Questions are unavailable right now.")
+        return {
+            "questions": [self._question(item, subject) for item in page.items],
+            "pagination": {
+                "limit": self.limit,
+                "cursor": self.cursor,
+                "nextCursor": page.next_cursor,
+                "hasMore": page.has_more,
+            },
+        }
+
+    def _question(self, item: dict, subject: Subject | None) -> dict:
+        normalized = self.provider.normalize(item)
+        exam_type = item.get("examType") or self.exam_type
+        payload = {
+            "id": normalized.provider_id,
+            "subjectId": subject.id if subject else None,
+            "topicId": None,
+            "examType": str(exam_type).upper() if exam_type else None,
+            "examYear": item.get("year") or self.exam_year,
+            "questionNumber": None,
+            "questionText": normalized.text,
+            "questionImageUrl": normalized.image_url or None,
+            "questionType": "OBJECTIVE",
+            "options": normalized.options,
+            "difficulty": None,
+            "marks": 1,
+            "timeEstimateSeconds": 90,
+            "correctAnswer": normalized.answer.upper(),
+            "explanation": normalized.explanation or None,
+            "explanationImageUrl": None,
+        }
+        if item.get("hasPassage"):
+            payload["hasPassage"] = True
+            payload["passage"] = item.get("section")
+            payload["passageGroup"] = item.get("category")
+        return payload
 
 
 _DISCOVERY_CACHE: dict[tuple[str, str, str], tuple[float, dict | list]] = {}

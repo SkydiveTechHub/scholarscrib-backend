@@ -10,10 +10,12 @@ from app.services.provider.base import (
     NormalizedQuestion,
     ProviderNotFound,
     QuestionProvider,
+    SearchPage,
 )
 
 ALOC_PAGE_LIMIT = 15
 ALOC_MAX_PAGES = 20
+ALOC_SEARCH_LIMIT = 50
 
 EXAM_ALIASES = {"JAMB": "jamb", "WAEC": "waec", "NECO": "neco"}
 SUBJECT_ALIASES = {
@@ -123,6 +125,43 @@ class AlocProvider(QuestionProvider):
             return result if result.items else None
         result.exhausted = True
         return result
+
+    async def search(
+        self,
+        *,
+        subject_slug: str | None,
+        exam_type: str | None,
+        exam_year: int | None,
+        limit: int,
+        cursor: str | None = None,
+    ) -> SearchPage | None:
+        params: dict[str, str | int] = {"limit": min(limit, ALOC_SEARCH_LIMIT)}
+        if subject_slug:
+            params["subject"] = SUBJECT_ALIASES.get(subject_slug, subject_slug)
+        if exam_type:
+            params["examType"] = EXAM_ALIASES.get(exam_type.upper(), exam_type.lower())
+        if exam_year:
+            params["year"] = exam_year
+        if cursor:
+            params["cursor"] = cursor
+        try:
+            async with self.client() as client:
+                response = await client.get(
+                    f"{self.base_url}/questions", params=params, headers=self.headers
+                )
+        except httpx.HTTPError:
+            return None
+        if response.status_code >= 400:
+            return SearchPage(status_code=response.status_code, body=response.text)
+        payload = response.json()
+        pagination = payload.get("pagination") or {}
+        return SearchPage(
+            items=[
+                item for item in payload.get("data") or [] if isinstance(item, dict)
+            ],
+            next_cursor=pagination.get("nextCursor"),
+            has_more=bool(pagination.get("hasMore")),
+        )
 
     def normalize(self, item: dict) -> NormalizedQuestion:
         options = item.get("options") or {}

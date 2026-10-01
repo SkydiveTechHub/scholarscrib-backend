@@ -25,8 +25,11 @@ class SubjectRepository(BaseRepository[Subject]):
     async def by_code(self, session: AsyncSession, code: str) -> Subject | None:
         return await self.first(session, Subject.code == code)
 
+    async def by_id_or_slug(self, session: AsyncSession, key: str) -> Subject | None:
+        return await self.first(session, or_(Subject.id == key, Subject.slug == key))
+
     async def resolve_id(self, session: AsyncSession, key: str) -> str:
-        subject = await self.first(session, or_(Subject.id == key, Subject.slug == key))
+        subject = await self.by_id_or_slug(session, key)
         return subject.id if subject else key
 
     async def ordered(self, session: AsyncSession) -> list[Subject]:

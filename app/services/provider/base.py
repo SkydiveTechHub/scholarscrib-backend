@@ -44,6 +44,19 @@ class DrawResult:
         return self.status_code >= 400
 
 
+@dataclass
+class SearchPage:
+    items: list[dict] = field(default_factory=list)
+    next_cursor: str | None = None
+    has_more: bool = False
+    status_code: int = 200
+    body: str = ""
+
+    @property
+    def failed(self) -> bool:
+        return self.status_code >= 400
+
+
 class QuestionProvider(ABC):
     name: str
 
@@ -74,6 +87,18 @@ class QuestionProvider(ABC):
     def should_saturate(
         self, row: ProviderFetch, result: DrawResult, new_count: int
     ) -> bool: ...
+
+    async def search(
+        self,
+        *,
+        subject_slug: str | None,
+        exam_type: str | None,
+        exam_year: int | None,
+        limit: int,
+        cursor: str | None = None,
+    ) -> SearchPage | None:
+        """Fetch one page of questions. ``None`` when unsupported or unreachable."""
+        return None
 
     async def explain(
         self, provider_question_id: str, depth: str = "step_by_step"
