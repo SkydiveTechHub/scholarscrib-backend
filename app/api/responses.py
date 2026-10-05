@@ -380,12 +380,22 @@ class DashboardOut(ApiOut):
     streak: int
     tier: str
     keepLearning: dict | None = None
+    learningPicks: list[dict] = []
     gaps: list[dict] = []
+    revision: list[dict] = []
+    revisionTotal: int = 0
+    subjects: dict[str, dict] = {}
     todayItems: list[dict] = []
+    hasStudyPlan: bool = False
+    hasActivity: bool = False
     recentAttempts: list[dict] = []
     attemptTotal: int = 0
     bestScore: float | None = None
     lastWeekActivity: int = 0
+    totalResponses: int = 0
+    correctResponses: int = 0
+    accuracy: int | None = None
+    topicCount: int = 0
     achievements: dict
 
 

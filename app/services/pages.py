@@ -6,7 +6,7 @@ from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.core.timeutil import lagos_day_key, utcnow
+from app.core.timeutil import as_utc, lagos_day_key, utcnow
 from app.database.models import Lesson, StudentProgress, Topic
 from app.database.repositories.assessment import (
     attempts_repository,
@@ -23,12 +23,13 @@ from app.database.repositories.learning import (
     progress_repository,
     student_achievements_repository,
 )
+from app.database.repositories.flashcard import reviews_repository
 from app.database.repositories.planner import plan_items_repository, plans_repository
 from app.database.repositories.question import questions_repository
 from app.domain import can, entitlement_denial
 from app.services.assessments.grading import coarse_grade
 from app.services.auth.rules import current_streak
-from app.services.learning.evidence import TARGET
+from app.services.learning.evidence import DECAY_RETENTION, TARGET
 from app.services.learning.graph import (
     GraphEdge,
     GraphNode,
@@ -39,11 +40,18 @@ from app.services.learning.mastery import (
     classify_gap,
     graph_colour,
     recommend,
+    recommendation_score,
     sort_gaps,
 )
 from app.services.learning.mastery_store import GetTopicMasteryService
 
 DASHBOARD_ATTEMPTS_PAGE_SIZE = 5
+# Cards in each dashboard learning-path rail (gaps, revision).
+DASHBOARD_RAIL_SIZE = 5
+# Cards in the "Keep learning" rail.
+DASHBOARD_PICKS = 3
+# Matches CONTINUE_REASON in the frontend, which styles that card differently.
+CONTINUE_REASON = "Continue where you left off"
 
 
 class GetDashboardService:
@@ -97,22 +105,173 @@ class GetDashboardService:
             [topic.id for topic in all_topics],
         ).process()
         await _paint(self.session, all_topics, states, self.student_id)
-        gaps = _gaps(all_topics, states)
+        by_id = {topic.id: topic for topic in all_topics}
+        dependents = _unmastered_dependents(all_topics, states)
+        # UNTOUCHED is "not started yet", not a weakness: the rail would
+        # otherwise fill with the first topics of every subject for a new
+        # student. Recommendations surface those instead.
+        gaps = [
+            _gap_view(gap, by_id, states, dependents)
+            for gap in _gaps(all_topics, states)
+            if gap["category"] != "UNTOUCHED"
+        ][:DASHBOARD_RAIL_SIZE]
         keep = await self._keep_learning(all_topics, states)
+        picks = await self._learning_picks(all_topics, states, dependents)
+        revision = await self._revision_queue(all_topics, states, dependents)
+        answered, correct, topic_count = await responses_repository.answer_totals(
+            self.session, self.student_id
+        )
         highlights = await self._highlights()
+        referenced = {
+            item["subjectId"]
+            for item in [*gaps, *picks, *revision]
+            if item.get("subjectId")
+        }
+        subjects = {
+            subject.id: {"slug": subject.slug, "name": subject.name, "code": subject.code}
+            for subject in await subjects_repository.ordered(self.session)
+            if subject.id in referenced
+        }
         return {
             "firstName": self.first_name,
             "streak": current_streak(days, today),
             "tier": self.tier,
             "keepLearning": keep,
-            "gaps": gaps[:5],
+            "learningPicks": picks,
+            "gaps": gaps,
+            "revision": revision[:DASHBOARD_RAIL_SIZE],
+            "revisionTotal": len(revision),
+            "subjects": subjects,
             "todayItems": today_items,
+            "hasStudyPlan": plan is not None,
+            "hasActivity": attempt_total > 0
+            or answered > 0
+            or any(state.observations > 0 for state in states.values()),
             "recentAttempts": recent,
             "attemptTotal": attempt_total,
             "bestScore": max((row["percentage"] for row in newest), default=None),
             "lastWeekActivity": last_week,
+            "totalResponses": answered,
+            "correctResponses": correct,
+            "accuracy": round(correct / answered * 100) if answered else None,
+            "topicCount": topic_count,
             "achievements": highlights,
         }
+
+    async def _learning_picks(
+        self,
+        topic_rows: Sequence[Topic],
+        states: dict,
+        dependents: dict[str, int],
+    ) -> list[dict]:
+        """The "Keep learning" rail: an unfinished lesson first, then ranked picks."""
+        by_id = {topic.id: topic for topic in topic_rows}
+        picks: list[dict] = []
+        progress_row = await progress_repository.latest_in_progress(
+            self.session, self.student_id
+        )
+        if progress_row is not None and progress_row.topic_id in states:
+            topic = by_id.get(progress_row.topic_id)
+            if topic is not None:
+                picks.append(
+                    _pick_view(
+                        topic,
+                        states[topic.id],
+                        CONTINUE_REASON,
+                        score=1.0,
+                        unlocks=dependents.get(topic.id, 0),
+                        lesson_id=progress_row.lesson_id,
+                    )
+                )
+        leverage = _leverage(topic_rows)
+        now = utcnow()
+        taken = {pick["topicId"] for pick in picks}
+        ranked = recommend(
+            [state for state in states.values() if state.topic_id not in taken],
+            leverage,
+            now,
+            k=DASHBOARD_PICKS - len(picks),
+        )
+        for state in ranked:
+            topic = by_id.get(state.topic_id)
+            if topic is None:
+                continue
+            unlocks = dependents.get(topic.id, 0)
+            picks.append(
+                _pick_view(
+                    topic,
+                    state,
+                    _pick_reason(topic, state, leverage.get(topic.id, 0.0), unlocks),
+                    score=recommendation_score(
+                        state, leverage.get(topic.id, 0.0), state.available, now
+                    ),
+                    unlocks=unlocks,
+                )
+            )
+        return picks
+
+    async def _revision_queue(
+        self,
+        topic_rows: Sequence[Topic],
+        states: dict,
+        dependents: dict[str, int],
+    ) -> list[dict]:
+        """Merged revision queue: faded retention, cadence due, or SRS cards due."""
+        now = utcnow()
+        cadence = await progress_repository.revision_due_by_topic(
+            self.session, self.student_id
+        )
+        due_cards = await reviews_repository.due_counts_by_topic(
+            self.session, self.student_id, now
+        )
+        max_blocked = max(dependents.values(), default=0)
+        items = []
+        for topic in topic_rows:
+            state = states.get(topic.id)
+            if state is None or state.last_effort_at is None:
+                continue
+            faded = state.retention is not None and state.retention < DECAY_RETENTION
+            cadence_at = cadence.get(topic.id)
+            cadence_due = cadence_at is not None and as_utc(cadence_at) <= now
+            cards = due_cards.get(topic.id, 0)
+            if not (faded or cadence_due or cards > 0):
+                continue
+            blocked = dependents.get(topic.id, 0)
+            retention_value = (
+                DECAY_RETENTION if state.retention is None else state.retention
+            )
+            decay = max(0.0, DECAY_RETENTION - retention_value)
+            blocked_factor = 1 + (blocked / max_blocked if max_blocked else 0)
+            if faded:
+                reason = f"Retention {round(state.retention * 100)}% — re-cement it"
+            elif cards > 0:
+                reason = f"{cards} card{'' if cards == 1 else 's'} due for review"
+            else:
+                reason = "Scheduled revision is due"
+            items.append(
+                {
+                    **_evidence(state),
+                    "topicId": topic.id,
+                    "subjectId": topic.subject_id,
+                    "title": topic.title,
+                    "slug": topic.slug,
+                    "mastery": state.mastery,
+                    "retention": state.retention,
+                    "priority": decay * _exam_weight(topic) * blocked_factor,
+                    "reason": reason,
+                    "blockedCount": blocked,
+                    "dueSrsCards": cards,
+                    "cadenceDue": cadence_due,
+                }
+            )
+        items.sort(
+            key=lambda item: (
+                -item["priority"],
+                -item["dueSrsCards"],
+                -(1 if item["retention"] is None else item["retention"]),
+            )
+        )
+        return items
 
     async def _today_items(self, plan, today: str) -> list[dict]:
         if plan is None:
@@ -650,6 +809,95 @@ def _leverage(topic_rows: Sequence[Topic]) -> dict[str, float]:
             )
     peak = max(counts.values(), default=1) or 1
     return {topic_id: count / peak for topic_id, count in counts.items()}
+
+
+def _unmastered_dependents(
+    topic_rows: Sequence[Topic], states: dict
+) -> dict[str, int]:
+    """Direct dependents still below TARGET, per prerequisite topic."""
+    counts: dict[str, int] = {}
+    for topic in topic_rows:
+        if not topic.prerequisite_topic_id:
+            continue
+        state = states.get(topic.id)
+        if state is None or state.mastery < TARGET:
+            counts[topic.prerequisite_topic_id] = (
+                counts.get(topic.prerequisite_topic_id, 0) + 1
+            )
+    return counts
+
+
+def _exam_weight(topic: Topic) -> float:
+    return (topic.waec_weight or 0) + (topic.jamb_weight or 0)
+
+
+def _evidence(state) -> dict:
+    """What the frontend needs to decide between a mastery % and an evidence label."""
+    return {
+        "confidence": state.confidence,
+        "accObservations": state.acc_observations,
+        "lessonObservations": state.lesson_observations,
+        "srsObservations": state.srs_observations,
+        "lastStudy": state.last_effort_at.isoformat()
+        if state.last_effort_at
+        else None,
+    }
+
+
+def _gap_view(
+    gap: dict, by_id: dict[str, Topic], states: dict, dependents: dict[str, int]
+) -> dict:
+    topic = by_id[gap["topicId"]]
+    state = states[topic.id]
+    return {
+        **gap,
+        **_evidence(state),
+        "subjectId": topic.subject_id,
+        "slug": topic.slug,
+        "retention": state.retention,
+        "blockedCount": dependents.get(topic.id, 0),
+        "abandonedCount": state.abandon_count,
+    }
+
+
+def _pick_reason(topic: Topic, state, leverage: float, unlocks: int) -> str:
+    urgency = max(0.0, (TARGET - state.mastery) / TARGET)
+    decay = 0.0 if state.retention is None else max(0.0, 1 - state.retention)
+    if leverage >= 0.25 and unlocks >= 1:
+        return f"Unlocks {unlocks} topic{'' if unlocks == 1 else 's'}"
+    if urgency >= 0.4:
+        weight = round(_exam_weight(topic))
+        if weight > 0:
+            return (
+                f"High-yield — {weight} exam weight, {round(state.mastery)}% mastery"
+            )
+        return "Next in your learning path"
+    if decay >= 0.1:
+        return "Fading — revise while fresh"
+    return "Next in your learning path"
+
+
+def _pick_view(
+    topic: Topic,
+    state,
+    reason: str,
+    *,
+    score: float,
+    unlocks: int,
+    lesson_id: str | None = None,
+) -> dict:
+    return {
+        **_evidence(state),
+        "topicId": topic.id,
+        "subjectId": topic.subject_id,
+        "title": topic.title,
+        "slug": topic.slug,
+        "mastery": state.mastery,
+        "score": score,
+        "reason": reason,
+        "unlocks": unlocks,
+        "lessonId": lesson_id,
+    }
 
 
 def _lesson_unlocked(

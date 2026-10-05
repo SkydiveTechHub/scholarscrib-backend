@@ -161,6 +161,9 @@ class TopicState:
     level: str = "WEAK"
     stability_days: int = 5
     available: bool = True
+    acc_observations: int = 0
+    lesson_observations: int = 0
+    srs_observations: int = 0
 
 
 def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState:
@@ -204,6 +207,9 @@ def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState
         last_effort_at=aggregate.last_effort_at,
         level=level,
         stability_days=stability,
+        acc_observations=aggregate.acc.observations,
+        lesson_observations=aggregate.lesson.observations,
+        srs_observations=aggregate.srs.observations,
     )
 
 

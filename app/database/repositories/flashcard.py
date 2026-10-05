@@ -1,6 +1,8 @@
 """Repositories for flashcard decks and reviews."""
 
-from sqlalchemy import select
+from datetime import datetime
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
@@ -9,6 +11,8 @@ from app.database.models import (
     FlashcardEnrollment,
     FlashcardReview,
     FlashcardReviewLog,
+    Lesson,
+    Subtopic,
 )
 from app.database.repositories.base import BaseRepository
 
@@ -90,6 +94,28 @@ class FlashcardReviewRepository(BaseRepository[FlashcardReview]):
             FlashcardReview.student_id == student_id,
             FlashcardReview.flashcard_id.in_(ids),
         )
+
+    async def due_counts_by_topic(
+        self, session: AsyncSession, student_id: str, now: datetime
+    ) -> dict[str, int]:
+        """REVIEW/RELEARNING cards due now, per topic (deck topic or lesson's)."""
+        topic_id = func.coalesce(FlashcardDeck.topic_id, Subtopic.topic_id)
+        result = await self.rows(
+            session,
+            select(topic_id, func.count(FlashcardReview.id))
+            .select_from(FlashcardReview)
+            .join(Flashcard, Flashcard.id == FlashcardReview.flashcard_id)
+            .join(FlashcardDeck, FlashcardDeck.id == Flashcard.deck_id)
+            .outerjoin(Lesson, Lesson.id == FlashcardDeck.lesson_id)
+            .outerjoin(Subtopic, Subtopic.id == Lesson.subtopic_id)
+            .where(
+                FlashcardReview.student_id == student_id,
+                FlashcardReview.state.in_(("REVIEW", "RELEARNING")),
+                FlashcardReview.due_at <= now,
+            )
+            .group_by(topic_id),
+        )
+        return {row[0]: int(row[1]) for row in result.all() if row[0]}
 
     async def low_retention(
         self,

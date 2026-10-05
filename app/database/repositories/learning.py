@@ -1,5 +1,7 @@
 """Repositories for progress, mastery, and achievements."""
 
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +34,21 @@ class StudentProgressRepository(BaseRepository[StudentProgress]):
             StudentProgress.student_id == student_id,
             StudentProgress.status == "COMPLETED",
         )
+
+    async def revision_due_by_topic(
+        self, session: AsyncSession, student_id: str
+    ) -> dict[str, datetime]:
+        """Earliest fixed-cadence revision date per topic."""
+        result = await self.rows(
+            session,
+            select(StudentProgress.topic_id, func.min(StudentProgress.revision_due_at))
+            .where(
+                StudentProgress.student_id == student_id,
+                StudentProgress.revision_due_at.is_not(None),
+            )
+            .group_by(StudentProgress.topic_id),
+        )
+        return {row[0]: row[1] for row in result.all() if row[0] and row[1]}
 
     async def latest_in_progress(
         self, session: AsyncSession, student_id: str
