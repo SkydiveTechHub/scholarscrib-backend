@@ -3,6 +3,7 @@ from app.services.provider.factory import ProviderFactory
 from app.services.provider.service import (
     ClearProviderBlockService,
     EnsureProviderQuestionsService,
+    GetQuestionExplanationService,
     ProviderCoverageService,
     ProviderDiscoveryService,
     ResetFailedFetchService,
@@ -14,6 +15,7 @@ from app.services.provider.service import (
 __all__ = [
     "load_provider_state",
     "EnsureProviderQuestionsService",
+    "GetQuestionExplanationService",
     "SaturateProviderService",
     "SearchProviderQuestionsService",
     "ResetFailedFetchService",

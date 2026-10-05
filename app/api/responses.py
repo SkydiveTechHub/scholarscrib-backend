@@ -159,6 +159,16 @@ class QuestionOut(ApiOut):
     marks: int | None = None
 
 
+class ExplanationOut(ApiOut):
+    questionId: str
+    explanation: str
+    simplifiedExplanation: str | None = None
+    commonMistakes: list[dict] = []
+    solutionImageUrl: str | None = None
+    needsReview: bool = False
+    source: str
+
+
 class QuestionPageOut(ApiOut):
     questions: list[QuestionOut]
     pagination: dict
@@ -373,6 +383,9 @@ class DashboardOut(ApiOut):
     gaps: list[dict] = []
     todayItems: list[dict] = []
     recentAttempts: list[dict] = []
+    attemptTotal: int = 0
+    bestScore: float | None = None
+    lastWeekActivity: int = 0
     achievements: dict
 
 

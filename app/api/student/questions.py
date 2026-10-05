@@ -3,13 +3,22 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Request
 from redis_fastapi import cache
 
-from app.api.responses import CoverageOut, DiscoveryOut, PapersOut, QuestionPageOut
+from app.api.deps import StudentPrincipal, require_student
+from app.api.responses import (
+    CoverageOut,
+    DiscoveryOut,
+    ExplanationOut,
+    PapersOut,
+    QuestionPageOut,
+)
 from app.api.schemas import ExamType
+from app.core.rate_limit import hit
 from app.database.db import AnSession
 from app.database.repositories.curriculum import subjects_repository
 from app.services.catalogue import ListPastPapersService
 from app.services.provider import (
     DiscoveryResource,
+    GetQuestionExplanationService,
     ProviderCoverageService,
     ProviderDiscoveryService,
     SearchProviderQuestionsService,
@@ -20,9 +29,11 @@ router = APIRouter(prefix="/questions", tags=["Student / Questions"])
 SubjectKey = Annotated[
     str, Path(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
 ]
+QuestionKey = SubjectKey
 
 
 QUESTIONS_CACHE_TTL = 24 * 60 * 60
+EXPLANATION_CACHE_TTL = 7 * 24 * 60 * 60
 
 
 def _page_limit(limit: int) -> int:
@@ -98,6 +109,23 @@ async def list_questions(
     #         "totalPages": pages,
     #     },
     # }
+
+
+@router.get(
+    "/{question_id}/explanation",
+    response_model=ExplanationOut,
+    dependencies=[
+        Depends(require_student),
+        Depends(cache(ttl=EXPLANATION_CACHE_TTL, eviction_group="explanations")),
+    ],
+)
+async def question_explanation(
+    question_id: QuestionKey,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    hit(f"explain:{student.id}", 20, 60)
+    return await GetQuestionExplanationService(session, question_id).process()
 
 
 @router.get("/past-papers", response_model=PapersOut)

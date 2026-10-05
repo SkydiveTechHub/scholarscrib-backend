@@ -1,5 +1,7 @@
 """Repositories for assessments and attempts."""
 
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -140,6 +142,17 @@ class AssessmentAttemptRepository(BaseRepository[AssessmentAttempt]):
                 )
             ).all()
         )
+
+    async def completed_count(
+        self, session: AsyncSession, student_id: str, since: datetime | None = None
+    ) -> int:
+        criteria = [
+            AssessmentAttempt.student_id == student_id,
+            AssessmentAttempt.status == "COMPLETED",
+        ]
+        if since is not None:
+            criteria.append(AssessmentAttempt.completed_at >= since)
+        return await self.count(session, *criteria)
 
     async def completed_with_assessment(
         self,

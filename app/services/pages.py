@@ -1,6 +1,7 @@
 """Dashboard, classroom, and performance reads for the Next pages."""
 
 from collections.abc import Sequence
+from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +43,8 @@ from app.services.learning.mastery import (
 )
 from app.services.learning.mastery_store import GetTopicMasteryService
 
+DASHBOARD_ATTEMPTS_PAGE_SIZE = 5
+
 
 class GetDashboardService:
     def __init__(
@@ -51,12 +54,14 @@ class GetDashboardService:
         first_name: str | None,
         tier: str,
         class_level: str | None,
+        activity_page: int = 1,
     ) -> None:
         self.session = session
         self.student_id = student_id
         self.first_name = first_name
         self.tier = tier
         self.class_level = class_level
+        self.activity_page = max(activity_page, 1)
 
     async def process(self) -> dict:
         today = lagos_day_key()
@@ -64,7 +69,25 @@ class GetDashboardService:
             self.session, self.student_id, limit=400
         )
         days = {lagos_day_key(moment) for moment in completed if moment}
-        recent = await _attempts(self.session, self.student_id, 5)
+        recent = await _attempts(
+            self.session,
+            self.student_id,
+            DASHBOARD_ATTEMPTS_PAGE_SIZE,
+            self.activity_page,
+        )
+        newest = (
+            recent
+            if self.activity_page == 1
+            else await _attempts(
+                self.session, self.student_id, DASHBOARD_ATTEMPTS_PAGE_SIZE
+            )
+        )
+        attempt_total = await attempts_repository.completed_count(
+            self.session, self.student_id
+        )
+        last_week = await attempts_repository.completed_count(
+            self.session, self.student_id, since=utcnow() - timedelta(days=7)
+        )
         plan = await plans_repository.active(self.session, self.student_id)
         today_items = await self._today_items(plan, today)
         all_topics = await topics_repository.all_ordered(self.session)
@@ -85,6 +108,9 @@ class GetDashboardService:
             "gaps": gaps[:5],
             "todayItems": today_items,
             "recentAttempts": recent,
+            "attemptTotal": attempt_total,
+            "bestScore": max((row["percentage"] for row in newest), default=None),
+            "lastWeekActivity": last_week,
             "achievements": highlights,
         }
 
@@ -524,6 +550,7 @@ async def _attempts(
         percentage = attempt.percentage or 0
         payload.append(
             {
+                "id": attempt.id,
                 "attemptId": attempt.id,
                 "title": assessment.title,
                 "subjectId": assessment.subject_id,

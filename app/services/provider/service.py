@@ -395,6 +395,77 @@ class SearchProviderQuestionsService:
         return payload
 
 
+class GetQuestionExplanationService:
+    """Explain a bank question id or a provider question id.
+
+    Bank questions that already carry an explanation never reach the provider;
+    a bought explanation is written back so the same question is paid for once.
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        question_id: str,
+        provider: QuestionProvider | None = None,
+    ) -> None:
+        self.session = session
+        self.question_id = question_id
+        self.provider = provider or ProviderFactory.create()
+
+    async def process(self) -> dict:
+        question = await questions_repository.by_id(self.session, self.question_id)
+        if question is not None and question.explanation:
+            return self._payload(question.explanation, source="BANK")
+        provider_id = self.question_id
+        if question is not None:
+            staged = await provider_questions_repository.by_question_id(
+                self.session, question.id
+            )
+            if staged is None:
+                raise ApiError(404, "No explanation is available for this question.")
+            provider_id = staged.provider_question_id
+        if not self.provider.configured:
+            raise ApiError(503, "Explanations are unavailable right now.")
+        bought = await self.provider.explain(provider_id)
+        if not bought:
+            raise ApiError(503, "Explanations are unavailable right now.")
+        explanation = self.provider.flatten_explanation(bought)
+        if not explanation:
+            raise ApiError(404, "No explanation is available for this question.")
+        if question is not None:
+            question.explanation = explanation
+        nested = bought.get("data")
+        data: dict = nested if isinstance(nested, dict) else bought
+        return self._payload(
+            explanation,
+            source=self.provider.name,
+            simplified=data.get("simplifiedExplanation"),
+            mistakes=data.get("commonMistakes"),
+            image_url=data.get("solutionImageUrl"),
+            needs_review=data.get("needsReview"),
+        )
+
+    def _payload(
+        self,
+        explanation: str,
+        *,
+        source: str,
+        simplified: str | None = None,
+        mistakes: list | None = None,
+        image_url: str | None = None,
+        needs_review: bool | None = None,
+    ) -> dict:
+        return {
+            "questionId": self.question_id,
+            "explanation": explanation,
+            "simplifiedExplanation": simplified,
+            "commonMistakes": mistakes or [],
+            "solutionImageUrl": image_url,
+            "needsReview": bool(needs_review),
+            "source": source,
+        }
+
+
 _DISCOVERY_CACHE: dict[tuple[str, str, str], tuple[float, dict | list]] = {}
 DISCOVERY_TTL_SECONDS = 600
 

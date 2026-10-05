@@ -27,6 +27,11 @@ class ProviderFetchRepository(BaseRepository[ProviderFetch]):
 class ProviderQuestionRepository(BaseRepository[ProviderQuestion]):
     model = ProviderQuestion
 
+    async def by_question_id(
+        self, session: AsyncSession, question_id: str
+    ) -> ProviderQuestion | None:
+        return await self.first(session, ProviderQuestion.question_id == question_id)
+
 
 class ProviderCatalogueRepository(BaseRepository[ProviderCatalogue]):
     model = ProviderCatalogue

@@ -277,7 +277,7 @@ async def _resume(
 
 
 async def _jamb_sections(
-    session: AsyncSession, paper: list[Question], answers: dict[str, AnswerIn]
+    session: AsyncSession, paper: list[Question], selected: dict[str, str | None]
 ) -> list[tuple[str, str, int, int]]:
     grouped: dict[str, list[Question]] = {}
     for question in paper:
@@ -287,9 +287,8 @@ async def _jamb_sections(
         subject = await subjects_repository.by_id(session, subject_id)
         correct = 0
         for question in group:
-            answer = answers.get(question.id)
-            selected = answer.selectedAnswer if answer else None
-            if selected is not None and str(selected) == str(question.correct_answer):
+            choice = selected.get(question.id)
+            if choice is not None and str(choice) == str(question.correct_answer):
                 correct += 1
         sections.append(
             (
@@ -300,6 +299,25 @@ async def _jamb_sections(
             )
         )
     return sections
+
+
+def _jamb_payload(scored) -> dict:
+    return {
+        "score": scored.score,
+        "totalMarks": scored.total_marks,
+        "percentage": scored.percentage,
+        "subjects": [
+            {
+                "subjectId": section.subject_id,
+                "name": section.subject_name,
+                "correct": section.correct,
+                "total": section.total,
+                "marks": section.marks,
+            }
+            for section in scored.subjects
+        ],
+        "band": scored.band,
+    }
 
 
 async def select_jamb_subjects(
@@ -498,28 +516,18 @@ class SubmitAttemptService:
         answers: dict[str, AnswerIn],
     ):
         if assessment.assessment_type == "CBT_PRACTICE":
-            sections = await _jamb_sections(self.session, paper, answers)
-            scored = score_jamb_paper(sections)
+            selected = {
+                question_id: answer.selectedAnswer
+                for question_id, answer in answers.items()
+            }
+            scored = score_jamb_paper(
+                await _jamb_sections(self.session, paper, selected)
+            )
             score = scored.score
             total = float(scored.total_marks)
             percentage = scored.percentage
             grade, remark, credit = waec_grade(percentage)
-            extra = {
-                "score": scored.score,
-                "totalMarks": scored.total_marks,
-                "percentage": scored.percentage,
-                "subjects": [
-                    {
-                        "subjectId": section.subject_id,
-                        "name": section.subject_name,
-                        "correct": section.correct,
-                        "total": section.total,
-                        "marks": section.marks,
-                    }
-                    for section in scored.subjects
-                ],
-                "band": scored.band,
-            }
+            extra = _jamb_payload(scored)
             return score, total, percentage, grade, remark, credit, extra
         earned = 0
         for question in paper:
@@ -648,12 +656,18 @@ class GetAttemptResultService:
         )
         topic_rows = self._topic_rows(breakdown)
         grade, remark, credit = waec_grade(attempt.percentage or 0)
+        jamb = None
+        if assessment.assessment_type == "CBT_PRACTICE":
+            selected = {row.question_id: row.selected_answer for row in stored}
+            jamb = _jamb_payload(
+                score_jamb_paper(await _jamb_sections(self.session, paper, selected))
+            )
         return {
             "attemptId": attempt.id,
             "assessmentTitle": assessment.title,
             "assessmentType": assessment.assessment_type,
             "examYear": assessment.exam_year,
-            "jamb": None,
+            "jamb": jamb,
             "score": attempt.score,
             "totalMarks": attempt.total_marks,
             "percentage": attempt.percentage,
@@ -672,6 +686,10 @@ class GetAttemptResultService:
         attempt = await attempts_repository.by_id(self.session, self.attempt_id)
         if attempt is None or attempt.student_id != self.student_id:
             raise ApiError(404, "Attempt not found")
+        if attempt.status != "COMPLETED":
+            raise ApiError(
+                409, "This attempt has not been submitted yet", status=attempt.status
+            )
         assessment = await assessments_repository.by_id(
             self.session, attempt.assessment_id
         )
@@ -716,6 +734,7 @@ class GetAttemptResultService:
                     "isCorrect": is_correct,
                     "explanation": question.explanation,
                     "explanationImageUrl": question.explanation_image_url,
+                    "difficulty": question.difficulty,
                     "topicId": question.topic_id,
                     "topicTitle": topic_title,
                     "timeSpentSeconds": (

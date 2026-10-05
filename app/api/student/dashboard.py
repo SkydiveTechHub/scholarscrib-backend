@@ -12,8 +12,15 @@ router = APIRouter(prefix="/dashboard", tags=["Student / Dashboard"])
 
 @router.get("", response_model=DashboardOut)
 async def dashboard(
-    session: AnSession, student: Annotated[StudentPrincipal, Depends(require_student)]
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+    activity: int = 1,
 ):
     return await GetDashboardService(
-        session, student.id, student.first_name, student.tier, student.class_level
+        session,
+        student.id,
+        student.first_name,
+        student.tier,
+        student.class_level,
+        activity_page=activity,
     ).process()
