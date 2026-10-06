@@ -9,6 +9,7 @@ from app.services.provider.service import (
     ResetFailedFetchService,
     SaturateProviderService,
     SearchProviderQuestionsService,
+    TopicQuizQuestionsService,
     load_provider_state,
 )
 
@@ -18,6 +19,7 @@ __all__ = [
     "GetQuestionExplanationService",
     "SaturateProviderService",
     "SearchProviderQuestionsService",
+    "TopicQuizQuestionsService",
     "ResetFailedFetchService",
     "ClearProviderBlockService",
     "ProviderCoverageService",

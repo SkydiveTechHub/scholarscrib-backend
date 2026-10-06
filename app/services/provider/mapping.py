@@ -291,6 +291,23 @@ def map_topic(
     return None
 
 
+def provider_topic_filters(
+    subject_slug: str, topic_slug: str
+) -> list[tuple[str, str | None]]:
+    """The ALOC (topic, subtopic) pairs that map onto one of our topics.
+
+    The reverse of TOPIC_MAP. Empty when ALOC has no reviewed counterpart, so
+    the caller never asks ALOC for an unrelated topic.
+    """
+    filters: list[tuple[str, str | None]] = []
+    for key, slug in TOPIC_MAP.get(subject_slug, {}).items():
+        if slug != topic_slug:
+            continue
+        topic, _, subtopic = key.partition("/")
+        filters.append((topic, subtopic or None))
+    return filters
+
+
 def map_item(
     item: dict,
     normalized: NormalizedQuestion,

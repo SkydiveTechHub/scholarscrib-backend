@@ -96,8 +96,14 @@ class QuestionProvider(ABC):
         exam_year: int | None,
         limit: int,
         cursor: str | None = None,
+        topic: str | None = None,
+        subtopic: str | None = None,
+        random: bool = False,
     ) -> SearchPage | None:
-        """Fetch one page of questions. ``None`` when unsupported or unreachable."""
+        """Fetch one page of questions. ``None`` when unsupported or unreachable.
+
+        ``topic``/``subtopic`` are the provider's own taxonomy keys.
+        """
         return None
 
     async def explain(

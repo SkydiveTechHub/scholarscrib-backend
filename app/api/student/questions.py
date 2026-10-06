@@ -10,6 +10,7 @@ from app.api.responses import (
     ExplanationOut,
     PapersOut,
     QuestionPageOut,
+    TopicQuizQuestionsOut,
 )
 from app.api.schemas import ExamType
 from app.core.rate_limit import hit
@@ -22,6 +23,7 @@ from app.services.provider import (
     ProviderCoverageService,
     ProviderDiscoveryService,
     SearchProviderQuestionsService,
+    TopicQuizQuestionsService,
 )
 
 router = APIRouter(prefix="/questions", tags=["Student / Questions"])
@@ -109,6 +111,32 @@ async def list_questions(
     #         "totalPages": pages,
     #     },
     # }
+
+
+@router.get("/topic-quiz", response_model=TopicQuizQuestionsOut)
+async def topic_quiz_questions(
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+    subjectId: str,
+    topic: str,
+    examType: ExamType = "WAEC",
+    limit: int = 10,
+    random: bool = True,
+):
+    """A topic's quick-quiz questions, answers included.
+
+    Not cached, unlike the listing above: every draw is meant to differ.
+    Falls back to JAMB when the requested exam has nothing for the topic.
+    """
+    hit(f"topic-quiz:{student.id}", 20, 60)
+    return await TopicQuizQuestionsService(
+        session,
+        subject_key=subjectId,
+        topic_key=topic,
+        exam_type=examType,
+        limit=_page_limit(limit),
+        random=random,
+    ).process()
 
 
 @router.get(

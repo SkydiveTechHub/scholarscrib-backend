@@ -13,6 +13,7 @@ from app.database.models import (
     ProviderState,
     Question,
     Subject,
+    Topic,
 )
 from app.database.repositories.curriculum import subjects_repository, topics_repository
 from app.database.repositories.provider import (
@@ -21,7 +22,7 @@ from app.database.repositories.provider import (
     states_repository,
 )
 from app.database.repositories.question import questions_repository
-from app.services.catalogue import bust_catalogue
+from app.services.catalogue import bust_catalogue, public_question
 from app.services.provider.base import (
     DiscoveryResource,
     DrawResult,
@@ -30,7 +31,7 @@ from app.services.provider.base import (
     SearchPage,
 )
 from app.services.provider.factory import ProviderFactory
-from app.services.provider.mapping import map_item
+from app.services.provider.mapping import map_item, map_topic, provider_topic_filters
 from app.services.provider.rules import (
     COOLDOWN_MINUTES,
     LEASE_WINDOW_MS,
@@ -378,7 +379,12 @@ class SearchProviderQuestionsService:
         elif page.failed:
             raise ApiError(503, "Questions are unavailable right now.")
         return {
-            "questions": [self._question(item, subject) for item in page.items],
+            "questions": [
+                provider_question(
+                    self.provider, item, subject, self.exam_type, self.exam_year
+                )
+                for item in page.items
+            ],
             "pagination": {
                 "limit": self.limit,
                 "cursor": self.cursor,
@@ -387,32 +393,148 @@ class SearchProviderQuestionsService:
             },
         }
 
-    def _question(self, item: dict, subject: Subject | None) -> dict:
-        normalized = self.provider.normalize(item)
-        exam_type = item.get("examType") or self.exam_type
-        payload = {
-            "id": normalized.provider_id,
-            "subjectId": subject.id if subject else None,
-            "topicId": None,
-            "examType": str(exam_type).upper() if exam_type else None,
-            "examYear": item.get("year") or self.exam_year,
-            "questionNumber": None,
-            "questionText": normalized.text,
-            "questionImageUrl": normalized.image_url or None,
-            "questionType": "OBJECTIVE",
-            "options": normalized.options,
-            "difficulty": None,
-            "marks": 1,
-            "timeEstimateSeconds": 90,
-            "correctAnswer": normalized.answer.upper(),
-            "explanation": normalized.explanation or None,
-            "explanationImageUrl": None,
+
+def provider_question(
+    provider: QuestionProvider,
+    item: dict,
+    subject: Subject | None,
+    exam_type: str | None,
+    exam_year: int | None,
+) -> dict:
+    """One provider item shaped like a bank question, answer included."""
+    normalized = provider.normalize(item)
+    exam_type = item.get("examType") or exam_type
+    payload = {
+        "id": normalized.provider_id,
+        "subjectId": subject.id if subject else None,
+        "topicId": None,
+        "examType": str(exam_type).upper() if exam_type else None,
+        "examYear": item.get("year") or exam_year,
+        "questionNumber": None,
+        "questionText": normalized.text,
+        "questionImageUrl": normalized.image_url or None,
+        "questionType": "OBJECTIVE",
+        "options": normalized.options,
+        "difficulty": None,
+        "marks": 1,
+        "timeEstimateSeconds": 90,
+        "correctAnswer": normalized.answer.upper(),
+        "explanation": normalized.explanation or None,
+        "explanationImageUrl": None,
+    }
+    if item.get("hasPassage"):
+        payload["hasPassage"] = True
+        payload["passage"] = item.get("section")
+        payload["passageGroup"] = item.get("category")
+    return payload
+
+
+class TopicQuizQuestionsService:
+    """A topic's quiz questions: our bank first, then the provider.
+
+    Each exam is tried in turn (the requested one, then JAMB): the bank's
+    topic-tagged questions are drawn first, and the provider is asked for the
+    rest under the reviewed ALOC topics that map onto ours. A provider item
+    whose own classification maps to a different topic of ours is dropped.
+    Answers are included: the quiz is a self-check graded in the browser.
+    """
+
+    FALLBACK_EXAM = "JAMB"
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        *,
+        subject_key: str,
+        topic_key: str,
+        exam_type: str,
+        limit: int,
+        random: bool,
+        provider: QuestionProvider | None = None,
+    ) -> None:
+        self.session = session
+        self.subject_key = subject_key
+        self.topic_key = topic_key
+        self.exam_type = exam_type
+        self.limit = limit
+        self.random = random
+        self.provider = provider or ProviderFactory.create()
+
+    async def process(self) -> dict:
+        subject = await subjects_repository.by_id_or_slug(
+            self.session, self.subject_key
+        )
+        if subject is None:
+            raise ApiError(404, "Subject not found")
+        topic = await topics_repository.by_slug(
+            self.session, subject.id, self.topic_key
+        ) or await topics_repository.by_id(self.session, self.topic_key)
+        if topic is None or topic.subject_id != subject.id:
+            raise ApiError(404, "Topic not found")
+        topic_slugs = {
+            row.slug
+            for row in await topics_repository.for_subject(self.session, subject.id)
         }
-        if item.get("hasPassage"):
-            payload["hasPassage"] = True
-            payload["passage"] = item.get("section")
-            payload["passageGroup"] = item.get("category")
-        return payload
+        exams = list(dict.fromkeys([self.exam_type, self.FALLBACK_EXAM]))
+        for exam_type in exams:
+            questions = await self._for_exam(subject, topic, exam_type, topic_slugs)
+            if questions:
+                return {
+                    "questions": questions[: self.limit],
+                    "examType": exam_type,
+                    "requestedExamType": self.exam_type,
+                }
+        return {
+            "questions": [],
+            "examType": None,
+            "requestedExamType": self.exam_type,
+        }
+
+    async def _for_exam(
+        self, subject: Subject, topic: Topic, exam_type: str, topic_slugs: set[str]
+    ) -> list[dict]:
+        stored = await questions_repository.pick_objective(
+            self.session,
+            subject_id=subject.id,
+            count=self.limit,
+            topic_ids=[topic.id],
+            exam_type=exam_type,
+        )
+        out = [public_question(row, include_answers=True) for row in stored]
+        if len(out) >= self.limit or not self.provider.configured:
+            return out
+        seen = {question["questionText"] for question in out}
+        for aloc_topic, aloc_subtopic in provider_topic_filters(
+            subject.slug, topic.slug
+        ):
+            page = await self.provider.search(
+                subject_slug=subject.slug,
+                exam_type=exam_type,
+                exam_year=None,
+                limit=self.limit - len(out),
+                topic=aloc_topic,
+                subtopic=aloc_subtopic,
+                random=self.random,
+            )
+            if page is None or page.failed:
+                continue
+            for item in page.items:
+                metadata = item.get("metadata")
+                if isinstance(metadata, dict) and metadata.get("topic"):
+                    mapped = map_topic(subject.slug, metadata, topic_slugs)
+                    if mapped is not None and mapped != topic.slug:
+                        continue
+                question = provider_question(
+                    self.provider, item, subject, exam_type, None
+                )
+                if not question["questionText"] or question["questionText"] in seen:
+                    continue
+                question["topicId"] = topic.id
+                seen.add(question["questionText"])
+                out.append(question)
+                if len(out) >= self.limit:
+                    return out
+        return out
 
 
 class GetQuestionExplanationService:

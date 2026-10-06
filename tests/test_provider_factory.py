@@ -211,6 +211,27 @@ def test_flatten_explanation_to_markdown():
     )
 
 
+def test_flatten_explanation_handles_provider_envelope():
+    markdown = flatten_explanation(
+        {
+            "data": {
+                "questionId": "f47ac10b",
+                "explanation": "Step 1: Start with 2x + 5 = 15\nStep 2: Subtract 5: 2x = 10",
+                "simplifiedExplanation": "Undo the operations in reverse.",
+                "commonMistakes": [
+                    {"mistake": "Dividing first", "whyWrong": "Subtract first."}
+                ],
+            },
+            "meta": {"creditsUsed": 10, "tier": "growth", "requestId": "req_1"},
+        }
+    )
+    assert markdown == (
+        "Step 1: Start with 2x + 5 = 15\n\n"
+        "Step 2: Subtract 5: 2x = 10\n\n"
+        "### Common mistakes\n- **Dividing first**: Subtract first."
+    )
+
+
 _COVERAGE = {
     "data": {
         "summary": {"totalQuestions": 12645, "minYear": 1988, "maxYear": 2025},

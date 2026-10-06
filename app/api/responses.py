@@ -174,6 +174,13 @@ class QuestionPageOut(ApiOut):
     pagination: dict
 
 
+class TopicQuizQuestionsOut(ApiOut):
+    questions: list[QuestionOut]
+    # The exam the questions came from: the requested one, or the fallback.
+    examType: str | None = None
+    requestedExamType: str
+
+
 class QuizOut(ApiOut):
     assessmentId: str
     attemptId: str

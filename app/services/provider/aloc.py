@@ -30,7 +30,13 @@ def flatten_explanation(payload: dict) -> str:
     nested = payload.get("data")
     data: dict = nested if isinstance(nested, dict) else payload
     parts: list[str] = []
-    prose = str(data.get("explanation") or "").strip()
+    # The provider separates "Step 1: ..." lines with a single newline, which
+    # markdown folds into one run-on paragraph; one paragraph per line instead.
+    prose = "\n\n".join(
+        line.strip()
+        for line in str(data.get("explanation") or "").splitlines()
+        if line.strip()
+    )
     if prose:
         parts.append(prose)
     steps = [str(step).strip() for step in data.get("steps") or [] if str(step).strip()]
@@ -134,8 +140,17 @@ class AlocProvider(QuestionProvider):
         exam_year: int | None,
         limit: int,
         cursor: str | None = None,
+        topic: str | None = None,
+        subtopic: str | None = None,
+        random: bool = False,
     ) -> SearchPage | None:
         params: dict[str, str | int] = {"limit": min(limit, ALOC_SEARCH_LIMIT)}
+        if topic:
+            params["topic"] = topic
+        if subtopic:
+            params["subtopic"] = subtopic
+        if random:
+            params["random"] = "true"
         if subject_slug:
             params["subject"] = SUBJECT_ALIASES.get(subject_slug, subject_slug)
         if exam_type:

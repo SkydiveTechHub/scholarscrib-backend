@@ -190,3 +190,15 @@ def test_exact_subtopic_beats_a_broad_topic_entry():
         )
         is None
     )
+
+
+def test_provider_topic_filters_reverse_the_reviewed_table():
+    from app.services.provider.mapping import provider_topic_filters
+
+    assert provider_topic_filters("physics", "gas-laws") == [
+        ("heat", "gas-laws-thermal"),
+        ("gas-laws-thermal", None),
+    ]
+    # No reviewed ALOC counterpart: never ask the provider for something else.
+    assert provider_topic_filters("physics", "optical-instruments") == []
+    assert provider_topic_filters("unknown-subject", "gas-laws") == []
