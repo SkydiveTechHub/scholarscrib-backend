@@ -18,12 +18,12 @@ from app.database.repositories.curriculum import (
     topic_edges_repository,
     topics_repository,
 )
+from app.database.repositories.flashcard import reviews_repository
 from app.database.repositories.learning import (
     metrics_repository,
     progress_repository,
     student_achievements_repository,
 )
-from app.database.repositories.flashcard import reviews_repository
 from app.database.repositories.planner import plan_items_repository, plans_repository
 from app.database.repositories.question import questions_repository
 from app.domain import can, entitlement_denial
@@ -128,7 +128,11 @@ class GetDashboardService:
             if item.get("subjectId")
         }
         subjects = {
-            subject.id: {"slug": subject.slug, "name": subject.name, "code": subject.code}
+            subject.id: {
+                "slug": subject.slug,
+                "name": subject.name,
+                "code": subject.code,
+            }
             for subject in await subjects_repository.ordered(self.session)
             if subject.id in referenced
         }
@@ -811,9 +815,7 @@ def _leverage(topic_rows: Sequence[Topic]) -> dict[str, float]:
     return {topic_id: count / peak for topic_id, count in counts.items()}
 
 
-def _unmastered_dependents(
-    topic_rows: Sequence[Topic], states: dict
-) -> dict[str, int]:
+def _unmastered_dependents(topic_rows: Sequence[Topic], states: dict) -> dict[str, int]:
     """Direct dependents still below TARGET, per prerequisite topic."""
     counts: dict[str, int] = {}
     for topic in topic_rows:
@@ -838,9 +840,7 @@ def _evidence(state) -> dict:
         "accObservations": state.acc_observations,
         "lessonObservations": state.lesson_observations,
         "srsObservations": state.srs_observations,
-        "lastStudy": state.last_effort_at.isoformat()
-        if state.last_effort_at
-        else None,
+        "lastStudy": state.last_effort_at.isoformat() if state.last_effort_at else None,
     }
 
 
@@ -868,9 +868,7 @@ def _pick_reason(topic: Topic, state, leverage: float, unlocks: int) -> str:
     if urgency >= 0.4:
         weight = round(_exam_weight(topic))
         if weight > 0:
-            return (
-                f"High-yield — {weight} exam weight, {round(state.mastery)}% mastery"
-            )
+            return f"High-yield — {weight} exam weight, {round(state.mastery)}% mastery"
         return "Next in your learning path"
     if decay >= 0.1:
         return "Fading — revise while fresh"

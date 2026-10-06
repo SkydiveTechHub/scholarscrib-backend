@@ -9,11 +9,14 @@ from app.api.responses import (
     JambOptionsOut,
     JambPrepareOut,
     MockOptionsOut,
+    PastPaperPageOut,
     QuizOut,
 )
 from app.api.schemas import (
     GenerateQuizIn,
     JambIn,
+    PastPaperIn,
+    PastPaperMoreIn,
     PracticeExitIn,
     ScopedMockIn,
     SubmitIn,
@@ -23,6 +26,7 @@ from app.core.errors import ApiError, RateLimited
 from app.core.rate_limit import hit
 from app.database.db import AnSession, get_session
 from app.services.assessments import (
+    ContinuePastPaperService,
     GenerateJambService,
     GenerateQuizService,
     GenerateScopedMockService,
@@ -31,6 +35,7 @@ from app.services.assessments import (
     GetJambOptionsService,
     GetMockOptionsService,
     PrepareJambService,
+    StartPastPaperService,
     SubmitAttemptService,
     select_jamb_subjects,
 )
@@ -72,6 +77,39 @@ async def _provider_job(slug: str, exam_type: str, exam_year: int) -> None:
             await session.commit()
         except Exception:
             await session.rollback()
+
+
+@router.post("/past-paper", response_model=QuizOut)
+async def start_past_paper(
+    body: PastPaperIn,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    hit(f"past-paper:{student.id}", 20, 60)
+    return await StartPastPaperService(
+        session,
+        student.id,
+        subject_key=body.subject,
+        exam=body.examType,
+        exam_year=body.examYear,
+    ).process()
+
+
+@router.post("/past-paper/{attempt_id}/more", response_model=PastPaperPageOut)
+async def continue_past_paper(
+    attempt_id: str,
+    body: PastPaperMoreIn,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    hit(f"past-paper:{student.id}", 20, 60)
+    return await ContinuePastPaperService(
+        session,
+        student.id,
+        attempt_id=attempt_id,
+        subject_key=body.subject,
+        cursor=body.cursor,
+    ).process()
 
 
 @router.post("/submit", response_model=AttemptResultOut)

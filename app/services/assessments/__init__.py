@@ -1,3 +1,7 @@
+from app.services.assessments.past_paper import (
+    ContinuePastPaperService,
+    StartPastPaperService,
+)
 from app.services.assessments.service import (
     GenerateJambService,
     GenerateQuizService,
@@ -28,4 +32,6 @@ __all__ = [
     "GenerateJambService",
     "StartPretestService",
     "GradePretestService",
+    "StartPastPaperService",
+    "ContinuePastPaperService",
 ]

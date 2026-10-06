@@ -184,6 +184,15 @@ class QuizOut(ApiOut):
     questions: list[QuestionOut]
     resumed: bool | None = None
     deadlineAt: str | None = None
+    # Past papers only: the provider cursor for the paper's next page.
+    nextCursor: str | None = None
+
+
+class PastPaperPageOut(ApiOut):
+    questions: list[QuestionOut]
+    nextCursor: str | None = None
+    timeLimitMinutes: int | None = None
+    deadlineAt: str | None = None
 
 
 class AttemptResultOut(ApiOut):

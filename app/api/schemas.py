@@ -124,6 +124,19 @@ class PracticeExitIn(BaseModel):
     topicSlug: str | None = None
 
 
+class PastPaperIn(BaseModel):
+    # The provider's subject key, as listed by /api/questions/coverage/subjects.
+    subject: str = Field(min_length=1, max_length=80)
+    # Lower-case provider exam key: jamb, waec or neco.
+    examType: str = Field(min_length=1, max_length=20)
+    examYear: int = Field(ge=1980, le=2100)
+
+
+class PastPaperMoreIn(BaseModel):
+    subject: str = Field(min_length=1, max_length=80)
+    cursor: str = Field(min_length=1, max_length=2000)
+
+
 class SubmitIn(BaseModel):
     attemptId: str
     answers: list[AnswerIn] = Field(default_factory=list, max_length=200)

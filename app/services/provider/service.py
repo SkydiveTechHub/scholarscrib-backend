@@ -14,7 +14,7 @@ from app.database.models import (
     Question,
     Subject,
 )
-from app.database.repositories.curriculum import subjects_repository
+from app.database.repositories.curriculum import subjects_repository, topics_repository
 from app.database.repositories.provider import (
     fetches_repository,
     provider_questions_repository,
@@ -30,6 +30,7 @@ from app.services.provider.base import (
     SearchPage,
 )
 from app.services.provider.factory import ProviderFactory
+from app.services.provider.mapping import map_item
 from app.services.provider.rules import (
     COOLDOWN_MINUTES,
     LEASE_WINDOW_MS,
@@ -38,7 +39,6 @@ from app.services.provider.rules import (
     cache_key,
     fingerprint,
     next_circuit,
-    objective_ok,
 )
 
 
@@ -172,11 +172,15 @@ class EnsureProviderQuestionsService:
     async def _ingest(
         self, row: ProviderFetch, subject: Subject, result: DrawResult
     ) -> None:
+        topics = {
+            topic.slug: topic.id
+            for topic in await topics_repository.for_subject(self.session, subject.id)
+        }
         new_count = 0
         for item in result.items:
             if not isinstance(item, dict):
                 continue
-            if await self._stage_item(row, subject, item):
+            if await self._stage_item(row, subject, item, topics):
                 new_count += 1
         row.draw_count += 1
         row.raw_count += len(result.items)
@@ -186,24 +190,37 @@ class EnsureProviderQuestionsService:
             bust_catalogue()
 
     async def _stage_item(
-        self, row: ProviderFetch, subject: Subject, item: dict
+        self, row: ProviderFetch, subject: Subject, item: dict, topics: dict[str, str]
     ) -> bool:
         normalized = self.provider.normalize(item)
         digest = fingerprint(normalized.text, normalized.options)
+        provider_id = normalized.provider_id or digest[:16]
+        # Already stored for this paper (an earlier draw, or a student sitting
+        # it as a past paper): staging it again would break the fetch's unique
+        # keys and roll back the whole draw.
+        if await provider_questions_repository.in_fetch(
+            self.session, row.id, provider_id, digest
+        ):
+            return False
         staged = ProviderQuestion(
             id=cuid(),
             fetch_id=row.id,
-            provider_question_id=normalized.provider_id or digest[:16],
+            provider_question_id=provider_id,
             fingerprint=digest,
             payload=item,
             mapper_version=MAPPER_VERSION,
         )
-        if (
-            not objective_ok(normalized.options, normalized.answer)
-            or not normalized.text
-        ):
+        mapped = map_item(
+            item,
+            normalized,
+            subject_slug=subject.slug,
+            expected_exam=self.exam_type,
+            expected_year=self.exam_year,
+            topic_slugs=set(topics),
+        )
+        if not mapped.ok:
             staged.status = "REJECTED"
-            staged.rejection_reasons = ["incomplete"]
+            staged.rejection_reasons = mapped.rejection_reasons
             row.rejected_count += 1
             await provider_questions_repository.add(self.session, staged)
             return False
@@ -220,15 +237,18 @@ class EnsureProviderQuestionsService:
         question = Question(
             id=cuid(),
             subject_id=subject.id,
-            exam_type=self.exam_type,
-            exam_year=self.exam_year,
+            topic_id=topics.get(mapped.topic_slug) if mapped.topic_slug else None,
+            exam_type=mapped.exam_type,
+            exam_year=mapped.exam_year,
+            question_number=mapped.question_number,
             question_text=normalized.text,
             question_image_url=normalized.image_url or None,
             question_type="OBJECTIVE",
             options=normalized.options,
-            correct_answer=normalized.answer.upper(),
+            correct_answer=normalized.answer.strip().upper(),
             explanation=explanation,
-            difficulty="INTERMEDIATE",
+            difficulty=mapped.difficulty,
+            time_estimate_seconds=mapped.time_estimate_seconds,
         )
         await questions_repository.add(self.session, question)
         staged.status = "PROMOTED"
