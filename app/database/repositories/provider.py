@@ -1,6 +1,6 @@
 """Repositories for the SDASH question provider."""
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
@@ -8,6 +8,7 @@ from app.database.models import (
     ProviderFetch,
     ProviderQuestion,
     ProviderState,
+    Question,
 )
 from app.database.repositories.base import BaseRepository
 
@@ -53,6 +54,57 @@ class ProviderQuestionRepository(BaseRepository[ProviderQuestion]):
             )
             .limit(1),
         )
+
+    async def paper_questions(
+        self, session: AsyncSession, fetch_id: str, limit: int
+    ) -> list[Question]:
+        """A paper's stored questions in the order they were set."""
+        return list(
+            (
+                await session.scalars(
+                    select(Question)
+                    .join(ProviderQuestion, ProviderQuestion.question_id == Question.id)
+                    .where(
+                        ProviderQuestion.fetch_id == fetch_id,
+                        ProviderQuestion.status == "PROMOTED",
+                    )
+                    .order_by(
+                        # Rows stored before question numbers were mapped
+                        # still carry the provider's number in their payload.
+                        func.coalesce(
+                            Question.question_number,
+                            ProviderQuestion.payload["questionNumber"].as_integer(),
+                        )
+                        .asc()
+                        .nulls_last(),
+                        ProviderQuestion.promoted_at,
+                    )
+                    .limit(limit)
+                )
+            ).all()
+        )
+
+    async def promoted_count(self, session: AsyncSession, fetch_id: str) -> int:
+        return await self.count(
+            session,
+            ProviderQuestion.fetch_id == fetch_id,
+            ProviderQuestion.status == "PROMOTED",
+        )
+
+    async def payloads_for(
+        self, session: AsyncSession, question_ids: list[str]
+    ) -> dict[str, dict]:
+        """The provider's raw item behind each stored question, by question id."""
+        if not question_ids:
+            return {}
+        rows = await session.execute(
+            select(ProviderQuestion.question_id, ProviderQuestion.payload).where(
+                ProviderQuestion.question_id.in_(question_ids)
+            )
+        )
+        return {
+            row[0]: row[1] for row in rows.all() if row[0] and isinstance(row[1], dict)
+        }
 
 
 class ProviderCatalogueRepository(BaseRepository[ProviderCatalogue]):

@@ -69,30 +69,6 @@ class AssessmentAttemptRepository(BaseRepository[AssessmentAttempt]):
             .limit(limit),
         )
 
-    async def in_progress_cbt(
-        self,
-        session: AsyncSession,
-        *,
-        student_id: str,
-        exam_type: str,
-        exam_year: int,
-        total_marks: int,
-        assessment_type: str = "CBT_PRACTICE",
-    ) -> AssessmentAttempt | None:
-        return await self.one(
-            session,
-            select(AssessmentAttempt)
-            .join(Assessment, Assessment.id == AssessmentAttempt.assessment_id)
-            .where(
-                AssessmentAttempt.student_id == student_id,
-                AssessmentAttempt.status == "IN_PROGRESS",
-                Assessment.assessment_type == assessment_type,
-                Assessment.exam_type == exam_type,
-                Assessment.exam_year == exam_year,
-                Assessment.total_marks == total_marks,
-            ),
-        )
-
     async def perfect_scores(self, session: AsyncSession, student_id: str) -> int:
         return int(
             await session.scalar(

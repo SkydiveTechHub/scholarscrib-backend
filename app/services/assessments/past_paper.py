@@ -59,7 +59,7 @@ MINUTES_PER_QUESTION = 1
 MAX_SKIPPED_PAGES = 5
 
 
-def _paper_question(question: Question, item: dict | None) -> dict:
+def paper_question(question: Question, item: dict | None) -> dict:
     """The question as the exam surface gets it: no answer, context attached.
 
     ALOC's `section` means two things (checked against live English papers):
@@ -177,6 +177,23 @@ class PastPaperIngest:
                 return fresh, next_cursor
             cursor = next_cursor
         return [], None
+
+    async def store_items(self, items: list[dict]) -> ProviderFetch:
+        """Stores items fetched elsewhere (e.g. pages walked concurrently)."""
+        fetch = await self._fetch_row()
+        topics = {
+            topic.slug: topic.id
+            for topic in await topics_repository.for_subject(
+                self.session, self.subject.id
+            )
+        }
+        for item in items:
+            await self._store(fetch, item, topics)
+        return fetch
+
+    async def fetch_row(self) -> ProviderFetch:
+        """This paper's fetch ledger row, created on first use."""
+        return await self._fetch_row()
 
     async def _fetch_row(self) -> ProviderFetch:
         key = cache_key(self.subject.slug, self.exam_type, self.exam_year)
@@ -361,7 +378,7 @@ class StartPastPaperService:
         )
         items = {question.id: item for question, item in stored}
         payload["questions"] = [
-            _paper_question(question, items.get(question.id)) for question in questions
+            paper_question(question, items.get(question.id)) for question in questions
         ]
         payload["nextCursor"] = next_cursor
         return payload
@@ -432,7 +449,7 @@ class ContinuePastPaperService:
         body = _payload(assessment, attempt, added)
         return {
             "questions": [
-                _paper_question(question, items.get(question.id)) for question in added
+                paper_question(question, items.get(question.id)) for question in added
             ],
             "nextCursor": next_cursor,
             "timeLimitMinutes": assessment.time_limit_minutes,

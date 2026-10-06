@@ -238,11 +238,32 @@ class JambSpecOut(ApiOut):
     totalMarks: int
 
 
+class JambSubjectOut(ApiOut):
+    id: str
+    name: str
+    slug: str
+    code: str | None = None
+    # The question provider's key and category (sciences, arts, ...).
+    providerKey: str
+    category: str | None = None
+    # Questions this subject contributes to a sitting.
+    questions: int
+    # Years the provider holds a full paper for, newest first.
+    years: list[int]
+
+
 class JambOptionsOut(ApiOut):
     spec: JambSpecOut
-    english: dict | None = None
-    englishYears: list[int]
-    subjects: list[dict]
+    english: JambSubjectOut | None = None
+    subjects: list[JambSubjectOut]
+
+
+class JambCoverageOut(ApiOut):
+    subjectId: str
+    subjectName: str
+    code: str | None = None
+    required: int
+    available: int
 
 
 class JambPrepareOut(ApiOut):
@@ -250,6 +271,7 @@ class JambPrepareOut(ApiOut):
     examYear: int
     ready: bool
     message: str
+    coverage: list[JambCoverageOut] = []
 
 
 class DeckRefOut(ApiOut):

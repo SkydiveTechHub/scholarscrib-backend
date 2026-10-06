@@ -247,12 +247,17 @@ def subject_slug_candidates(key: str, discovered: dict | None = None) -> list[st
 
 
 def difficulty_from_score(score: object) -> str:
-    """ALOC's 1-5 difficultyScore onto our three bands; unknown is the middle."""
+    """ALOC's difficultyScore onto our three bands; unknown is the middle.
+
+    ALOC scores 1-3 (the only values seen on live papers, 2026-10-06), which
+    lines up one-to-one with BASIC / INTERMEDIATE / ADVANCED. Anything above 3
+    is treated as hardest rather than guessed at.
+    """
     if isinstance(score, bool) or not isinstance(score, int | float):
         return "INTERMEDIATE"
-    if score <= 2:
+    if score <= 1:
         return "BASIC"
-    if score >= 4:
+    if score >= 3:
         return "ADVANCED"
     return "INTERMEDIATE"
 

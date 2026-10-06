@@ -27,17 +27,16 @@ from app.core.rate_limit import hit
 from app.database.db import AnSession, get_session
 from app.services.assessments import (
     ContinuePastPaperService,
-    GenerateJambService,
+    GenerateJambPaperService,
     GenerateQuizService,
     GenerateScopedMockService,
     GetAttemptResultService,
     GetBoardReadinessService,
-    GetJambOptionsService,
+    GetJambCatalogueService,
     GetMockOptionsService,
-    PrepareJambService,
     StartPastPaperService,
     SubmitAttemptService,
-    select_jamb_subjects,
+    SyncJambPaperService,
 )
 from app.services.learning import AwardAchievementsService
 from app.services.planner import MarkStudyPlanItemService
@@ -189,23 +188,19 @@ async def scoped_mock(
 async def jamb_options(
     session: AnSession, student: Annotated[StudentPrincipal, Depends(require_student)]
 ):
-    return await GetJambOptionsService(session).process()
+    return await GetJambCatalogueService(session).process()
 
 
 @router.post("/jamb-cbt/prepare", response_model=JambPrepareOut)
 async def jamb_prepare(
     body: JambIn,
-    background: BackgroundTasks,
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
-    hit(f"jamb-cbt-prepare:{student.id}", 20, 60)
-    english, subjects = await select_jamb_subjects(session, body.subjectIds)
-    if settings.provider_enabled:
-        hit("provider:outbound", 30, 60)
-        for subject in [english, *subjects]:
-            background.add_task(_provider_job, subject.slug, "JAMB", body.examYear)
-    return await PrepareJambService(session, english, subjects, body.examYear).process()
+    # Synchronous on purpose: the year's four papers are pulled from the
+    # provider and stored before this answers, so "ready" means ready.
+    hit(f"jamb-cbt-prepare:{student.id}", 10, 60)
+    return await SyncJambPaperService(session, body.subjectIds, body.examYear).process()
 
 
 @router.post("/jamb-cbt/generate", response_model=QuizOut)
@@ -215,6 +210,6 @@ async def jamb_generate(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"jamb-cbt:{student.id}", 6, 60)
-    return await GenerateJambService(
+    return await GenerateJambPaperService(
         session, student.id, body.subjectIds, body.examYear
     ).process()

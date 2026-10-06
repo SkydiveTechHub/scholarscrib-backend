@@ -47,7 +47,7 @@ def test_maps_the_real_item():
     mapped = _map()
     assert mapped.ok
     assert (mapped.exam_type, mapped.exam_year) == ("JAMB", 2001)
-    assert mapped.difficulty == "BASIC"
+    assert mapped.difficulty == "INTERMEDIATE"
     assert mapped.time_estimate_seconds == 60
     assert mapped.question_number == 1
     # number-theory is not one of our topics, and no reviewed mapping exists.
@@ -76,14 +76,15 @@ def test_post_utme_is_not_recorded():
     assert exam_type_for("WAEC") == "WAEC"
 
 
-def test_difficulty_bands():
-    assert [difficulty_from_score(s) for s in (1, 2, 3, 4, 5)] == [
-        "BASIC",
+def test_difficulty_follows_alocs_three_point_scale():
+    assert [difficulty_from_score(s) for s in (1, 2, 3)] == [
         "BASIC",
         "INTERMEDIATE",
         "ADVANCED",
-        "ADVANCED",
     ]
+    # Off-scale values clamp rather than guess.
+    assert difficulty_from_score(0) == "BASIC"
+    assert difficulty_from_score(5) == "ADVANCED"
     assert difficulty_from_score(None) == "INTERMEDIATE"
     assert difficulty_from_score(True) == "INTERMEDIATE"
 
