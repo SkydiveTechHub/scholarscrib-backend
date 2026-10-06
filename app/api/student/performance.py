@@ -18,5 +18,5 @@ async def performance(
     subjectId: str | None = None,
 ):
     return await GetPerformanceService(
-        session, student.id, student.tier, max(page, 1), subjectId
+        session, student.id, student.tier, max(page, 1), subjectId, student.track
     ).process()

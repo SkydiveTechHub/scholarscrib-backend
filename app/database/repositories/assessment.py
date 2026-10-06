@@ -234,6 +234,30 @@ class QuestionResponseRepository(BaseRepository[QuestionResponse]):
         ).one()
         return int(row[0] or 0), int(row[1] or 0), int(row[2] or 0)
 
+    async def totals_by_subject(
+        self, session: AsyncSession, student_id: str
+    ) -> dict[str, tuple[int, int]]:
+        """Answered and correct counts per subject id, for subjects attempted."""
+        result = await self.rows(
+            session,
+            select(
+                Question.subject_id,
+                func.count(QuestionResponse.id),
+                func.count(QuestionResponse.id).filter(
+                    QuestionResponse.is_correct.is_(True)
+                ),
+            )
+            .select_from(QuestionResponse)
+            .join(
+                AssessmentAttempt,
+                AssessmentAttempt.id == QuestionResponse.attempt_id,
+            )
+            .join(Question, Question.id == QuestionResponse.question_id)
+            .where(AssessmentAttempt.student_id == student_id)
+            .group_by(Question.subject_id),
+        )
+        return {row[0]: (int(row[1] or 0), int(row[2] or 0)) for row in result.all()}
+
     async def timing_for_subject(
         self, session: AsyncSession, student_id: str, subject_id: str
     ) -> list[tuple[int | None, int | None]]:

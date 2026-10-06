@@ -432,6 +432,7 @@ class DashboardOut(ApiOut):
 
 class PerformanceOut(ApiOut):
     attempts: list[dict]
+    attemptTotal: int = 0
     subjects: list[dict]
     advanced: bool
     subject: dict | None = None

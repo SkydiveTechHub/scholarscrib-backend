@@ -354,12 +354,14 @@ class GetPerformanceService:
         tier: str,
         page: int,
         subject_id: str | None,
+        track: str | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
         self.tier = tier
         self.page = page
         self.subject_id = subject_id
+        self.track = track
 
     async def process(self) -> dict:
         advanced = can(self.tier, "advancedAnalytics")
@@ -372,7 +374,22 @@ class GetPerformanceService:
                 feature="advancedAnalytics",
             )
         attempt_rows = await _attempts(self.session, self.student_id, 10, self.page)
-        subject_rows = await subjects_repository.ordered(self.session)
+        attempt_total = await attempts_repository.completed_count(
+            self.session, self.student_id
+        )
+        # Only subjects the student has answered questions in, and only those on
+        # their track (CORE is shared by every track). No track means no filter.
+        totals = await responses_repository.totals_by_subject(
+            self.session, self.student_id
+        )
+        subject_rows = [
+            subject
+            for subject in await subjects_repository.ordered(self.session)
+            if totals.get(subject.id, (0, 0))[0] > 0
+            and (
+                not self.track or subject.track_category in {"CORE", self.track}
+            )
+        ]
         all_topics = await topics_repository.all_ordered(self.session)
         states = await GetTopicMasteryService(
             self.session,
@@ -387,17 +404,24 @@ class GetPerformanceService:
             owned = by_subject.get(subject.id, [])
             scores = [states[topic.id].mastery for topic in owned if topic.id in states]
             average = round(sum(scores) / len(scores)) if scores else 0
+            attempted, correct = totals[subject.id]
             summary.append(
                 {
                     "subjectId": subject.id,
+                    "id": subject.id,
                     "name": subject.name,
                     "slug": subject.slug,
+                    "code": subject.code,
                     "mastery": average,
                     "letter": coarse_grade(average),
+                    "totalAttempted": attempted,
+                    "totalCorrect": correct,
+                    "accuracy": round(correct / attempted * 100),
                 }
             )
         payload: dict = {
             "attempts": attempt_rows,
+            "attemptTotal": attempt_total,
             "subjects": summary,
             "advanced": advanced,
         }
@@ -708,6 +732,11 @@ async def _attempts(
         limit=size,
         offset=(page - 1) * size,
     )
+    # Multi-subject papers (mock exams, JAMB CBT) carry no subject of their own.
+    names = {
+        subject.id: subject.name
+        for subject in await subjects_repository.ordered(session)
+    }
     payload = []
     for attempt, assessment in rows:
         percentage = attempt.percentage or 0
@@ -717,7 +746,12 @@ async def _attempts(
                 "attemptId": attempt.id,
                 "title": assessment.title,
                 "subjectId": assessment.subject_id,
+                "subjectName": names.get(assessment.subject_id)
+                if assessment.subject_id
+                else None,
                 "assessmentType": assessment.assessment_type,
+                "score": attempt.score,
+                "totalMarks": attempt.total_marks or assessment.total_marks,
                 "percentage": percentage,
                 "letter": coarse_grade(percentage),
                 "completedAt": attempt.completed_at.isoformat()
