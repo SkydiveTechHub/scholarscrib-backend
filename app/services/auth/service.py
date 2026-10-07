@@ -146,7 +146,7 @@ class RegisterDeviceService:
             self.session, self.user.id, device.id
         )
         ordered = sorted(
-            others, key=lambda row: (as_utc(row.last_seen_at), row.id), reverse=True
+            others, key=lambda row: (as_utc(row.created_at), row.id), reverse=True
         )
         overflow = ordered[DEVICE_LIMIT - 1 :]
         revoked_ids = []
