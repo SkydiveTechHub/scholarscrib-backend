@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     cloudinary_api_key: str | None
     cloudinary_api_secret: str | None
 
-    sdash_base_url: str = "https://sdashapi.com/api"
+    sdash_base_url: str = "https://www.sdashapi.com/api"
     sdash_access_token: str | None
     aloc_base_url: str = "https://dev.aloc.com.ng/api/v1"
     aloc_api_key: str | None = None

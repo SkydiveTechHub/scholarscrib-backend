@@ -6,6 +6,10 @@ import httpx
 
 from app.database.models import ProviderFetch
 
+PROVIDER_PAPER_PAGE_LIMIT = 15
+PROVIDER_PAPER_MAX_PAGES = 20
+PROVIDER_SAMPLE_BATCH_LIMIT = 50
+
 
 class DiscoveryResource(StrEnum):
     COVERAGE = "coverage"
@@ -14,6 +18,11 @@ class DiscoveryResource(StrEnum):
     SUBJECT_TOPICS = "subject_topics"
     SUBJECT_YEARS = "subject_years"
     YEAR_SUBJECTS = "year_subjects"
+
+
+class PaperFetchMode(StrEnum):
+    COMPLETE = "complete"
+    SAMPLED = "sampled"
 
 
 class ProviderNotFound(Exception):
@@ -38,6 +47,9 @@ class DrawResult:
     body: str = ""
     credits_remaining: int | None = None
     exhausted: bool = False
+    complete: bool = False
+    cacheable: bool = False
+    last_batch_count: int | None = None
 
     @property
     def failed(self) -> bool:
@@ -51,6 +63,7 @@ class SearchPage:
     has_more: bool = False
     status_code: int = 200
     body: str = ""
+    credits_remaining: int | None = None
 
     @property
     def failed(self) -> bool:
@@ -73,6 +86,16 @@ class QuestionProvider(ABC):
     @property
     def fetch_explanations(self) -> bool:
         return False
+
+    @property
+    def supports_search(self) -> bool:
+        return type(self).search is not QuestionProvider.search
+
+    @property
+    def paper_fetch_mode(self) -> PaperFetchMode:
+        return (
+            PaperFetchMode.COMPLETE if self.supports_search else PaperFetchMode.SAMPLED
+        )
 
     @abstractmethod
     async def draw(

@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request
-from redis_fastapi import cache
+from redis_fastapi import AsyncRedisDep, cache
 
 from app.api.deps import StudentPrincipal, require_student
 from app.api.responses import (
@@ -53,7 +53,7 @@ def questions_cache_key(request: Request, eviction_group: str = "", prefix: str 
         "cursor": query.get("cursor", "").strip(),
     }
     normalized = ":".join(f"{key}={value}" for key, value in parts.items() if value)
-    return f"{prefix}:{{{eviction_group}}}:questions:{normalized}"
+    return f"{prefix}:{{{eviction_group}}}:questions:v2:{normalized}"
 
 
 @router.get(
@@ -71,6 +71,7 @@ def questions_cache_key(request: Request, eviction_group: str = "", prefix: str 
 )
 async def list_questions(
     session: AnSession,
+    redis: AsyncRedisDep,
     subjectId: str | None = None,
     examType: ExamType | None = None,
     examYear: int | None = None,
@@ -84,6 +85,7 @@ async def list_questions(
         exam_year=examYear,
         limit=_page_limit(limit),
         cursor=cursor,
+        redis=redis,
     ).process()
     # Database-backed listing, paused while questions come straight from ALOC.
     # Restore the topicId, difficulty and page params above when re-enabling.

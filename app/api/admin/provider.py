@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from redis_fastapi import AsyncRedisDep
 
 from app.api.deps import require_admin
 from app.api.responses import BackfillOut
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/provider", tags=["Admin / Provider"])
 async def backfill(
     body: ProviderBackfillIn,
     session: AnSession,
+    redis: AsyncRedisDep,
     admin: Annotated[Admin, Depends(require_admin)],
 ):
     was_reset = False
@@ -33,9 +35,11 @@ async def backfill(
         was_reset = await ResetFailedFetchService(
             session, slug, exam_type, exam_year
         ).process()
-    await EnsureProviderQuestionsService(session, slug, exam_type, exam_year).process()
+    await EnsureProviderQuestionsService(
+        session, slug, exam_type, exam_year, redis=redis
+    ).process()
     ledger = await SaturateProviderService(
-        session, slug, exam_type, exam_year
+        session, slug, exam_type, exam_year, redis=redis
     ).process()
     await RecordAuditService(
         session,

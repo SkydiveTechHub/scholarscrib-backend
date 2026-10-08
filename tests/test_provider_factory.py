@@ -86,6 +86,7 @@ async def test_aloc_walks_cursor_until_has_more_is_false():
     assert result is not None
     assert len(result.items) == 35
     assert result.exhausted is True
+    assert result.complete is True
     assert result.credits_remaining == 870
     assert len(requests) == 3
     first = requests[0]
@@ -109,6 +110,7 @@ async def test_aloc_respects_page_cap_when_has_more_never_ends():
     assert result is not None
     assert calls == ALOC_MAX_PAGES
     assert result.exhausted is True
+    assert result.complete is False
 
 
 async def test_aloc_error_is_reported_with_body():
@@ -177,18 +179,90 @@ def test_sdash_normalize_keeps_field_fallbacks():
 
 
 async def test_sdash_draw_reads_data_envelope():
+    seen: list[httpx.Request] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.headers["Authorization"] == "Bearer token"
-        assert request.url.params["exam"] == "jamb"
-        return httpx.Response(200, json={"data": [{"id": 1}, {"id": 2}]})
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "status": 200,
+                "data": [
+                    {
+                        "id": 1,
+                        "question": "What?",
+                        "option": {"a": "One", "b": "Two", "c": "Three", "d": "Four"},
+                        "answer": "b",
+                        "solution": "Because.",
+                    }
+                ],
+            },
+        )
 
     provider = SdashProvider(
-        transport=httpx.MockTransport(handler), access_token="token"
+        transport=httpx.MockTransport(handler),
+        base_url="https://www.sdashapi.com/api",
+        access_token="token",
     )
     result = await provider.draw("mathematics", "JAMB", 2015, 50)
 
     assert result is not None
-    assert [item["id"] for item in result.items] == [1, 2]
+    assert result.items[0]["id"] == 1
+    assert seen[0].url.path == "/api/v1/q"
+    assert seen[0].headers["AccessToken"] == "token"
+    assert seen[0].url.params["subject"] == "mathematics"
+    assert seen[0].url.params["type"] == "utme"
+    assert seen[0].url.params["year"] == "2015"
+    assert seen[0].url.params["limit"] == "50"
+    normalized = provider.normalize(result.items[0])
+    assert normalized.options == {
+        "A": "One",
+        "B": "Two",
+        "C": "Three",
+        "D": "Four",
+    }
+    assert normalized.answer == "b"
+    assert normalized.explanation == "Because."
+    assert provider.paper_fetch_mode.value == "sampled"
+
+
+async def test_sdash_draw_accepts_documented_single_question_object():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["limit"] == "1"
+        return httpx.Response(
+            200,
+            json={"status": 200, "data": {"id": 4, "question": "One question"}},
+        )
+
+    provider = SdashProvider(
+        transport=httpx.MockTransport(handler), access_token="token"
+    )
+    result = await provider.draw("biology", "WAEC", 2020, 1)
+
+    assert result is not None
+    assert result.items == [{"id": 4, "question": "One question"}]
+
+
+async def test_sdash_maps_api_level_not_found_status():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"status": 404, "message": "No questions matched your filters."},
+        )
+
+    provider = SdashProvider(
+        transport=httpx.MockTransport(handler), access_token="token"
+    )
+    page = await provider.search(
+        subject_slug="biology",
+        exam_type="JAMB",
+        exam_year=1988,
+        limit=50,
+    )
+
+    assert page is not None
+    assert page.status_code == 404
+    assert "No questions" in page.body
 
 
 def test_flatten_explanation_to_markdown():
@@ -216,7 +290,7 @@ def test_flatten_explanation_handles_provider_envelope():
         {
             "data": {
                 "questionId": "f47ac10b",
-                "explanation": "Step 1: Start with 2x + 5 = 15\nStep 2: Subtract 5: 2x = 10",
+                "explanation": "\n".join(["Step 1: 2x + 5 = 15", "Step 2: 2x = 10"]),
                 "simplifiedExplanation": "Undo the operations in reverse.",
                 "commonMistakes": [
                     {"mistake": "Dividing first", "whyWrong": "Subtract first."}
@@ -226,8 +300,8 @@ def test_flatten_explanation_handles_provider_envelope():
         }
     )
     assert markdown == (
-        "Step 1: Start with 2x + 5 = 15\n\n"
-        "Step 2: Subtract 5: 2x = 10\n\n"
+        "Step 1: 2x + 5 = 15\n\n"
+        "Step 2: 2x = 10\n\n"
         "### Common mistakes\n- **Dividing first**: Subtract first."
     )
 
