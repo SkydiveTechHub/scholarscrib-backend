@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import re
 
 import httpx
@@ -530,6 +531,11 @@ class SetAvatarService:
         except httpx.HTTPError as exc:
             raise ApiError(400, "Photo upload failed") from exc
         if response.status_code >= 400:
+            logging.getLogger(__name__).error(
+                "Cloudinary avatar upload rejected (%s): %s",
+                response.status_code,
+                response.text[:300],
+            )
             raise ApiError(400, "Photo upload failed")
         image = response.json().get("secure_url")
         if not image:
