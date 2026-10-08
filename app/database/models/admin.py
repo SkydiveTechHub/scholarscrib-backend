@@ -27,6 +27,9 @@ class Admin(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(
         "lastLoginAt", DateTime(timezone=True)
     )
+    sessions_valid_from: Mapped[datetime | None] = mapped_column(
+        "sessionsValidFrom", DateTime(timezone=True)
+    )
     created_by_id: Mapped[str | None] = mapped_column(
         "createdById", ForeignKey("Admin.id")
     )

@@ -4,13 +4,16 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 
-from app.api.deps import StudentPrincipal, require_student
+from app.api.deps import StudentPrincipal, optional_student, require_student
 from app.api.responses import OkOut, RegisterOut, SessionOut, TokenOut
 from app.api.schemas import LoginIn, RegisterIn
 from app.api.student.cookies import _cookie, _ip
 from app.core.config import settings
 from app.core.errors import ApiError
+from app.core.timeutil import utcnow
 from app.database.db import AnSession
+from app.database.repositories.identity import devices_repository
+from app.database.repositories.notification import push_subscriptions_repository
 from app.services.auth import (
     GoogleSignInService,
     LoginStudentService,
@@ -46,7 +49,17 @@ async def login(
 
 
 @router.post("/logout", response_model=OkOut)
-async def logout(response: Response):
+async def logout(request: Request, response: Response, session: AnSession):
+    student = await optional_student(request, session)
+    if student is not None and student.device_id:
+        device = await devices_repository.by_id(session, student.device_id)
+        if device is not None and device.revoked_at is None:
+            # Kills this device's token server-side: replaying it after sign-out
+            # fails the device check in optional_student.
+            device.revoked_at = utcnow()
+            await push_subscriptions_repository.delete_for_devices(
+                session, [device.id]
+            )
     response.delete_cookie("scholarscrib.session", path="/")
     return {"ok": True}
 

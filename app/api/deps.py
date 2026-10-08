@@ -118,6 +118,8 @@ async def require_admin(request: Request, session: AnSession) -> Admin:
     admin = await admins_repository.by_id(session, claims["sub"])
     if admin is None or not admin.is_active:
         raise unauthorized()
+    if is_session_revoked(True, admin.sessions_valid_from, claims.get("iat")):
+        raise unauthorized()
     return admin
 
 

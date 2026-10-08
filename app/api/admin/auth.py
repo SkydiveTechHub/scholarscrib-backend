@@ -1,13 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_admin
 from app.api.responses import AdminSessionOut, AdminTokenOut, OkOut
 from app.core.config import settings
 from app.core.errors import ApiError
-from app.core.security import admin_token, verify_password
+from app.core.security import admin_token, decode_token, read_bearer, verify_password
 from app.core.timeutil import utcnow
 from app.database.db import AnSession
 from app.database.models import Admin
@@ -57,7 +57,17 @@ async def admin_login(body: AdminLogin, response: Response, session: AnSession):
 
 
 @router.post("/logout", response_model=OkOut)
-async def admin_logout(response: Response):
+async def admin_logout(response: Response, request: Request, session: AnSession):
+    raw = read_bearer(request.headers.get("authorization")) or request.cookies.get(
+        "scholarscrib.admin-session"
+    )
+    claims = decode_token(raw, settings.admin_auth_secret) if raw else None
+    if claims and claims.get("sub"):
+        admin = await admins_repository.by_id(session, claims["sub"])
+        if admin is not None:
+            # Invalidates every token issued up to now, so a copied or replayed
+            # token cannot outlive the sign-out.
+            admin.sessions_valid_from = utcnow()
     response.delete_cookie("scholarscrib.admin-session", path="/admin")
     return {"ok": True}
 
