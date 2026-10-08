@@ -703,3 +703,16 @@ class CronReminderOut(ApiOut):
     sent: int
     skipped: int
     done: bool
+
+
+class AnalyticsOut(ApiOut):
+    users: dict
+    signupsByMonth: list[dict]
+    learners: dict
+    learnersByMonth: list[dict]
+    assessments: dict
+    assessmentsByMonth: list[dict]
+    subscriptions: list[dict]
+    classLevels: list[dict]
+    states: list[dict]
+    funnel: dict
