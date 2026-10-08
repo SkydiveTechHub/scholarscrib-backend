@@ -201,6 +201,8 @@ class PastPaperAttemptOut(ApiOut):
     attemptId: str
     completedAt: str
     percentage: float | None = None
+    score: float | None = None
+    totalMarks: float | None = None
 
 
 class PastPaperYearHistoryOut(ApiOut):

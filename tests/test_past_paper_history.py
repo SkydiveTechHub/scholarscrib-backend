@@ -15,6 +15,8 @@ def _attempt(attempt_id: str, day: int, percentage: float):
         id=attempt_id,
         completed_at=datetime(2026, 3, day, tzinfo=UTC),
         percentage=percentage,
+        score=percentage,
+        total_marks=100.0,
     )
 
 

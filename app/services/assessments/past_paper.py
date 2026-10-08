@@ -523,6 +523,8 @@ class GetPastPaperHistoryService:
                     "attemptId": attempt.id,
                     "completedAt": attempt.completed_at.isoformat(),
                     "percentage": attempt.percentage,
+                    "score": attempt.score,
+                    "totalMarks": attempt.total_marks,
                 }
             )
         return {

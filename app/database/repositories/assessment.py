@@ -22,6 +22,24 @@ class AssessmentRepository(BaseRepository[Assessment]):
 class AssessmentQuestionRepository(BaseRepository[AssessmentQuestion]):
     model = AssessmentQuestion
 
+    async def subject_sets(
+        self, session: AsyncSession, assessment_ids: list[str]
+    ) -> dict[str, set[str]]:
+        """The distinct subject ids each assessment's questions belong to."""
+        if not assessment_ids:
+            return {}
+        result = await self.rows(
+            session,
+            select(AssessmentQuestion.assessment_id, Question.subject_id)
+            .join(Question, Question.id == AssessmentQuestion.question_id)
+            .where(AssessmentQuestion.assessment_id.in_(assessment_ids))
+            .distinct(),
+        )
+        sets: dict[str, set[str]] = {}
+        for assessment_id, subject_id in result.all():
+            sets.setdefault(assessment_id, set()).add(subject_id)
+        return sets
+
 
 class AssessmentAttemptRepository(BaseRepository[AssessmentAttempt]):
     model = AssessmentAttempt
@@ -178,6 +196,26 @@ class AssessmentAttemptRepository(BaseRepository[AssessmentAttempt]):
                 Assessment.exam_year.is_not(None),
             )
             .order_by(AssessmentAttempt.completed_at.asc()),
+        )
+        return [(row[0], row[1]) for row in result.all()]
+
+    async def completed_cbt_sittings(
+        self, session: AsyncSession, student_id: str, *, limit: int = 500
+    ) -> list[tuple[AssessmentAttempt, Assessment]]:
+        """Completed JAMB CBT sittings, oldest first, with their assessment."""
+        result = await self.rows(
+            session,
+            select(AssessmentAttempt, Assessment)
+            .join(Assessment, Assessment.id == AssessmentAttempt.assessment_id)
+            .where(
+                AssessmentAttempt.student_id == student_id,
+                AssessmentAttempt.status == "COMPLETED",
+                AssessmentAttempt.completed_at.is_not(None),
+                Assessment.assessment_type == "CBT_PRACTICE",
+                Assessment.exam_year.is_not(None),
+            )
+            .order_by(AssessmentAttempt.completed_at.asc())
+            .limit(limit),
         )
         return [(row[0], row[1]) for row in result.all()]
 

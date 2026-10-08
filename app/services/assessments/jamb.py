@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import ApiError
 from app.database.models import AssessmentAttempt, Question, Subject
 from app.database.repositories.assessment import (
+    assessment_questions_repository,
     assessments_repository,
     attempts_repository,
 )
@@ -480,3 +481,50 @@ class GenerateJambPaperService:
             ]
             return payload
         return None
+
+
+class GetJambHistoryService:
+    """A student's completed sittings of one exact UTME paper, by year.
+
+    A paper is a year plus its four subjects (English and the three chosen):
+    the same year with different subjects is a different paper, so only
+    sittings whose questions span exactly these subjects are returned.
+    """
+
+    def __init__(
+        self, session: AsyncSession, student_id: str, subject_ids: list[str]
+    ) -> None:
+        self.session = session
+        self.student_id = student_id
+        self.subject_ids = subject_ids
+
+    async def process(self) -> dict:
+        if len(set(self.subject_ids)) != JAMB_OTHER_SUBJECTS:
+            raise ApiError(400, "Choose exactly 3 subjects besides English")
+        english = await _english(self.session)
+        wanted = {english.id, *self.subject_ids}
+        sittings = await attempts_repository.completed_cbt_sittings(
+            self.session, self.student_id
+        )
+        sets = await assessment_questions_repository.subject_sets(
+            self.session, [assessment.id for _attempt, assessment in sittings]
+        )
+        by_year: dict[int, list[dict]] = {}
+        for attempt, assessment in sittings:
+            if sets.get(assessment.id) != wanted or assessment.exam_year is None:
+                continue
+            by_year.setdefault(assessment.exam_year, []).append(
+                {
+                    "attemptId": attempt.id,
+                    "completedAt": attempt.completed_at.isoformat(),
+                    "percentage": attempt.percentage,
+                    "score": attempt.score,
+                    "totalMarks": attempt.total_marks,
+                }
+            )
+        return {
+            "years": [
+                {"year": year, "attempts": attempts}
+                for year, attempts in sorted(by_year.items(), reverse=True)
+            ]
+        }

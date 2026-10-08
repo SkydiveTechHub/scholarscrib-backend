@@ -1,6 +1,7 @@
 from app.services.assessments.jamb import (
     GenerateJambPaperService,
     GetJambCatalogueService,
+    GetJambHistoryService,
     SyncJambPaperService,
 )
 from app.services.assessments.past_paper import (
@@ -34,6 +35,7 @@ __all__ = [
     "ContinuePastPaperService",
     "GetPastPaperHistoryService",
     "GetJambCatalogueService",
+    "GetJambHistoryService",
     "SyncJambPaperService",
     "GenerateJambPaperService",
 ]

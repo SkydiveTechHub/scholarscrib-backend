@@ -36,6 +36,7 @@ from app.services.assessments import (
     GetAttemptResultService,
     GetBoardReadinessService,
     GetJambCatalogueService,
+    GetJambHistoryService,
     GetMockOptionsService,
     GetPastPaperHistoryService,
     StartPastPaperService,
@@ -213,6 +214,17 @@ async def jamb_options(
     session: AnSession, student: Annotated[StudentPrincipal, Depends(require_student)]
 ):
     return await GetJambCatalogueService(session).process()
+
+
+@router.get("/jamb-cbt/history", response_model=PastPaperHistoryOut)
+async def jamb_history(
+    subjectIds: str,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    # Comma-separated: the three chosen subjects besides English.
+    ids = [part for part in subjectIds.split(",") if part]
+    return await GetJambHistoryService(session, student.id, ids).process()
 
 
 @router.post("/jamb-cbt/prepare", response_model=JambPrepareOut)
