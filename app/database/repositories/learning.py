@@ -127,6 +127,20 @@ class LearningEventRepository(BaseRepository[LearningEvent]):
             statement = statement.where(LearningEvent.topic_id.in_(topic_ids))
         return await self.many(session, statement)
 
+    async def recorded_sources(
+        self, session: AsyncSession, student_id: str, topic_id: str, kind: str
+    ) -> set[str]:
+        rows = await self.rows(
+            session,
+            select(LearningEvent.source_id).where(
+                LearningEvent.student_id == student_id,
+                LearningEvent.topic_id == topic_id,
+                LearningEvent.kind == kind,
+                LearningEvent.source_id.is_not(None),
+            ),
+        )
+        return {source for (source,) in rows.all()}
+
     async def last_active(
         self, session: AsyncSession, student_ids: list[str]
     ) -> dict[str, object]:

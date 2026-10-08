@@ -36,6 +36,7 @@ from app.services.srs.scheduler import (
 
 def cards_from_blocks(blocks: list[dict]) -> list[dict]:
     cards_out = []
+    seen_keys: set[str] = set()
     for index, block in enumerate(blocks or []):
         kind = (block.get("type") or "").lower()
         text = (block.get("text") or block.get("body") or "").strip()
@@ -49,10 +50,16 @@ def cards_from_blocks(blocks: list[dict]) -> list[dict]:
             card_type = "TRUE_FALSE"
         else:
             continue
+        # (deckId, sourceKey) is unique; two quiz sections with the same heading
+        # share a block id, so a repeat is suffixed rather than failing the insert.
+        key = str(block.get("id") or f"{kind}-{index}")
+        if key in seen_keys:
+            key = f"{key}-{index}"
+        seen_keys.add(key)
         cards_out.append(
             {
                 "cardType": card_type,
-                "sourceKey": block.get("id") or f"{kind}-{index}",
+                "sourceKey": key,
                 "payload": {
                     "front": block.get("title") or text[:80],
                     "back": text,

@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
+    AssessmentAttempt,
     AssessmentQuestion,
     CurriculumLevel,
     Question,
@@ -257,6 +258,27 @@ class QuestionRepository(BaseRepository[Question]):
             session,
             Question.topic_id == topic_id,
             Question.question_type == "OBJECTIVE",
+        )
+
+    async def count_attempted_for_topic(
+        self, session: AsyncSession, student_id: str, topic_id: str
+    ) -> int:
+        """Distinct questions in the topic the student has answered in an attempt."""
+        return (
+            await session.scalar(
+                select(func.count(func.distinct(QuestionResponse.question_id)))
+                .join(Question, Question.id == QuestionResponse.question_id)
+                .join(
+                    AssessmentAttempt,
+                    AssessmentAttempt.id == QuestionResponse.attempt_id,
+                )
+                .where(
+                    AssessmentAttempt.student_id == student_id,
+                    Question.topic_id == topic_id,
+                    QuestionResponse.selected_answer.is_not(None),
+                )
+            )
+            or 0
         )
 
     async def count_objective(

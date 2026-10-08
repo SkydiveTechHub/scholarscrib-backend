@@ -3,7 +3,6 @@ from datetime import datetime
 
 from app.core.timeutil import as_utc
 from app.services.learning.evidence import (
-    CARD_OUTCOMES,
     CHANNEL_WEIGHTS,
     CONFIDENCE_FLOOR,
     DECAY_RETENTION,
@@ -12,6 +11,7 @@ from app.services.learning.evidence import (
     PRIOR_STRENGTH,
     SCORING_VERSION,
     STRONG_MASTERY,
+    MASTERY_MIN_QUESTIONS,
     TARGET,
     WEAK_MASTERY,
     channel_score,
@@ -61,7 +61,6 @@ EFFORT_KINDS = {
     "QUESTION_ANSWERED",
     "LESSON_BLOCK_COMPLETED",
     "LESSON_COMPLETED",
-    "CARD_REVIEWED",
 }
 
 
@@ -109,16 +108,6 @@ def apply_event(
         aggregate.lesson.outcome += weight * event.score
         aggregate.lesson.mass += weight
         aggregate.lesson.observations += 1
-    elif kind == "CARD_REVIEWED":
-        item = (
-            event.score
-            if event.score is not None
-            else CARD_OUTCOMES.get(event.rating or "", 0.0)
-        )
-        weight = recency_weight(age_days)
-        aggregate.srs.outcome += weight * item
-        aggregate.srs.mass += weight
-        aggregate.srs.observations += 1
     else:
         return
     if kind in EFFORT_KINDS and (
@@ -170,7 +159,6 @@ def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState
     channels = {
         "acc": aggregate.acc,
         "lesson": aggregate.lesson,
-        "srs": aggregate.srs,
     }
     weighted = []
     total_mass = 0.0
@@ -216,6 +204,11 @@ def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState
 TopicStateMap = dict[str, TopicState]
 
 
+def is_mastered(state: TopicState) -> bool:
+    """A high score alone is not mastery: it must rest on enough answered questions."""
+    return state.mastery >= TARGET and state.observations >= MASTERY_MIN_QUESTIONS
+
+
 def graph_colour(state: TopicState) -> str:
     if not state.available:
         return "LOCKED"
@@ -225,7 +218,7 @@ def graph_colour(state: TopicState) -> str:
         and state.observations > 0
     ):
         return "DECAYED"
-    if state.mastery >= TARGET:
+    if is_mastered(state):
         return "MASTERED"
     if state.observations > 0:
         return "STARTED"
@@ -291,7 +284,7 @@ def recommend(
         eligible = [
             state
             for state in states
-            if state.mastery >= TARGET
+            if is_mastered(state)
             and state.retention is not None
             and state.retention < DECAY_RETENTION
         ]

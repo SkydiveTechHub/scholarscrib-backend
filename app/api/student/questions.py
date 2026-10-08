@@ -10,13 +10,15 @@ from app.api.responses import (
     ExplanationOut,
     PapersOut,
     QuestionPageOut,
+    RecordedOut,
     TopicQuizQuestionsOut,
 )
-from app.api.schemas import ExamType
+from app.api.schemas import ExamType, TopicAnswersIn
 from app.core.rate_limit import hit
 from app.database.db import AnSession
 from app.database.repositories.curriculum import subjects_repository
 from app.services.catalogue import ListPastPapersService
+from app.services.learning import RecordTopicAnswersService
 from app.services.provider import (
     DiscoveryResource,
     GetQuestionExplanationService,
@@ -137,6 +139,18 @@ async def topic_quiz_questions(
         limit=_page_limit(limit),
         random=random,
     ).process()
+
+
+@router.post("/topic-answers", response_model=RecordedOut)
+async def record_topic_answers(
+    body: TopicAnswersIn,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    """Records a student's answers to a topic's practice or quick-quiz questions
+    as mastery evidence."""
+    hit(f"topic-answers:{student.id}", 60, 60)
+    return await RecordTopicAnswersService(session, student.id, body).process()
 
 
 @router.get(

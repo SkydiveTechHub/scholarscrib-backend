@@ -7,6 +7,7 @@ from app.services.learning.service import (
     GetAchievementsService,
     GetLibraryService,
     RecordPretestPassService,
+    RecordTopicAnswersService,
     SaveLessonProgressService,
     performance_letter,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "GetAchievementsService",
     "AwardAchievementsService",
     "RecordPretestPassService",
+    "RecordTopicAnswersService",
     "performance_letter",
     "GetTopicMasteryService",
 ]

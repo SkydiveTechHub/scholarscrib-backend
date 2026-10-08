@@ -1,6 +1,6 @@
-"""Learning-evidence math. SCORING_VERSION 2. Bump it to force a refold."""
+"""Learning-evidence math. SCORING_VERSION 3. Bump it to force a refold."""
 
-SCORING_VERSION = 2
+SCORING_VERSION = 3
 RECENCY_HALF_LIFE_DAYS = 45
 PRIOR_STRENGTH = 4
 PRIOR_OUTCOME = 0.45
@@ -8,6 +8,7 @@ RAPID_SECONDS = 3
 RAPID_WEIGHT = 0.3
 CONFIDENCE_FLOOR = 0.35
 OBSERVATION_FLOOR = 3
+MASTERY_MIN_QUESTIONS = 7
 ABANDONED_FLOOR = 2
 
 DIFFICULTY_OUTCOMES = {
@@ -18,7 +19,9 @@ DIFFICULTY_OUTCOMES = {
 
 CARD_OUTCOMES = {"AGAIN": 0.0, "HARD": 0.5, "GOOD": 0.85, "EASY": 1.0}
 
-CHANNEL_WEIGHTS = {"acc": 0.45, "lesson": 0.35, "srs": 0.20}
+# Flashcard reviews are deliberately absent: building a deck is optional, so
+# it is never held against a student.
+CHANNEL_WEIGHTS = {"acc": 0.45, "lesson": 0.35}
 
 TARGET = 70
 GATE = 60

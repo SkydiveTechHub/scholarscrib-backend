@@ -39,6 +39,7 @@ from app.services.learning.graph import (
 from app.services.learning.mastery import (
     classify_gap,
     graph_colour,
+    is_mastered,
     recommend,
     recommendation_score,
     sort_gaps,
@@ -500,7 +501,7 @@ class GetPerformanceService:
                 )
         for topic in owned:
             state = states.get(topic.id)
-            if state and state.mastery >= TARGET and not win_used and len(insights) < 3:
+            if state and is_mastered(state) and not win_used and len(insights) < 3:
                 insights.append(
                     {
                         "kind": "WIN",
@@ -642,8 +643,8 @@ class GetTopicPageService:
         passed = await metrics_repository.pretest_passed(
             self.session, self.student_id, topic.id
         )
-        question_count = await questions_repository.count_objective_for_topic(
-            self.session, topic.id
+        attempted_count = await questions_repository.count_attempted_for_topic(
+            self.session, self.student_id, topic.id
         )
         base = {
             "subject": {
@@ -660,7 +661,13 @@ class GetTopicPageService:
             "mastery": state.mastery,
             "available": state.available,
             "alreadyPassed": passed is not None,
-            "questionCount": question_count or 0,
+            "attemptedCount": attempted_count,
+            "level": state.level,
+            "retention": state.retention,
+            "confidence": state.confidence,
+            "accObservations": state.acc_observations,
+            "lessonObservations": state.lesson_observations,
+            "srsObservations": state.srs_observations,
         }
         if self.view == "overview":
             base["canonicalLessonId"] = lesson.id if lesson else None
@@ -814,7 +821,7 @@ def _gaps(topic_rows: Sequence[Topic], states: dict) -> list[dict]:
     for topic in topic_rows:
         if topic.prerequisite_topic_id:
             state = states.get(topic.id)
-            if state is None or state.mastery < TARGET:
+            if state is None or not is_mastered(state):
                 dependents[topic.prerequisite_topic_id] = (
                     dependents.get(topic.prerequisite_topic_id, 0) + 1
                 )
@@ -856,7 +863,7 @@ def _unmastered_dependents(topic_rows: Sequence[Topic], states: dict) -> dict[st
         if not topic.prerequisite_topic_id:
             continue
         state = states.get(topic.id)
-        if state is None or state.mastery < TARGET:
+        if state is None or not is_mastered(state):
             counts[topic.prerequisite_topic_id] = (
                 counts.get(topic.prerequisite_topic_id, 0) + 1
             )

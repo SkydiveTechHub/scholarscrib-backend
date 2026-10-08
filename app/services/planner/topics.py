@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from app.services.learning.evidence import GATE, TARGET
+from app.services.learning.evidence import GATE
 from app.services.learning.graph import KnowledgeGraph, incoming_edges
-from app.services.learning.mastery import TopicStateMap
+from app.services.learning.mastery import TopicStateMap, is_mastered
 from app.services.planner.days import DayKey
 from app.services.planner.mode import at_or_below_class
 
@@ -49,6 +49,11 @@ class SubjectSelection:
 def _mastery(state: TopicStateMap, topic_id: str) -> int:
     found = state.get(topic_id)
     return 0 if found is None else found.mastery
+
+
+def _is_mastered(state: TopicStateMap, topic_id: str) -> bool:
+    found = state.get(topic_id)
+    return found is not None and is_mastered(found)
 
 
 def _by_order(topic: PlanTopic) -> tuple:
@@ -168,7 +173,7 @@ def select_term_topics(
     by_id = {topic.id: topic for topic in allowed}
 
     def unmastered(topic: PlanTopic) -> bool:
-        return _mastery(state, topic.id) < TARGET
+        return not _is_mastered(state, topic.id)
 
     located = _locate_class(allowed, class_level, term_context, position_topic_id)
     term_topics: list[PlanTopic] = located["termTopics"]
@@ -232,7 +237,7 @@ def select_exam_topics(
         topic
         for topic in topics
         if at_or_below_class(topic.class_level, class_level)
-        and _mastery(state, topic.id) < TARGET
+        and not _is_mastered(state, topic.id)
     ]
     ranked.sort(
         key=lambda topic: (

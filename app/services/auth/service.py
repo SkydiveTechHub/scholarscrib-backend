@@ -389,10 +389,9 @@ class GetSettingsProfileService:
 
     async def process(self) -> dict:
         user = await self._load()
-        device_rows = await devices_repository.for_user(self.session, self.user_id)
         prefs = await preferences_repository.by_id(self.session, self.user_id)
         tier, expires = await self._tier()
-        return self._payload(user, device_rows, prefs, tier, expires)
+        return self._payload(user, prefs, tier, expires)
 
     async def _load(self) -> User:
         user = await users_repository.by_id(self.session, self.user_id)
@@ -415,7 +414,7 @@ class GetSettingsProfileService:
             utcnow(),
         )
 
-    def _payload(self, user, device_rows, prefs, tier, expires) -> dict:
+    def _payload(self, user, prefs, tier, expires) -> dict:
         return {
             "id": user.id,
             "firstName": user.first_name,
@@ -429,19 +428,6 @@ class GetSettingsProfileService:
             "tier": tier,
             "tierExpiresAt": expires.isoformat() if expires else None,
             "hasPassword": bool(user.password_hash),
-            "devices": [
-                {
-                    "id": device.id,
-                    "label": device.label,
-                    "lastSeenAt": device.last_seen_at.isoformat()
-                    if device.last_seen_at
-                    else None,
-                    "revokedAt": device.revoked_at.isoformat()
-                    if device.revoked_at
-                    else None,
-                }
-                for device in device_rows
-            ],
             "notificationPreferences": {
                 "studyReminders": True if prefs is None else prefs.study_reminders,
                 "streakReminders": True if prefs is None else prefs.streak_reminders,

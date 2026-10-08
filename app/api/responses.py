@@ -77,16 +77,11 @@ class SettingsProfileOut(ApiOut):
     tier: str
     tierExpiresAt: str | None = None
     hasPassword: bool
-    devices: list[dict]
     notificationPreferences: PreferencesOut
 
 
 class CompleteProfileOut(ApiOut):
     message: str
-
-
-class RevokedOut(ApiOut):
-    revoked: int
 
 
 class PreferencesOut(ApiOut):
@@ -357,6 +352,10 @@ class ItemStatusOut(ApiOut):
     status: str
 
 
+class RecordedOut(ApiOut):
+    recorded: int
+
+
 class ProgressOut(ApiOut):
     progress: dict
 
@@ -461,7 +460,13 @@ class TopicPageOut(ApiOut):
     mastery: float | int
     available: bool
     alreadyPassed: bool
-    questionCount: int
+    attemptedCount: int
+    level: str | None = None
+    retention: float | None = None
+    confidence: float | None = None
+    accObservations: int = 0
+    lessonObservations: int = 0
+    srsObservations: int = 0
     canonicalLessonId: str | None = None
     createsAttempt: bool | None = None
     lesson: dict | None = None

@@ -420,3 +420,18 @@ class ProviderBackfillIn(BaseModel):
     examYear: int
     reset: bool = False
     clearBlock: bool = False
+
+
+class TopicAnswerIn(BaseModel):
+    questionId: str = Field(min_length=1, max_length=64)
+    # Graded here against the stored answer. Practice settles a question only
+    # once it is right, so it sends `firstTry` instead.
+    selectedAnswer: str | None = Field(default=None, max_length=8)
+    firstTry: bool | None = None
+    seconds: float | None = Field(default=None, ge=0, le=3600)
+
+
+class TopicAnswersIn(BaseModel):
+    subjectId: str = Field(min_length=1, max_length=64)
+    topic: str = Field(min_length=1, max_length=64)
+    answers: list[TopicAnswerIn] = Field(min_length=1, max_length=50)

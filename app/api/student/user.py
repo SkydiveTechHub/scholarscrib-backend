@@ -9,12 +9,10 @@ from app.api.responses import (
     MessageOut,
     PreferencesOut,
     ProfileUpdateOut,
-    RevokedOut,
     SettingsProfileOut,
 )
 from app.api.schemas import (
     CompleteProfileIn,
-    DeviceIn,
     PasswordIn,
     PreferencePatch,
     ProfilePatch,
@@ -28,7 +26,6 @@ from app.services.auth import (
     ChangePasswordService,
     CompleteProfileService,
     GetSettingsProfileService,
-    RevokeDevicesService,
     SetAvatarService,
     UpdateNotificationPreferencesService,
     UpdateProfileService,
@@ -79,17 +76,6 @@ async def change_password(
         raise ApiError(404, "Account not found")
     return await ChangePasswordService(
         session, user, body.currentPassword, body.newPassword, student.device_id
-    ).process()
-
-
-@router.post("/devices", response_model=RevokedOut)
-async def revoke_device(
-    body: DeviceIn,
-    session: AnSession,
-    student: Annotated[StudentPrincipal, Depends(require_student)],
-):
-    return await RevokeDevicesService(
-        session, student.id, student.device_id, body
     ).process()
 
 
