@@ -5,6 +5,8 @@ import httpx
 from app.core.config import settings
 from app.database.models import ProviderFetch
 from app.services.provider.base import (
+    PROVIDER_PAPER_MAX_PAGES,
+    PROVIDER_PAPER_PAGE_LIMIT,
     DiscoveryResource,
     DrawResult,
     NormalizedQuestion,
@@ -13,8 +15,8 @@ from app.services.provider.base import (
     SearchPage,
 )
 
-ALOC_PAGE_LIMIT = 15
-ALOC_MAX_PAGES = 20
+ALOC_PAGE_LIMIT = PROVIDER_PAPER_PAGE_LIMIT
+ALOC_MAX_PAGES = PROVIDER_PAPER_MAX_PAGES
 ALOC_SEARCH_LIMIT = 50
 
 EXAM_ALIASES = {"JAMB": "jamb", "WAEC": "waec", "NECO": "neco"}
@@ -126,8 +128,10 @@ class AlocProvider(QuestionProvider):
                     cursor = pagination.get("nextCursor")
                     if not pagination.get("hasMore") or not cursor:
                         result.exhausted = True
+                        result.complete = True
                         return result
         except httpx.HTTPError:
+            result.status_code = 503
             return result if result.items else None
         result.exhausted = True
         return result
@@ -170,12 +174,18 @@ class AlocProvider(QuestionProvider):
             return SearchPage(status_code=response.status_code, body=response.text)
         payload = response.json()
         pagination = payload.get("pagination") or {}
+        credits = (payload.get("meta") or {}).get("creditsRemaining")
+        try:
+            credits_remaining = int(credits) if credits is not None else None
+        except (TypeError, ValueError):
+            credits_remaining = None
         return SearchPage(
             items=[
                 item for item in payload.get("data") or [] if isinstance(item, dict)
             ],
             next_cursor=pagination.get("nextCursor"),
             has_more=bool(pagination.get("hasMore")),
+            credits_remaining=credits_remaining,
         )
 
     def normalize(self, item: dict) -> NormalizedQuestion:

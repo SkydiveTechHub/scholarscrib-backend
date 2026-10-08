@@ -479,3 +479,55 @@ def _unique(questions: list[Question]) -> list[Question]:
             seen.add(question.id)
             out.append(question)
     return out
+
+
+class GetPastPaperHistoryService:
+    """A student's completed sittings of one subject's past papers, by year."""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        student_id: str,
+        *,
+        subject_key: str,
+        exam: str,
+        provider: QuestionProvider | None = None,
+    ) -> None:
+        self.session = session
+        self.student_id = student_id
+        self.subject_key = subject_key
+        self.exam = exam
+        self.provider = provider or ProviderFactory.create()
+
+    async def process(self) -> dict:
+        exam_type = exam_type_for(self.exam)
+        if exam_type is None:
+            raise ApiError(400, "This exam isn't available for past papers.")
+        try:
+            subject = await resolve_subject(
+                self.session, self.provider, self.subject_key
+            )
+        except ApiError:
+            # A subject we can't map has nothing sat against it.
+            return {"years": []}
+        rows = await attempts_repository.completed_past_papers(
+            self.session,
+            self.student_id,
+            subject_id=subject.id,
+            exam_type=exam_type,
+        )
+        by_year: dict[int, list[dict]] = {}
+        for attempt, year in rows:
+            by_year.setdefault(year, []).append(
+                {
+                    "attemptId": attempt.id,
+                    "completedAt": attempt.completed_at.isoformat(),
+                    "percentage": attempt.percentage,
+                }
+            )
+        return {
+            "years": [
+                {"year": year, "attempts": attempts}
+                for year, attempts in sorted(by_year.items(), reverse=True)
+            ]
+        }

@@ -197,6 +197,22 @@ class PastPaperPageOut(ApiOut):
     deadlineAt: str | None = None
 
 
+class PastPaperAttemptOut(ApiOut):
+    attemptId: str
+    completedAt: str
+    percentage: float | None = None
+
+
+class PastPaperYearHistoryOut(ApiOut):
+    year: int
+    # Oldest first, so the list reads as a progression.
+    attempts: list[PastPaperAttemptOut]
+
+
+class PastPaperHistoryOut(ApiOut):
+    years: list[PastPaperYearHistoryOut]
+
+
 class AttemptResultOut(ApiOut):
     attemptId: str
     assessmentTitle: str | None = None

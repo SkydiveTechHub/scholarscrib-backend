@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends
+from redis_fastapi import AsyncRedisDep
 
 from app.api.deps import StudentPrincipal, require_student
 from app.api.responses import (
@@ -9,6 +10,7 @@ from app.api.responses import (
     JambOptionsOut,
     JambPrepareOut,
     MockOptionsOut,
+    PastPaperHistoryOut,
     PastPaperPageOut,
     QuizOut,
 )
@@ -23,6 +25,7 @@ from app.api.schemas import (
 )
 from app.core.config import settings
 from app.core.errors import ApiError, RateLimited
+from app.core.logger import logger
 from app.core.rate_limit import hit
 from app.database.db import AnSession, get_session
 from app.services.assessments import (
@@ -34,6 +37,7 @@ from app.services.assessments import (
     GetBoardReadinessService,
     GetJambCatalogueService,
     GetMockOptionsService,
+    GetPastPaperHistoryService,
     StartPastPaperService,
     SubmitAttemptService,
     SyncJambPaperService,
@@ -41,6 +45,7 @@ from app.services.assessments import (
 from app.services.learning import AwardAchievementsService
 from app.services.planner import MarkStudyPlanItemService
 from app.services.provider import EnsureProviderQuestionsService
+from app.services.provider.cache import AsyncRedisClient
 
 router = APIRouter(prefix="/assessments", tags=["Student / Assessments"])
 
@@ -50,6 +55,7 @@ async def generate_quiz(
     body: GenerateQuizIn,
     background: BackgroundTasks,
     session: AnSession,
+    redis: AsyncRedisDep,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"generate:{student.id}", 20, 60)
@@ -61,21 +67,27 @@ async def generate_quiz(
             hit("provider:outbound", 30, 60)
         except RateLimited:
             return False
-        background.add_task(_provider_job, subject.slug, exam_type, exam_year)
+        background.add_task(_provider_job, subject.slug, exam_type, exam_year, redis)
         return True
 
     return await GenerateQuizService(session, student.id, body, schedule).process()
 
 
-async def _provider_job(slug: str, exam_type: str, exam_year: int) -> None:
+async def _provider_job(
+    slug: str,
+    exam_type: str,
+    exam_year: int,
+    redis: AsyncRedisClient,
+) -> None:
     async with get_session() as session:
         try:
             await EnsureProviderQuestionsService(
-                session, slug, exam_type, exam_year
+                session, slug, exam_type, exam_year, redis=redis
             ).process()
             await session.commit()
         except Exception:
             await session.rollback()
+            logger.exception("Provider question backfill failed")
 
 
 @router.post("/past-paper", response_model=QuizOut)
@@ -91,6 +103,18 @@ async def start_past_paper(
         subject_key=body.subject,
         exam=body.examType,
         exam_year=body.examYear,
+    ).process()
+
+
+@router.get("/past-paper/history", response_model=PastPaperHistoryOut)
+async def past_paper_history(
+    subject: str,
+    examType: str,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    return await GetPastPaperHistoryService(
+        session, student.id, subject_key=subject, exam=examType
     ).process()
 
 

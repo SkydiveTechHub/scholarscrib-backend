@@ -6,7 +6,7 @@ Design spec: `docs/superpowers/specs/2026-09-01-question-provider-cache-design.m
 
 ## Enablement
 
-Fetches are scheduled only when `QUESTION_PROVIDER_ENABLED` is the string `"true"`. `SDASH_ACCESS_TOKEN` is required to actually call the API. `SDASH_BASE_URL` defaults to `https://sdashapi.com/api`.
+Fetches are scheduled only when `QUESTION_PROVIDER_ENABLED` is the string `"true"`. `SDASH_ACCESS_TOKEN` is required to actually call the API. `SDASH_BASE_URL` defaults to `https://www.sdashapi.com/api`.
 
 The assessment path also spends a global rate budget: key `provider:outbound`, 30 per 60 seconds. If the budget is exhausted, generation continues with whatever is already in Postgres and does not schedule a draw.
 
@@ -102,3 +102,41 @@ Promoted `Question` rows are ordinary objective questions: `examType`, `examYear
 - Do not mark `SATURATED` before staging the raw payload. The raw JSON is the audit trail and the input for a future mapper version.
 - Bumping `MAPPER_VERSION` should reprocess `PENDING` rows, not rewrite `PROMOTED` ones that students have already seen.
 - `ProviderCatalogue` is a separate table filled offline. The past-paper picker shows those years with `cached: false` so the UI can offer a paper that will 503-then-fill on first generate.
+
+## Current Python API: shared provider cache for question listings
+
+The Python API also uses a Redis cache for `GET /questions`. The page-response
+cache still stores a response by page, and provider results use a second,
+shared per-filter cache so changing the local pagination cursor does not invoke
+another provider request.
+
+- The cache key uses normalized provider, subject, exam, and year; it does not
+  include the requested page size or local cursor.
+- ALOC uses its cursor API to walk a complete result (15 items per page, up to
+  20 pages) before publishing ordered raw payloads and completion metadata to
+  a Redis hash.
+- SDASH follows its documented `GET /api/v1/q` contract: `AccessToken`
+  authentication and `subject`, `type`, `year`, and `limit` filters. Since its
+  endpoint returns random batches of up to 50 with no provider cursor or total,
+  its Redis entry is explicitly marked `sampled`, not complete. A cache miss
+  fetches one batch; local pagination serves that stable cached sample.
+- Explicit SDASH backfill/saturation can append additional random batches to
+  the same pool. Questions are deduplicated by provider question ID, with a
+  stable payload hash fallback, and the existing diminishing-returns and
+  maximum-draw limits still apply. Listing and ledger ingestion share this
+  pool; ordinary ingestion reuses it without forcing another sample.
+- A Redis string key acts as the fill/enrichment lease. Complete walks,
+  non-empty sampled batches, and confirmed not-found results are cacheable;
+  failed or incomplete provider results are not published as successful data.
+- API pagination uses an opaque cursor containing the local offset and paper
+  identity. Cursors are scoped to their provider/filter cache; an old provider
+  cursor or one from a different filter is rejected. The pagination `coverage`
+  field is `complete` or `sampled`; for a sampled pool, `hasMore` only means
+  more cached sample items are available, not that the provider has no more.
+- The paper cache expires after 90 days. Early Redis eviction is still
+  possible; deployments that need to minimize repeat provider charges must
+  size Redis and configure persistence/eviction accordingly.
+- Provider-ledger backfill reads the same Redis paper when present and still
+  promotes usable questions to PostgreSQL, because assessments depend on
+  database question IDs. Redis outages are surfaced instead of being treated
+  as cache misses that trigger another paid fetch.

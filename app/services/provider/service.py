@@ -26,9 +26,20 @@ from app.services.catalogue import bust_catalogue, public_question
 from app.services.provider.base import (
     DiscoveryResource,
     DrawResult,
+    PaperFetchMode,
     ProviderNotFound,
     QuestionProvider,
     SearchPage,
+)
+from app.services.provider.cache import (
+    AsyncRedisClient,
+    PaperCacheError,
+    decode_page_cursor,
+    fetch_provider_paper,
+    get_or_fill_paper,
+    paginate_paper,
+    paper_cache_id,
+    sample_item_identity,
 )
 from app.services.provider.factory import ProviderFactory
 from app.services.provider.mapping import map_item, map_topic, provider_topic_filters
@@ -63,6 +74,9 @@ class EnsureProviderQuestionsService:
         exam_year: int,
         limit: int = 50,
         provider: QuestionProvider | None = None,
+        *,
+        redis: AsyncRedisClient,
+        enrich_sample: bool = False,
     ) -> None:
         self.session = session
         self.subject_slug = subject_slug
@@ -70,6 +84,8 @@ class EnsureProviderQuestionsService:
         self.exam_year = exam_year
         self.limit = limit
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
+        self.enrich_sample = enrich_sample
 
     async def process(self) -> dict:
         subject = await subjects_repository.by_slug(self.session, self.subject_slug)
@@ -93,19 +109,10 @@ class EnsureProviderQuestionsService:
         row = await self._lease(row, subject, key, now)
         await self.session.flush()
         state = await load_provider_state(self.session, self.provider.name)
-        if state.circuit == "BLOCKED" or (
-            state.circuit == "EXHAUSTED"
-            and state.cooldown_until
-            and state.cooldown_until > now
-        ):
-            return {
-                "status": row.status,
-                "circuit": state.circuit,
-                "cacheKey": key,
-            }
-        if not self.provider.configured:
-            return {"status": row.status, "cacheKey": key}
-        await self._draw(row, subject)
+        try:
+            await self._draw(row, subject, state)
+        except PaperCacheError as error:
+            raise ApiError(503, str(error)) from error
         return {
             "status": row.status,
             "cacheKey": key,
@@ -151,13 +158,38 @@ class EnsureProviderQuestionsService:
             row.subject_id = subject.id
         return row
 
-    async def _draw(self, row: ProviderFetch, subject: Subject) -> None:
-        result = await self.provider.draw(
-            subject.slug, self.exam_type, self.exam_year, self.limit
+    async def _draw(
+        self, row: ProviderFetch, subject: Subject, state: ProviderState
+    ) -> None:
+        async def load() -> DrawResult:
+            if state.circuit == "BLOCKED" or (
+                state.circuit == "EXHAUSTED"
+                and state.cooldown_until
+                and state.cooldown_until > utcnow()
+            ):
+                return DrawResult(status_code=503, body="Provider circuit is open.")
+            if not self.provider.configured:
+                return DrawResult(status_code=503, body="Provider is not configured.")
+            return await fetch_provider_paper(
+                self.provider,
+                subject_slug=subject.slug,
+                exam_type=self.exam_type,
+                exam_year=self.exam_year,
+            )
+
+        cache_id = paper_cache_id(
+            self.provider.name, subject.slug, self.exam_type, self.exam_year
         )
-        if result is None:
-            return
-        state = await load_provider_state(self.session, self.provider.name)
+        result = await get_or_fill_paper(
+            self.redis,
+            cache_id=cache_id,
+            loader=load,
+            enrich_sample=(
+                self.enrich_sample
+                and self.provider.paper_fetch_mode == PaperFetchMode.SAMPLED
+            ),
+            item_identity=lambda item: sample_item_identity(self.provider, item),
+        )
         if result.credits_remaining is not None:
             state.credits_remaining = result.credits_remaining
         if result.failed:
@@ -183,10 +215,20 @@ class EnsureProviderQuestionsService:
                 continue
             if await self._stage_item(row, subject, item, topics):
                 new_count += 1
-        row.draw_count += 1
-        row.raw_count += len(result.items)
+        row.draw_count += int(result.last_batch_count is not None)
+        row.raw_count += (
+            result.last_batch_count
+            if result.last_batch_count is not None
+            else len(result.items)
+        )
         row.new_in_last_draw = new_count
-        if not result.failed and self.provider.should_saturate(row, result, new_count):
+        if not result.failed and (
+            result.complete
+            or (
+                result.last_batch_count is not None
+                and self.provider.should_saturate(row, result, new_count)
+            )
+        ):
             row.status = "SATURATED"
             bust_catalogue()
 
@@ -268,12 +310,15 @@ class SaturateProviderService:
         exam_type: str,
         exam_year: int,
         provider: QuestionProvider | None = None,
+        *,
+        redis: AsyncRedisClient,
     ) -> None:
         self.session = session
         self.subject_slug = subject_slug
         self.exam_type = exam_type
         self.exam_year = exam_year
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
 
     async def process(self) -> dict:
         last = {}
@@ -284,8 +329,14 @@ class SaturateProviderService:
                 self.exam_type,
                 self.exam_year,
                 provider=self.provider,
+                redis=self.redis,
+                enrich_sample=(
+                    self.provider.paper_fetch_mode == PaperFetchMode.SAMPLED
+                ),
             ).process()
-            if last.get("status") in {"SATURATED", "FAILED"}:
+            if last.get("status") in {"SATURATED", "FAILED"} or (
+                self.provider.paper_fetch_mode == PaperFetchMode.COMPLETE
+            ):
                 break
         return last
 
@@ -344,6 +395,7 @@ class SearchProviderQuestionsService:
         limit: int,
         cursor: str | None = None,
         provider: QuestionProvider | None = None,
+        redis: AsyncRedisClient,
     ) -> None:
         self.session = session
         self.subject_key = subject_key
@@ -352,19 +404,64 @@ class SearchProviderQuestionsService:
         self.limit = limit
         self.cursor = cursor
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
 
     async def process(self) -> dict:
         if not (self.subject_key or self.exam_type or self.exam_year):
             raise ApiError(400, "Pass at least one of subjectId, examType or examYear")
-        if not self.provider.configured:
-            raise ApiError(503, "Questions are unavailable right now.")
         subject = (
             await subjects_repository.by_id_or_slug(self.session, self.subject_key)
             if self.subject_key
             else None
         )
+        subject_slug = subject.slug if subject else self.subject_key
+        use_shared_cache = (
+            self.subject_key and self.exam_type and self.exam_year is not None
+        ) or self.provider.paper_fetch_mode == PaperFetchMode.SAMPLED
+        if use_shared_cache:
+            paper_year = self.exam_year
+            cache_id = paper_cache_id(
+                self.provider.name, subject_slug, self.exam_type, paper_year
+            )
+            if self.cursor:
+                try:
+                    decode_page_cursor(self.cursor, cache_id)
+                except ValueError as error:
+                    raise ApiError(400, str(error)) from error
+
+            async def load_paper() -> DrawResult:
+                if not self.provider.configured:
+                    return DrawResult(status_code=503)
+                return await fetch_provider_paper(
+                    self.provider,
+                    subject_slug=subject_slug.strip().lower() if subject_slug else None,
+                    exam_type=self.exam_type,
+                    exam_year=paper_year,
+                )
+
+            try:
+                paper = await get_or_fill_paper(
+                    self.redis, cache_id=cache_id, loader=load_paper
+                )
+            except PaperCacheError as error:
+                raise ApiError(503, str(error)) from error
+            if not paper.cacheable or (paper.failed and paper.status_code != 404):
+                if paper.status_code == 429:
+                    raise ApiError(
+                        503, "Too many question requests. Try again shortly."
+                    )
+                raise ApiError(503, "Questions are unavailable right now.")
+            try:
+                return paginate_paper(
+                    paper, cache_id=cache_id, limit=self.limit, cursor=self.cursor
+                )
+            except ValueError as error:
+                raise ApiError(400, str(error)) from error
+
+        if not self.provider.configured:
+            raise ApiError(503, "Questions are unavailable right now.")
         page = await self.provider.search(
-            subject_slug=subject.slug if subject else self.subject_key,
+            subject_slug=subject_slug,
             exam_type=self.exam_type,
             exam_year=self.exam_year,
             limit=self.limit,

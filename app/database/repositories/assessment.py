@@ -152,6 +152,35 @@ class AssessmentAttemptRepository(BaseRepository[AssessmentAttempt]):
         )
         return [(row[0], row[1]) for row in result.all()]
 
+    async def completed_past_papers(
+        self,
+        session: AsyncSession,
+        student_id: str,
+        *,
+        subject_id: str,
+        exam_type: str,
+    ) -> list[tuple[AssessmentAttempt, int]]:
+        """Completed past-paper sittings for one subject and exam, oldest first.
+
+        Each row is the attempt with the exam year of its paper.
+        """
+        result = await self.rows(
+            session,
+            select(AssessmentAttempt, Assessment.exam_year)
+            .join(Assessment, Assessment.id == AssessmentAttempt.assessment_id)
+            .where(
+                AssessmentAttempt.student_id == student_id,
+                AssessmentAttempt.status == "COMPLETED",
+                AssessmentAttempt.completed_at.is_not(None),
+                Assessment.assessment_type == "PAST_PAPER",
+                Assessment.subject_id == subject_id,
+                Assessment.exam_type == exam_type,
+                Assessment.exam_year.is_not(None),
+            )
+            .order_by(AssessmentAttempt.completed_at.asc()),
+        )
+        return [(row[0], row[1]) for row in result.all()]
+
     async def latest_completed_topic_quiz(
         self, session: AsyncSession, student_id: str, subject_id: str
     ) -> AssessmentAttempt | None:
