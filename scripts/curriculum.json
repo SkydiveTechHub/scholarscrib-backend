@@ -301,26 +301,26 @@
         {
           "title": "Revision: Mechanics",
           "estimatedMinutes": 90,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         },
         {
           "title": "Revision: Waves and Optics",
           "estimatedMinutes": 90,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         },
         {
           "title": "Revision: Electricity and Magnetism",
           "estimatedMinutes": 90,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         },
         {
           "title": "Past Question Drill",
           "estimatedMinutes": 120,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         }
       ]
     },
@@ -331,20 +331,20 @@
         {
           "title": "Mock WAEC Practice",
           "estimatedMinutes": 150,
-          "waecWeight": 1.0,
+          "waecWeight": 1,
           "jambWeight": 0.5
         },
         {
           "title": "JAMB CBT Simulation",
           "estimatedMinutes": 120,
           "waecWeight": 0.5,
-          "jambWeight": 1.0
+          "jambWeight": 1
         },
         {
           "title": "Final Revision and Exam Strategy",
           "estimatedMinutes": 60,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         }
       ]
     }
@@ -621,26 +621,26 @@
         {
           "title": "Revision: Algebra and Number",
           "estimatedMinutes": 90,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         },
         {
           "title": "Revision: Geometry and Trigonometry",
           "estimatedMinutes": 90,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         },
         {
           "title": "Revision: Statistics, Probability, Calculus",
           "estimatedMinutes": 90,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         },
         {
           "title": "Past Question Drill",
           "estimatedMinutes": 120,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         }
       ]
     },
@@ -651,20 +651,20 @@
         {
           "title": "Mock WAEC Practice",
           "estimatedMinutes": 150,
-          "waecWeight": 1.0,
+          "waecWeight": 1,
           "jambWeight": 0.5
         },
         {
           "title": "JAMB CBT Simulation",
           "estimatedMinutes": 120,
           "waecWeight": 0.5,
-          "jambWeight": 1.0
+          "jambWeight": 1
         },
         {
           "title": "Final Revision and Exam Strategy",
           "estimatedMinutes": 60,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         }
       ]
     }
@@ -839,8 +839,8 @@
         {
           "title": "Ecology",
           "estimatedMinutes": 90,
-          "waecWeight": 1.0,
-          "jambWeight": 1.0
+          "waecWeight": 1,
+          "jambWeight": 1
         }
       ]
     }
@@ -1173,7 +1173,25 @@
           "jambWeight": 0.5
         },
         {
-          "title": "Separation Techniques",
+          "title": "Particulate nature of matter",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Symbols, formulae and equations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Chemical combination",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "States of matter",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1185,13 +1203,25 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Particulate Nature of Matter",
+          "title": "Gas laws",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Atomic Structure",
+          "title": "Separation techniques",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Acids, bases and salts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Water",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1203,13 +1233,13 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "The Periodic Table",
+          "title": "Carbon and its compounds",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Chemical Bonding",
+          "title": "Chemical industries",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1221,25 +1251,19 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Chemical Reactions and Equations",
+          "title": "Periodic table",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Acids, Bases and Salts",
+          "title": "Families of elements",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS2",
-      "term": "SECOND",
-      "topics": [
+        },
         {
-          "title": "Oxidation and Reduction",
+          "title": "Redox reactions",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1249,6 +1273,42 @@
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
+        },
+        {
+          "title": "Electrochemical cells",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Chemical reactions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Energy and energy changes",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Chemical equilibrium",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Non-metals and their compounds",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
         }
       ]
     },
@@ -1257,13 +1317,31 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "Organic Chemistry: Hydrocarbons",
+          "title": "Water (SS2)",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Rates of Chemical Reactions",
+          "title": "Solubility",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Mass-volume relationships",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Volumetric analysis",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Organic chemistry basics",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1275,13 +1353,13 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Organic Chemistry: Alkanols and Alkanoic Acids",
+          "title": "Organic compounds",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Fats, Oils and Soaps",
+          "title": "Metals and their compounds",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1293,31 +1371,25 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Qualitative Analysis",
+          "title": "Nuclear chemistry",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Quantitative Analysis",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS3",
-      "term": "THIRD",
-      "topics": [
-        {
-          "title": "Nuclear Chemistry",
+          "title": "Shapes of molecules",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Industrial Chemistry",
+          "title": "Petroleum and crude oil",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Analysis",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1483,13 +1555,61 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Introduction to Agriculture",
+          "title": "Meaning and importance of agriculture",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Farm Tools and Equipment",
+          "title": "Problems of agricultural development and possible solutions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Subsistence and commercial agriculture",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Role of government in agricultural development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Role of non-governmental organisations in agricultural development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agricultural laws and reforms",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agricultural ecology",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Land and its uses",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Factors affecting land availability for agriculture",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agro-based industries and raw materials",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1501,13 +1621,37 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Soil Science",
+          "title": "Environmental factors affecting agricultural production",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Crop Production",
+          "title": "Soil formation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Soil profile development",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Types, composition and properties of soil",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Simple farm tools: uses and maintenance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Farm machinery and implements",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1519,7 +1663,37 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "Animal Production",
+          "title": "Maintenance practices and precautionary measures",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agricultural mechanization: problems and prospects",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Sources of farm power",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Classification of crops",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Husbandry of selected crops",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Pasture and forage crops",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1531,13 +1705,43 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Agricultural Ecology",
+          "title": "Animal by-products",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Farm Management",
+          "title": "Environmental physiology",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Surveying and planning of farmstead",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Irrigation and drainage",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Factors affecting nutrient availability in the soil",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Environmental factors affecting agricultural productivity and distribution",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Plant nutrients and nutrient cycle",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1549,13 +1753,37 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Agricultural Economics",
+          "title": "Forest management",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Livestock Management",
+          "title": "Floriculture and ornamental plants",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Diseases of crops",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Pests of crops",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Pasture, forage crops and range management",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Apiculture (bee keeping)",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1567,7 +1795,43 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "Fishery and Forestry",
+          "title": "Common weeds found on the farm",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Crop improvement",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Basic economic principles",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Farm records",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agricultural pollution",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Farm accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Animal nutrition",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1579,13 +1843,37 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Agricultural Extension",
+          "title": "Animal nutrition (malnutrition)",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Modern Agricultural Systems",
+          "title": "Agricultural extension",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Aquaculture",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Animal improvement",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Artificial insemination",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Agricultural financing",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1597,19 +1885,25 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Agricultural Marketing",
+          "title": "Agricultural marketing",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS3",
-      "term": "THIRD",
-      "topics": [
+        },
         {
-          "title": "Agricultural Records and Book Keeping",
+          "title": "Agricultural insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Animal diseases",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Farm records and accounts",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1891,13 +2185,61 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Introduction to Geography",
+          "title": "Meaning and importance of geography; the earth and other planets",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "The Earth as a Planet",
+          "title": "Earth's rotation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Earth's revolution",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Latitude",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Longitude",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Earth's structure",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Rocks",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Mountains",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Lowlands",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The environment",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1909,13 +2251,43 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Weather and Climate",
+          "title": "Nigeria: location and position",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Landforms",
+          "title": "Nigeria: physical setting (relief and drainage)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigeria: climate",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigeria: vegetation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigeria: population",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigeria: resources",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigeria: agriculture",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1927,7 +2299,55 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "Map Reading",
+          "title": "Nigeria: transport",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigeria: communication",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Manufacturing industries in Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigeria: commercial activities",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "ECOWAS",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Map reading and measurement of distances",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Conventional symbols, direction and bearing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Basic concepts of GIS",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Components of GIS",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1939,13 +2359,61 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "World Population",
+          "title": "External processes and landform development: action of running water",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Agriculture",
+          "title": "Action of wind",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Glacial action",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Action of waves",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Climate classification",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "World climatic types",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Vegetation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Environmental resources",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Renewable and non-renewable resources",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Environmental problems",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1957,13 +2425,49 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Transportation",
+          "title": "Environmental conservation",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Industrialization",
+          "title": "Transportation in Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Manufacturing industries in Nigeria (SS2)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Commercial activities in Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "World population",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Settlements",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Soil",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Geo-political issues: land reclamation",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1975,7 +2479,61 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "Settlement",
+          "title": "Geographic Information System (GIS)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Africa: location, size, position and political divisions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Africa: relief and drainage",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Africa: climate and vegetation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Lumbering in equatorial Africa (Zaire and Nigeria)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Irrigation agriculture in the Nile and Niger basins",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Plantation agriculture in West and East Africa",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Fruit farming in the Mediterranean regions of Africa",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Hydrosphere (ocean basin)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Earthquakes",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -1987,13 +2545,61 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Nigeria: Physical and Human Geography",
+          "title": "Volcanicity",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Economic Geography",
+          "title": "Karst (limestone) topography",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Denudational processes",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Weathering",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Mass movement",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Climatic change",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "ECOWAS (SS3)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "World trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Tourism",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Satellite remote sensing",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -2005,19 +2611,37 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Environmental Problems",
+          "title": "GIS application",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS3",
-      "term": "THIRD",
-      "topics": [
+        },
         {
-          "title": "Regional Geography",
+          "title": "Bush fallowing in West Africa",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Mining in Africa (copper, gold and petroleum)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Principles of elementary surveying",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Representation of relief forms",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Map reading",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -3853,13 +4477,37 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Introduction to Commerce",
+          "title": "Introduction to commerce",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "History of commerce",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Occupation",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
           "title": "Production",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Home trade",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -3871,7 +4519,133 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Trade",
+          "title": "Home trade: retail and wholesale",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Foreign trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS1",
+      "term": "THIRD",
+      "topics": [
+        {
+          "title": "Commodity exchange",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Sole proprietorship",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Partnership",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Money",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "FIRST",
+      "topics": [
+        {
+          "title": "Public enterprises",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Limited liability companies",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Cooperative societies",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Commodity exchange (SS2)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Benefits and constraints of commodity exchange",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Purchase and sale of goods in home and foreign trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Terms of trade",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        }
+      ]
+    },
+    {
+      "classLevel": "SS2",
+      "term": "SECOND",
+      "topics": [
+        {
+          "title": "Credit",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Trade associations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Other forms of trade associations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Types of insurance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Consumer protection",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -3885,11 +4659,35 @@
       ]
     },
     {
-      "classLevel": "SS1",
+      "classLevel": "SS2",
       "term": "THIRD",
       "topics": [
         {
           "title": "Warehousing",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The stock exchange",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Second tier securities market",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Capital",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Turnover",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -3903,83 +4701,53 @@
       ]
     },
     {
-      "classLevel": "SS2",
-      "term": "FIRST",
-      "topics": [
-        {
-          "title": "Banking and Finance",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        },
-        {
-          "title": "Insurance",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS2",
-      "term": "SECOND",
-      "topics": [
-        {
-          "title": "Marketing",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        },
-        {
-          "title": "Advertising and Sales Promotion",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS2",
-      "term": "THIRD",
-      "topics": [
-        {
-          "title": "Stock Exchange",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        },
-        {
-          "title": "Business Organizations",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        }
-      ]
-    },
-    {
       "classLevel": "SS3",
       "term": "FIRST",
       "topics": [
         {
-          "title": "Business Environment",
+          "title": "Business law and contracts",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Business Finance",
+          "title": "Law of agency",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Business Law",
+          "title": "Hire purchase and instalment payment",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Management and Organization",
+          "title": "Contract of sale of goods",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Contract of employment",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Government regulation of business",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Structure of business",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Introduction to business management",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -3991,49 +4759,31 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Labour and Trade Unions",
+          "title": "Introduction to marketing",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "International Trade",
+          "title": "Advertising",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Consumer Protection",
+          "title": "Business documents and means of payment",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Economic Integration",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS3",
-      "term": "THIRD",
-      "topics": [
-        {
-          "title": "Information Technology",
+          "title": "Privatisation and commercialisation",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Government and Business",
-          "estimatedMinutes": 45,
-          "waecWeight": 0.5,
-          "jambWeight": 0.5
-        },
-        {
-          "title": "Accounting Basics",
+          "title": "Economic groupings in West Africa",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4047,13 +4797,55 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Introduction to Accounting",
+          "title": "Introduction to accounting",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Source Documents",
+          "title": "History of accounting worldwide and in Nigeria",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Advantages and limitations of accounting",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Career opportunities in book keeping and accounting",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Accounting equation and double entry principle",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Sales and purchase journals",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "The ledger",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Double column cash book",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Discounts",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4065,13 +4857,55 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Books of Accounts",
+          "title": "Three column cash book",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "The Ledger",
+          "title": "Petty cash book",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Posting subsidiary books into ledgers",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Trial balance",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Accounting concepts and conventions",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Final accounts of a sole trader",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Balance sheet",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Simple accounting ratios",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Adjustments to final accounts",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4083,7 +4917,37 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "Trial Balance",
+          "title": "Depreciation of fixed assets",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Methods of depreciation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Accounting for provision for depreciation",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Final accounts with end-of-year adjustments",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Departmental accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Bank reconciliation statement",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4095,13 +4959,31 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Final Accounts",
+          "title": "Suspense account",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Adjustments",
+          "title": "Effects of errors on reported profit",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Manufacturing accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Control accounts and self-balancing ledgers",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Single entry and incomplete records",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4113,13 +4995,31 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Depreciation",
+          "title": "Single entry and incomplete records (conversion to double entry)",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Control Accounts",
+          "title": "Accounts of non-profit-making organisations",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Receipts and payments account",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Income and expenditure account",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Partnership accounts",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4131,7 +5031,31 @@
       "term": "THIRD",
       "topics": [
         {
-          "title": "Bank Reconciliation",
+          "title": "Dissolution of partnership",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Company accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Balance sheets",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Issue of shares and debentures",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Interpretation of financial statements using ratios",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4143,13 +5067,43 @@
       "term": "FIRST",
       "topics": [
         {
-          "title": "Partnership Accounts",
+          "title": "Nigerian financial system",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Company Accounts",
+          "title": "Capital market",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Loan capital",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Securities and Exchange Commission (SEC)",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Nigerian Stock Exchange",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Acquisition (purchase) of business",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Public sector accounting",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
@@ -4161,25 +5115,37 @@
       "term": "SECOND",
       "topics": [
         {
-          "title": "Manufacturing Accounts",
+          "title": "Personal cost budget",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
         },
         {
-          "title": "Interpretation of Accounts",
+          "title": "Branch accounts",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
-        }
-      ]
-    },
-    {
-      "classLevel": "SS3",
-      "term": "THIRD",
-      "topics": [
+        },
         {
-          "title": "Public Sector Accounting",
+          "title": "Joint venture accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Consignment accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Hire purchase accounts",
+          "estimatedMinutes": 45,
+          "waecWeight": 0.5,
+          "jambWeight": 0.5
+        },
+        {
+          "title": "Contract accounts",
           "estimatedMinutes": 45,
           "waecWeight": 0.5,
           "jambWeight": 0.5
