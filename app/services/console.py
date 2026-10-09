@@ -3,6 +3,7 @@
 from datetime import date, timedelta
 from urllib.parse import urlparse
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import (
@@ -10,12 +11,18 @@ from app.api.schemas import (
     AnnouncementCreateIn,
     AnnouncementTestIn,
     AudienceIn,
+    CurriculumCreateIn,
+    CurriculumPatchIn,
     ImportQuestionIn,
     ImportQuestionsIn,
     LessonImportIn,
     MaterialCreateIn,
     MaterialPatchIn,
     QuestionPatchIn,
+    SubjectCreateIn,
+    SubjectPatchIn,
+    TopicCreateIn,
+    TopicPatchIn,
 )
 from app.core.config import settings
 from app.core.errors import ApiError
@@ -27,12 +34,14 @@ from app.database.models import (
     AnnouncementDelivery,
     AnnouncementDismissal,
     AssessmentAttempt,
+    CurriculumLevel,
     FlashcardDeck,
     FlashcardReview,
     LearningEvent,
     Lesson,
     Question,
     StudentProgress,
+    Subject,
     SubjectResource,
     Subtopic,
     Topic,
@@ -45,6 +54,7 @@ from app.database.repositories.assessment import (
     responses_repository,
 )
 from app.database.repositories.curriculum import (
+    curriculum_levels_repository,
     lessons_repository,
     subject_resources_repository,
     subjects_repository,
@@ -77,6 +87,7 @@ from app.services.admin import (
 from app.services.catalogue import bust_catalogue
 from app.services.lessons.markdown import validate_lesson_markdown
 from app.services.planner.term_context import TermRange
+from app.services.provider.mapping import slugify
 from app.services.provider.rules import objective_ok
 from app.services.push import send_notification
 
@@ -601,6 +612,444 @@ class DeleteMaterialService:
             row.id,
         ).process()
         await subject_resources_repository.remove(self.session, row)
+        return {"ok": True}
+
+
+class ListAdminSubjectsService:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def process(self) -> list[dict]:
+        rows = await subjects_repository.ordered(self.session)
+        payload = []
+        for row in rows:
+            payload.append(
+                {
+                    **_admin_subject(row),
+                    "_count": {
+                        "topics": await topics_repository.count_for_subject(
+                            self.session, row.id
+                        ),
+                        "questions": await questions_repository.count_for_subject(
+                            self.session, row.id
+                        ),
+                    },
+                }
+            )
+        return payload
+
+
+class CreateSubjectService:
+    def __init__(
+        self, session: AsyncSession, actor_id: str, body: SubjectCreateIn
+    ) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.body = body
+
+    async def process(self) -> dict:
+        subject = Subject(
+            id=cuid(),
+            name=self.body.name.strip(),
+            slug=slugify(self.body.name),
+            code=self.body.code.strip().upper(),
+            track_category=self.body.trackCategory,
+            is_waec=self.body.isWaec,
+            is_jamb=self.body.isJamb,
+            is_neco=self.body.isNeco,
+            is_active=self.body.isActive,
+        )
+        try:
+            await subjects_repository.add(self.session, subject, flush=True)
+        except IntegrityError as exc:
+            raise ApiError(
+                409, "A subject with that name, slug, or code already exists"
+            ) from exc
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "subject.create",
+            "Subject",
+            subject.name,
+            subject.id,
+        ).process()
+        bust_catalogue()
+        return _admin_subject(subject)
+
+
+class UpdateSubjectService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        actor_id: str,
+        subject_id: str,
+        body: SubjectPatchIn,
+    ) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.subject_id = subject_id
+        self.body = body
+
+    async def process(self) -> dict:
+        subject = await subjects_repository.by_id(self.session, self.subject_id)
+        if subject is None:
+            raise ApiError(404, "Subject not found")
+        self._apply(subject)
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise ApiError(
+                409, "A subject with that name, slug, or code already exists"
+            ) from exc
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "subject.update",
+            "Subject",
+            subject.name,
+            subject.id,
+        ).process()
+        bust_catalogue()
+        return _admin_subject(subject)
+
+    def _apply(self, subject: Subject) -> None:
+        fields = self.body.model_fields_set
+        if "name" in fields and self.body.name is not None:
+            subject.name = self.body.name.strip()
+            subject.slug = slugify(self.body.name)
+        if "code" in fields and self.body.code is not None:
+            subject.code = self.body.code.strip().upper()
+        if "trackCategory" in fields and self.body.trackCategory is not None:
+            subject.track_category = self.body.trackCategory
+        for key, attr in (
+            ("isWaec", "is_waec"),
+            ("isJamb", "is_jamb"),
+            ("isNeco", "is_neco"),
+            ("isActive", "is_active"),
+        ):
+            value = getattr(self.body, key)
+            if key in fields and value is not None:
+                setattr(subject, attr, value)
+
+
+class DeleteSubjectService:
+    def __init__(self, session: AsyncSession, actor_id: str, subject_id: str) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.subject_id = subject_id
+
+    async def process(self) -> dict:
+        subject = await subjects_repository.by_id(self.session, self.subject_id)
+        if subject is None:
+            raise ApiError(404, "Subject not found")
+        question_count = await questions_repository.count_for_subject(
+            self.session, subject.id
+        )
+        if question_count:
+            raise ApiError(409, f"This subject still has {question_count} questions")
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "subject.delete",
+            "Subject",
+            subject.name,
+            subject.id,
+        ).process()
+        await subjects_repository.remove(self.session, subject)
+        bust_catalogue()
+        return {"ok": True}
+
+
+class ListAdminCurriculumsService:
+    def __init__(self, session: AsyncSession, subject_id: str | None) -> None:
+        self.session = session
+        self.subject_id = subject_id
+
+    async def process(self) -> list[dict]:
+        if self.subject_id:
+            rows = await curriculum_levels_repository.for_subject(
+                self.session, self.subject_id
+            )
+        else:
+            rows = await curriculum_levels_repository.all_ordered(
+                self.session,
+                CurriculumLevel.class_level,
+                CurriculumLevel.term,
+            )
+        return [_admin_curriculum(row) for row in rows]
+
+
+class CreateCurriculumService:
+    def __init__(
+        self, session: AsyncSession, actor_id: str, body: CurriculumCreateIn
+    ) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.body = body
+
+    async def process(self) -> dict:
+        subject = await subjects_repository.by_id(self.session, self.body.subjectId)
+        if subject is None:
+            raise ApiError(400, "Unknown subject")
+        existing = await curriculum_levels_repository.for_subject_term(
+            self.session, subject.id, self.body.classLevel, self.body.term
+        )
+        if existing is not None:
+            raise ApiError(409, "That subject already has this class level and term")
+        row = CurriculumLevel(
+            id=cuid(),
+            subject_id=subject.id,
+            class_level=self.body.classLevel,
+            term=self.body.term,
+        )
+        try:
+            await curriculum_levels_repository.add(self.session, row, flush=True)
+        except IntegrityError as exc:
+            raise ApiError(
+                409, "That subject already has this class level and term"
+            ) from exc
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "curriculum.create",
+            "CurriculumLevel",
+            f"{subject.name} {self.body.classLevel} {self.body.term}",
+            row.id,
+        ).process()
+        return _admin_curriculum(row)
+
+
+class UpdateCurriculumService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        actor_id: str,
+        curriculum_id: str,
+        body: CurriculumPatchIn,
+    ) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.curriculum_id = curriculum_id
+        self.body = body
+
+    async def process(self) -> dict:
+        row = await curriculum_levels_repository.by_id(self.session, self.curriculum_id)
+        if row is None:
+            raise ApiError(404, "Curriculum level not found")
+        fields = self.body.model_fields_set
+        class_level = row.class_level
+        term = row.term
+        if "classLevel" in fields and self.body.classLevel is not None:
+            class_level = self.body.classLevel
+        if "term" in fields and self.body.term is not None:
+            term = self.body.term
+        if (class_level, term) != (row.class_level, row.term):
+            clash = await curriculum_levels_repository.for_subject_term(
+                self.session, row.subject_id, class_level, term
+            )
+            if clash is not None:
+                raise ApiError(
+                    409, "That subject already has this class level and term"
+                )
+            row.class_level = class_level
+            row.term = term
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise ApiError(
+                409, "That subject already has this class level and term"
+            ) from exc
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "curriculum.update",
+            "CurriculumLevel",
+            f"{row.class_level} {row.term}",
+            row.id,
+        ).process()
+        return _admin_curriculum(row)
+
+
+class DeleteCurriculumService:
+    def __init__(
+        self, session: AsyncSession, actor_id: str, curriculum_id: str
+    ) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.curriculum_id = curriculum_id
+
+    async def process(self) -> dict:
+        row = await curriculum_levels_repository.by_id(self.session, self.curriculum_id)
+        if row is None:
+            raise ApiError(404, "Curriculum level not found")
+        topic_count = await topics_repository.count(
+            self.session, Topic.curriculum_level_id == row.id
+        )
+        if topic_count:
+            raise ApiError(409, "Delete or move this curriculum's topics first")
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "curriculum.delete",
+            "CurriculumLevel",
+            f"{row.class_level} {row.term}",
+            row.id,
+        ).process()
+        await curriculum_levels_repository.remove(self.session, row)
+        return {"ok": True}
+
+
+class ListAdminTopicsService:
+    def __init__(self, session: AsyncSession, curriculum_id: str) -> None:
+        self.session = session
+        self.curriculum_id = curriculum_id
+
+    async def process(self) -> list[dict]:
+        level = await curriculum_levels_repository.by_id(
+            self.session, self.curriculum_id
+        )
+        if level is None:
+            raise ApiError(404, "Curriculum level not found")
+        rows = await topics_repository.for_level(self.session, level.id)
+        return [_admin_topic(row) for row in rows]
+
+
+class CreateTopicService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        actor_id: str,
+        curriculum_id: str,
+        body: TopicCreateIn,
+    ) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.curriculum_id = curriculum_id
+        self.body = body
+
+    async def process(self) -> dict:
+        level = await curriculum_levels_repository.by_id(
+            self.session, self.curriculum_id
+        )
+        if level is None:
+            raise ApiError(404, "Curriculum level not found")
+        slug = slugify(self.body.title)
+        existing = await topics_repository.by_slug(self.session, level.subject_id, slug)
+        if existing is not None:
+            raise ApiError(409, "That subject already has a topic with this title")
+        order = self.body.orderIndex
+        if order is None:
+            order = (
+                await topics_repository.max_order_for_level(self.session, level.id) + 1
+            )
+        row = Topic(
+            id=cuid(),
+            subject_id=level.subject_id,
+            curriculum_level_id=level.id,
+            title=self.body.title.strip(),
+            slug=slug,
+            order_index=order,
+            estimated_minutes=self.body.estimatedMinutes,
+            waec_weight=self.body.waecWeight,
+            jamb_weight=self.body.jambWeight,
+        )
+        try:
+            await topics_repository.add(self.session, row, flush=True)
+        except IntegrityError as exc:
+            raise ApiError(
+                409, "That subject already has a topic with this title"
+            ) from exc
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "topic.create",
+            "Topic",
+            row.title,
+            row.id,
+        ).process()
+        return _admin_topic(row)
+
+
+class UpdateTopicService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        actor_id: str,
+        topic_id: str,
+        body: TopicPatchIn,
+    ) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.topic_id = topic_id
+        self.body = body
+
+    async def process(self) -> dict:
+        row = await topics_repository.by_id(self.session, self.topic_id)
+        if row is None:
+            raise ApiError(404, "Topic not found")
+        await self._apply(row)
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise ApiError(
+                409, "That subject already has a topic with this title"
+            ) from exc
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "topic.update",
+            "Topic",
+            row.title,
+            row.id,
+        ).process()
+        return _admin_topic(row)
+
+    async def _apply(self, row: Topic) -> None:
+        fields = self.body.model_fields_set
+        if "title" in fields and self.body.title is not None:
+            row.title = self.body.title.strip()
+            row.slug = slugify(self.body.title)
+        if "curriculumLevelId" in fields and self.body.curriculumLevelId is not None:
+            level = await curriculum_levels_repository.by_id(
+                self.session, self.body.curriculumLevelId
+            )
+            if level is None or level.subject_id != row.subject_id:
+                raise ApiError(400, "Curriculum level does not belong to this subject")
+            row.curriculum_level_id = level.id
+        if "orderIndex" in fields and self.body.orderIndex is not None:
+            row.order_index = self.body.orderIndex
+        if "estimatedMinutes" in fields and self.body.estimatedMinutes is not None:
+            row.estimated_minutes = self.body.estimatedMinutes
+        if "waecWeight" in fields and self.body.waecWeight is not None:
+            row.waec_weight = self.body.waecWeight
+        if "jambWeight" in fields and self.body.jambWeight is not None:
+            row.jamb_weight = self.body.jambWeight
+
+
+class DeleteTopicService:
+    def __init__(self, session: AsyncSession, actor_id: str, topic_id: str) -> None:
+        self.session = session
+        self.actor_id = actor_id
+        self.topic_id = topic_id
+
+    async def process(self) -> dict:
+        row = await topics_repository.by_id(self.session, self.topic_id)
+        if row is None:
+            raise ApiError(404, "Topic not found")
+        question_count = await questions_repository.count_for_topic(
+            self.session, row.id
+        )
+        if question_count:
+            raise ApiError(409, f"This topic still has {question_count} questions")
+        await RecordAuditService(
+            self.session,
+            self.actor_id,
+            "topic.delete",
+            "Topic",
+            row.title,
+            row.id,
+        ).process()
+        await topics_repository.remove(self.session, row)
         return {"ok": True}
 
 
@@ -1346,6 +1795,43 @@ def _material(row: SubjectResource) -> dict:
         "author": row.author,
         "isFree": row.is_free,
         "orderIndex": row.order_index,
+    }
+
+
+def _admin_subject(row: Subject) -> dict:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "slug": row.slug,
+        "code": row.code,
+        "isWaec": row.is_waec,
+        "isJamb": row.is_jamb,
+        "isNeco": row.is_neco,
+        "trackCategory": row.track_category,
+        "isActive": row.is_active,
+    }
+
+
+def _admin_curriculum(row: CurriculumLevel) -> dict:
+    return {
+        "id": row.id,
+        "subjectId": row.subject_id,
+        "classLevel": row.class_level,
+        "term": row.term,
+    }
+
+
+def _admin_topic(row: Topic) -> dict:
+    return {
+        "id": row.id,
+        "subjectId": row.subject_id,
+        "curriculumLevelId": row.curriculum_level_id,
+        "title": row.title,
+        "slug": row.slug,
+        "orderIndex": row.order_index,
+        "estimatedMinutes": row.estimated_minutes,
+        "waecWeight": row.waec_weight,
+        "jambWeight": row.jamb_weight,
     }
 
 

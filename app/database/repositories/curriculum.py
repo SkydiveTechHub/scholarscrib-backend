@@ -35,6 +35,22 @@ class SubjectRepository(BaseRepository[Subject]):
     async def ordered(self, session: AsyncSession) -> list[Subject]:
         return await self.all_ordered(session, Subject.name)
 
+    async def active_ordered(self, session: AsyncSession) -> list[Subject]:
+        return await self.list_where(
+            session, Subject.is_active.is_(True), order_by=(Subject.name,)
+        )
+
+    async def active_ids(self, session: AsyncSession) -> set[str]:
+        rows = await session.scalars(
+            select(Subject.id).where(Subject.is_active.is_(True))
+        )
+        return set(rows.all())
+
+    async def active_by_slug(self, session: AsyncSession, slug: str) -> Subject | None:
+        return await self.first(
+            session, Subject.slug == slug, Subject.is_active.is_(True)
+        )
+
     async def ordered_by_track(self, session: AsyncSession) -> list[Subject]:
         return await self.all_ordered(session, Subject.track_category, Subject.name)
 
@@ -61,6 +77,25 @@ class TopicRepository(BaseRepository[Topic]):
         if not topic_ids:
             return []
         return await self.list_where(session, Topic.id.in_(topic_ids))
+
+    async def for_level(
+        self, session: AsyncSession, curriculum_level_id: str
+    ) -> list[Topic]:
+        return await self.list_where(
+            session,
+            Topic.curriculum_level_id == curriculum_level_id,
+            order_by=(Topic.order_index,),
+        )
+
+    async def max_order_for_level(
+        self, session: AsyncSession, curriculum_level_id: str
+    ) -> int:
+        value = await session.scalar(
+            select(func.max(Topic.order_index)).where(
+                Topic.curriculum_level_id == curriculum_level_id
+            )
+        )
+        return int(value) if value is not None else -1
 
     async def with_levels(
         self,
@@ -103,6 +138,15 @@ class CurriculumLevelRepository(BaseRepository[CurriculumLevel]):
             CurriculumLevel.subject_id == subject_id,
             CurriculumLevel.class_level == class_level,
             CurriculumLevel.term == term,
+        )
+
+    async def for_subject(
+        self, session: AsyncSession, subject_id: str
+    ) -> list[CurriculumLevel]:
+        return await self.list_where(
+            session,
+            CurriculumLevel.subject_id == subject_id,
+            order_by=(CurriculumLevel.class_level, CurriculumLevel.term),
         )
 
 

@@ -96,7 +96,8 @@ def _check(class_level: str | None, body: StudyPlanIn) -> None:
 
 async def _ensure_subjects(session: AsyncSession, subject_ids: list[str]) -> None:
     for subject_id in subject_ids:
-        if await subjects_repository.by_id(session, subject_id) is None:
+        subject = await subjects_repository.by_id(session, subject_id)
+        if subject is None or not subject.is_active:
             raise ApiError(404, "Subject not found")
 
 
@@ -121,7 +122,7 @@ class GetStudyPlanService:
                 self.session, plan, self.class_level or "SS1"
             ).process()
         ctx = await _term_context(self.session, today)
-        subject_rows = await subjects_repository.ordered(self.session)
+        subject_rows = await subjects_repository.active_ordered(self.session)
         return {
             "today": today,
             "classLevel": self.class_level,
@@ -149,11 +150,22 @@ class GetStudyPlanService:
         return days_between(today, _day(plan.target_date))
 
     async def _serialize(self, plan: StudyPlan) -> dict:
-        items = await plan_items_repository.for_plan(self.session, plan.id)
-        positions = await plan_positions_repository.for_plan(self.session, plan.id)
+        # Items already laid out for a subject that has since been deactivated
+        # are hidden now; the next replan stops generating them.
+        active_ids = await subjects_repository.active_ids(self.session)
+        items = [
+            item
+            for item in await plan_items_repository.for_plan(self.session, plan.id)
+            if item.subject_id in active_ids
+        ]
+        positions = [
+            row
+            for row in await plan_positions_repository.for_plan(self.session, plan.id)
+            if row.subject_id in active_ids
+        ]
         return {
             "id": plan.id,
-            "subjectIds": plan.subject_ids,
+            "subjectIds": [s for s in plan.subject_ids or [] if s in active_ids],
             "targetExam": plan.target_exam,
             "targetDate": _day(plan.target_date) if plan.target_date else None,
             "forceExamMode": plan.force_exam_mode,
@@ -470,7 +482,7 @@ class ReplanStudyPlanService:
         nodes: list[GraphNode] = []
         for subject_id in self.plan.subject_ids or []:
             subject = await subjects_repository.by_id(self.session, subject_id)
-            if subject is None:
+            if subject is None or not subject.is_active:
                 continue
             topic_rows = await topics_repository.for_subject(self.session, subject_id)
             built = []

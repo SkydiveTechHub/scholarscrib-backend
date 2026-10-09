@@ -1,0 +1,2551 @@
+{
+    "source": "Lagos State Unified Schemes of Work (syllabus.ng), aligned to NERDC themes; Home Management and Basic Electricity partly from WAEC syllabus. Main topics only.",
+    "subjects": {
+      "Chemistry": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to Chemistry",
+            "Particulate nature of matter",
+            "Symbols, formulae and equations",
+            "Chemical combination",
+            "States of matter"
+          ],
+          "secondTerm": [
+            "Gas laws",
+            "Separation techniques",
+            "Acids, bases and salts",
+            "Water"
+          ],
+          "thirdTerm": [
+            "Carbon and its compounds",
+            "Chemical industries"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Periodic table",
+            "Families of elements",
+            "Redox reactions",
+            "Electrolysis",
+            "Electrochemical cells"
+          ],
+          "secondTerm": [
+            "Chemical reactions",
+            "Energy and energy changes",
+            "Chemical equilibrium",
+            "Non-metals and their compounds"
+          ],
+          "thirdTerm": [
+            "Water",
+            "Solubility",
+            "Mass-volume relationships",
+            "Volumetric analysis",
+            "Organic chemistry basics"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Organic compounds",
+            "Metals and their compounds"
+          ],
+          "secondTerm": [
+            "Nuclear chemistry",
+            "Shapes of molecules",
+            "Petroleum and crude oil",
+            "Analysis"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Agricultural Science": {
+        "SS1": {
+          "firstTerm": [
+            "Meaning and importance of agriculture",
+            "Problems of agricultural development and possible solutions",
+            "Subsistence and commercial agriculture",
+            "Role of government in agricultural development",
+            "Role of non-governmental organisations in agricultural development",
+            "Agricultural laws and reforms",
+            "Agricultural ecology",
+            "Land and its uses",
+            "Factors affecting land availability for agriculture",
+            "Agro-based industries and raw materials"
+          ],
+          "secondTerm": [
+            "Environmental factors affecting agricultural production",
+            "Soil formation",
+            "Soil profile development",
+            "Types, composition and properties of soil",
+            "Simple farm tools: uses and maintenance",
+            "Farm machinery and implements"
+          ],
+          "thirdTerm": [
+            "Maintenance practices and precautionary measures",
+            "Agricultural mechanization: problems and prospects",
+            "Sources of farm power",
+            "Classification of crops",
+            "Husbandry of selected crops",
+            "Pasture and forage crops"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Animal by-products",
+            "Environmental physiology",
+            "Surveying and planning of farmstead",
+            "Irrigation and drainage",
+            "Factors affecting nutrient availability in the soil",
+            "Environmental factors affecting agricultural productivity and distribution",
+            "Plant nutrients and nutrient cycle"
+          ],
+          "secondTerm": [
+            "Forest management",
+            "Floriculture and ornamental plants",
+            "Diseases of crops",
+            "Pests of crops",
+            "Pasture, forage crops and range management",
+            "Apiculture (bee keeping)"
+          ],
+          "thirdTerm": [
+            "Common weeds found on the farm",
+            "Crop improvement",
+            "Basic economic principles",
+            "Farm records",
+            "Agricultural pollution",
+            "Farm accounts",
+            "Animal nutrition"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Animal nutrition (malnutrition)",
+            "Agricultural extension",
+            "Aquaculture",
+            "Animal improvement",
+            "Artificial insemination",
+            "Agricultural financing"
+          ],
+          "secondTerm": [
+            "Agricultural marketing",
+            "Agricultural insurance",
+            "Animal diseases",
+            "Farm records and accounts"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Geography": {
+        "SS1": {
+          "firstTerm": [
+            "Meaning and importance of geography; the earth and other planets",
+            "Earth's rotation",
+            "Earth's revolution",
+            "Latitude",
+            "Longitude",
+            "Earth's structure",
+            "Rocks",
+            "Mountains",
+            "Lowlands",
+            "The environment"
+          ],
+          "secondTerm": [
+            "Nigeria: location and position",
+            "Nigeria: physical setting (relief and drainage)",
+            "Nigeria: climate",
+            "Nigeria: vegetation",
+            "Nigeria: population",
+            "Nigeria: resources",
+            "Nigeria: agriculture"
+          ],
+          "thirdTerm": [
+            "Nigeria: transport",
+            "Nigeria: communication",
+            "Manufacturing industries in Nigeria",
+            "Nigeria: commercial activities",
+            "ECOWAS",
+            "Map reading and measurement of distances",
+            "Conventional symbols, direction and bearing",
+            "Basic concepts of GIS",
+            "Components of GIS"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "External processes and landform development: action of running water",
+            "Action of wind",
+            "Glacial action",
+            "Action of waves",
+            "Climate classification",
+            "World climatic types",
+            "Vegetation",
+            "Environmental resources",
+            "Renewable and non-renewable resources",
+            "Environmental problems"
+          ],
+          "secondTerm": [
+            "Environmental conservation",
+            "Transportation in Nigeria",
+            "Manufacturing industries in Nigeria",
+            "Commercial activities in Nigeria",
+            "World population",
+            "Settlements",
+            "Soil",
+            "Geo-political issues: land reclamation"
+          ],
+          "thirdTerm": [
+            "Geographic Information System (GIS)",
+            "Africa: location, size, position and political divisions",
+            "Africa: relief and drainage",
+            "Africa: climate and vegetation",
+            "Lumbering in equatorial Africa (Zaire and Nigeria)",
+            "Irrigation agriculture in the Nile and Niger basins",
+            "Plantation agriculture in West and East Africa",
+            "Fruit farming in the Mediterranean regions of Africa",
+            "Hydrosphere (ocean basin)",
+            "Earthquakes"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Volcanicity",
+            "Karst (limestone) topography",
+            "Denudational processes",
+            "Weathering",
+            "Mass movement",
+            "Climatic change",
+            "ECOWAS",
+            "World trade",
+            "Tourism",
+            "Satellite remote sensing"
+          ],
+          "secondTerm": [
+            "GIS application",
+            "Bush fallowing in West Africa",
+            "Mining in Africa (copper, gold and petroleum)",
+            "Principles of elementary surveying",
+            "Representation of relief forms",
+            "Map reading"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Commerce": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to commerce",
+            "History of commerce",
+            "Occupation",
+            "Production",
+            "Trade",
+            "Home trade"
+          ],
+          "secondTerm": [
+            "Home trade: retail and wholesale",
+            "Foreign trade"
+          ],
+          "thirdTerm": [
+            "Commodity exchange",
+            "Sole proprietorship",
+            "Partnership",
+            "Money"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Public enterprises",
+            "Limited liability companies",
+            "Cooperative societies",
+            "Commodity exchange",
+            "Benefits and constraints of commodity exchange",
+            "Purchase and sale of goods in home and foreign trade",
+            "Terms of trade"
+          ],
+          "secondTerm": [
+            "Credit",
+            "Trade associations",
+            "Other forms of trade associations",
+            "Insurance",
+            "Types of insurance",
+            "Consumer protection",
+            "Transportation"
+          ],
+          "thirdTerm": [
+            "Warehousing",
+            "The stock exchange",
+            "Second tier securities market",
+            "Capital",
+            "Turnover",
+            "Communication"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Business law and contracts",
+            "Law of agency",
+            "Hire purchase and instalment payment",
+            "Contract of sale of goods",
+            "Contract of employment",
+            "Government regulation of business",
+            "Structure of business",
+            "Introduction to business management"
+          ],
+          "secondTerm": [
+            "Introduction to marketing",
+            "Advertising",
+            "Business documents and means of payment",
+            "Privatisation and commercialisation",
+            "Economic groupings in West Africa"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Financial Accounting": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to accounting",
+            "History of accounting worldwide and in Nigeria",
+            "Advantages and limitations of accounting",
+            "Career opportunities in book keeping and accounting",
+            "Accounting equation and double entry principle",
+            "Sales and purchase journals",
+            "The ledger",
+            "Double column cash book",
+            "Discounts"
+          ],
+          "secondTerm": [
+            "Three column cash book",
+            "Petty cash book",
+            "Posting subsidiary books into ledgers",
+            "Trial balance",
+            "Accounting concepts and conventions",
+            "Final accounts of a sole trader",
+            "Balance sheet",
+            "Simple accounting ratios",
+            "Adjustments to final accounts"
+          ],
+          "thirdTerm": [
+            "Depreciation of fixed assets",
+            "Methods of depreciation",
+            "Accounting for provision for depreciation",
+            "Final accounts with end-of-year adjustments",
+            "Departmental accounts",
+            "Bank reconciliation statement"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Suspense account",
+            "Effects of errors on reported profit",
+            "Manufacturing accounts",
+            "Control accounts and self-balancing ledgers",
+            "Single entry and incomplete records"
+          ],
+          "secondTerm": [
+            "Single entry and incomplete records (conversion to double entry)",
+            "Accounts of non-profit-making organisations",
+            "Receipts and payments account",
+            "Income and expenditure account",
+            "Partnership accounts"
+          ],
+          "thirdTerm": [
+            "Dissolution of partnership",
+            "Company accounts",
+            "Balance sheets",
+            "Issue of shares and debentures",
+            "Interpretation of financial statements using ratios"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Nigerian financial system",
+            "Capital market",
+            "Loan capital",
+            "Securities and Exchange Commission (SEC)",
+            "Nigerian Stock Exchange",
+            "Acquisition (purchase) of business",
+            "Public sector accounting"
+          ],
+          "secondTerm": [
+            "Personal cost budget",
+            "Branch accounts",
+            "Joint venture accounts",
+            "Consignment accounts",
+            "Hire purchase accounts",
+            "Contract accounts"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Biology": {
+        "SS1": {
+          "firstTerm": [
+            "Science of Living Things",
+            "Recognising Living Things",
+            "Classification of Living Things",
+            "The Cell",
+            "The Cell and Its Environment",
+            "Cell Properties and Functions",
+            "Movement",
+            "Reproduction"
+          ],
+          "secondTerm": [
+            "Tissues and Supporting Systems",
+            "Nutrition in Mammals",
+            "Feeding Mechanisms in Holozoic Organisms",
+            "Basic Ecological Concepts",
+            "Functioning of the Ecosystem",
+            "Energy Transformation in Nature",
+            "Relevance of Biology to Agriculture"
+          ],
+          "thirdTerm": [
+            "Micro-organisms Around Us",
+            "Micro-organisms in Action",
+            "Towards Better Health",
+            "Aquatic Habitats (Marine, Estuarine, Fresh Water)",
+            "Terrestrial Habitats (Marsh, Forest, Arid Land, Grassland)",
+            "Reproduction in Unicellular Organisms and Invertebrates"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Reproduction",
+            "Sexual Reproduction",
+            "Reproductive Health",
+            "Cellular Respiration",
+            "Respiratory System",
+            "Excretory System",
+            "Supporting Tissues and Systems in Animals",
+            "Joints",
+            "Supporting Tissues in Plants"
+          ],
+          "secondTerm": [
+            "Digestive System and Feeding Habits",
+            "Transport System",
+            "Circulatory System in Mammals",
+            "Transport in Higher Plants",
+            "Cell Division",
+            "Reproductive System in Vertebrates",
+            "Reproductive Behaviour in Animals"
+          ],
+          "thirdTerm": [
+            "Reproductive System in Flowering Plants",
+            "Pollination",
+            "Fruits",
+            "Marine Habitat",
+            "Estuarine and Fresh Water Habitats",
+            "Terrestrial Habitats (Marshes and Forest)",
+            "Grassland and Arid Land",
+            "Ecology of Population",
+            "Food Storage"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Regulation of the Internal Environment",
+            "Peripheral Nervous System",
+            "Sense Organs",
+            "The Eye",
+            "The Ear",
+            "Genetics"
+          ],
+          "secondTerm": [],
+          "thirdTerm": []
+        }
+      },
+      "Physics": {
+        "SS1": {
+          "firstTerm": [
+            "Fundamental and Derived Quantities and Units",
+            "Position, Distance and Displacement",
+            "Time",
+            "Motion",
+            "Circular Motion",
+            "Speed and Velocity",
+            "Rectilinear Acceleration",
+            "Scalars and Vectors"
+          ],
+          "secondTerm": [
+            "Work, Energy and Power",
+            "Heat Energy",
+            "Electric Charges"
+          ],
+          "thirdTerm": [
+            "Description and Properties of Fields",
+            "Gravitational Field",
+            "Electric Field",
+            "Particulate Nature of Matter",
+            "Fluids at Rest and in Motion",
+            "Units of Measurement and Electrical Continuity Testing",
+            "Solar Collector"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Position, Distance and Displacement on the X-Y Plane",
+            "Scalar and Vector Quantities",
+            "Equations of Linear Motion",
+            "Projectiles",
+            "Newton's Laws, Momentum and Collisions",
+            "Equilibrium of Forces",
+            "Simple Harmonic Motion",
+            "Machines"
+          ],
+          "secondTerm": [
+            "Temperature and Its Measurement",
+            "Heat Capacity and Specific Heat Capacity",
+            "Evaporation, Boiling and Melting",
+            "Latent Heat",
+            "Vapour Pressure and Humidity",
+            "Gas Laws",
+            "Production and Propagation of Waves",
+            "Properties of Waves",
+            "Light Waves"
+          ],
+          "thirdTerm": [
+            "Glass Prisms",
+            "Lenses",
+            "Optical Instruments",
+            "Dispersion of White Light",
+            "Sound Waves"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Lasers",
+            "Fibre Optics",
+            "Semiconductors and Electronics",
+            "Electric Field: Shunts and Multipliers",
+            "Electrolysis",
+            "Electromagnetic Waves and Capacitance",
+            "Gravitational Field",
+            "Rockets and Satellites",
+            "Energy and Society",
+            "Magnets and Magnetic Fields"
+          ],
+          "secondTerm": [
+            "Electromagnetic Field",
+            "Electromagnetic Induction",
+            "Simple AC Circuits",
+            "Models of the Atom",
+            "Nucleus and Radioactivity",
+            "Energy Quantization"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Further Mathematics": {
+        "SS1": {
+          "firstTerm": [
+            "Sets",
+            "Indices and Logarithms",
+            "Surds",
+            "Linear Inequalities",
+            "Binary Operations",
+            "Functions",
+            "Sequences and Series"
+          ],
+          "secondTerm": [
+            "Trigonometric Ratios of Special Angles and Logical Reasoning",
+            "Calculating and Processing Devices",
+            "The Straight Line in Coordinate Geometry",
+            "Vectors in Two Dimensions"
+          ],
+          "thirdTerm": [
+            "Measures of Location",
+            "Measures of Dispersion",
+            "History and Nature of Operations Research",
+            "Models"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Quadratic Equations",
+            "Polynomials",
+            "Logical Reasoning",
+            "Trigonometric Functions",
+            "Graphs of Inverse Ratio"
+          ],
+          "secondTerm": [
+            "Circles",
+            "Probability",
+            "Permutation",
+            "Combination",
+            "Binomial Expansion",
+            "Work, Power and Energy",
+            "Projectiles",
+            "Operations Research: Inventory Model"
+          ],
+          "thirdTerm": [
+            "Introduction to Dynamics",
+            "Differentiation",
+            "Differentiation of Transcendental Functions",
+            "Trigonometric Functions",
+            "Applications of Differentiation",
+            "Mechanics",
+            "Operations Research: Replacement"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Inequalities",
+            "Matrices and Determinants",
+            "Partial Fractions",
+            "Probability Distributions and Approximation",
+            "Variance",
+            "Correlation"
+          ],
+          "secondTerm": [
+            "Integration",
+            "Conic Sections",
+            "Statics",
+            "Modelling",
+            "Game Theory"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "General Mathematics": {
+        "SS1": {
+          "firstTerm": [
+            "Number Bases",
+            "Modular Arithmetic",
+            "Indices",
+            "Logarithms",
+            "Simple Equations and Variation",
+            "Quadratic Equations",
+            "Logical Reasoning"
+          ],
+          "secondTerm": [
+            "Geometric Constructions",
+            "Proofs of Basic Theorems and Deductive Proofs",
+            "Trigonometric Ratios",
+            "Trigonometric Ratios of Special Angles",
+            "Applications of Trigonometric Ratios",
+            "Trigonometric Ratios and the Unit Circle",
+            "Graphs of Sine, Cosine and Tangent"
+          ],
+          "thirdTerm": [
+            "Mensuration",
+            "Area of Sector and Segment",
+            "Surface Area and Volume of Solids",
+            "Frustum",
+            "Data Presentation and Frequency Distribution",
+            "Pie Chart",
+            "Frequency Polygon"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Logarithms",
+            "Sequences and Series",
+            "Geometric Progressions",
+            "Factorization and Quadratic Equations",
+            "Simultaneous Linear Equations",
+            "Graphical Solution of Equations"
+          ],
+          "secondTerm": [
+            "Straight Line Graphs",
+            "Inequalities",
+            "Circle Theorems",
+            "Trigonometry",
+            "Algebraic Fractions",
+            "Surds",
+            "Chord Properties of Circles"
+          ],
+          "thirdTerm": [
+            "Linear Inequalities in Two Variables",
+            "Bearings",
+            "Statistics and Cumulative Frequency",
+            "Mean, Median and Mode of Grouped Data",
+            "Probability"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Logarithms",
+            "Logic",
+            "Surds and Trigonometric Ratios",
+            "Matrices and Determinants",
+            "Linear and Quadratic Equations",
+            "Surface Area and Volume of Sphere and Hemisphere",
+            "Longitude and Latitude",
+            "Binary Operations",
+            "Arithmetic of Finance"
+          ],
+          "secondTerm": [
+            "Bonds, Shares, Income Tax and VAT",
+            "Coordinate Geometry of a Straight Line",
+            "Geometric Constructions",
+            "Differentiation of Algebraic Functions",
+            "Integration of Simple Algebraic Functions",
+            "Functions and Mapping"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Computer Studies (ICT)": {
+        "SS1": {
+          "firstTerm": [
+            "Overview of Computer Systems",
+            "Historical Development of Computers",
+            "Hardware",
+            "Input Devices",
+            "Output Devices",
+            "Computer Software",
+            "Operating Systems",
+            "The Future of Computing",
+            "Introduction to Python"
+          ],
+          "secondTerm": [
+            "21st Century Digital Skills",
+            "Data and Information",
+            "Communication Systems",
+            "Telecommunication",
+            "Data Networks",
+            "Application Areas of ICT",
+            "Programming Languages",
+            "Python Basics and Loops",
+            "Python If Statements"
+          ],
+          "thirdTerm": [
+            "ICT Gadgets and Their Operation",
+            "Basic Computer Operation",
+            "Memory Units",
+            "Secondary Memory",
+            "Central Processing Unit",
+            "Word Processing",
+            "Presentation Packages",
+            "Python While Loops",
+            "Python Strings"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Units of Storage",
+            "World Wide Web",
+            "Spreadsheet Packages",
+            "Excel Formulas and Functions",
+            "Logic Circuits",
+            "Introduction to Java",
+            "Java Variables and Data Types",
+            "Java Control Statements"
+          ],
+          "secondTerm": [
+            "Computer Data Conversion",
+            "Security and Ethics",
+            "Cybercrime and Personal Information",
+            "Computer Files",
+            "Handling Computer Files",
+            "Java Console Input",
+            "Java Control Statements"
+          ],
+          "thirdTerm": [
+            "Word Processing",
+            "System Development Cycle",
+            "Program Development",
+            "Algorithms and Flowcharts",
+            "Spreadsheets: Data Validation, Filters and Charts",
+            "Graphics Design Packages",
+            "Introduction to CorelDraw"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Introduction to High Level Languages",
+            "Networking",
+            "Cables and Connections",
+            "Internet and World Wide Web",
+            "Introduction to Databases",
+            "Data Organisation",
+            "Database Formats",
+            "Number Bases",
+            "Security and Ethics",
+            "Creating and Editing a Database"
+          ],
+          "secondTerm": [
+            "Classification of High Level Languages",
+            "Introduction to CorelDraw",
+            "Introduction to Adobe Photoshop",
+            "Form Design",
+            "Queries",
+            "Report Layout"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "English Language": {
+        "SS1": {
+          "firstTerm": [
+            "Spoken English: Consonant Sounds and Oral Composition",
+            "Vocabulary: Home, Family Life, Agriculture and Fishing",
+            "Grammar: Nouns, Noun Types and Noun Phrases",
+            "Grammar: Nominalization and Irregular Verbs",
+            "Reading Comprehension",
+            "Listening Comprehension",
+            "Continuous Writing: Narrative and Descriptive Essays"
+          ],
+          "secondTerm": [
+            "Vocabulary: Religion, Professions and the Stock Exchange",
+            "Spoken English: Consonant Sounds and Syllable Stress",
+            "Reading Comprehension",
+            "Listening Comprehension",
+            "Grammar: Complex Tenses and Complex/Compound Sentences",
+            "Continuous Writing: Informal and Semi-Formal Letters, Record Keeping",
+            "Dictation"
+          ],
+          "thirdTerm": [
+            "Vocabulary Development: Synonyms, Antonyms, Spelling and Dictionary Use",
+            "Spoken English: Stress Timing, Persuasion and Debate",
+            "Reading Comprehension: Note-Making and Summary",
+            "Listening Comprehension: Speaker's Style and Key-Word Summary",
+            "Grammar: Adjuncts/Adverbs and Phrasal Verbs",
+            "Continuous Writing: Speech Writing and Newspaper Articles",
+            "Dictation"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Nominalization of Adjectives and Verbs",
+            "Consonant Sounds and Clusters",
+            "Summary Writing and Summarizing Arguments",
+            "Vocabulary: Human Body, Health, Building and Construction, Colour, Smell and Taste",
+            "Expository, Argumentative and Narrative Essays",
+            "Nouns, Noun Phrases and Plural Forms",
+            "Types of Pronouns",
+            "Transcription",
+            "Word, Stress Patterns and Emphatic Stress",
+            "Reading and Listening Comprehension",
+            "Adverbs, Adverbial Phrases and Clauses",
+            "Adjectival Phrases and Clauses",
+            "Report Writing",
+            "Rhyme",
+            "Creative Writing",
+            "Phrasal Verbs with Two Particles",
+            "Paraphrasing Poems and Dramatic Works",
+            "Informal Letter Writing"
+          ],
+          "secondTerm": [
+            "Consonant Sounds and Contrasts",
+            "Possessive Apostrophe",
+            "Punctuation Marks",
+            "Reading for Main Points, Implied Meaning and Critical Evaluation",
+            "Vocabulary: Press and Journalism, Environment, Building, Technology, Cultural Entertainment",
+            "Listening: Poetry, Speeches, Lectures and Note-Making",
+            "Intonation: Falling and Rising Tones",
+            "Sentence Types",
+            "Formal Letter of Complaint and Informal Letter",
+            "Rhyme Scheme",
+            "Personal and Relative Pronouns",
+            "Creative Writing",
+            "Sequence of Tenses",
+            "Phrasal Verbs with More Than One Particle",
+            "Active and Passive Sentences",
+            "Article Writing",
+            "Stress Patterns"
+          ],
+          "thirdTerm": [
+            "Revision of Tenses",
+            "Conditional and Complex Sentences",
+            "Speech Writing for Special Occasions",
+            "Vocabulary: Publishing and Printing, Industries, Engineering, Hotel and Catering, Politics and Government, Transportation",
+            "Affixation: Prefixes and Suffixes",
+            "Summarizing a Talk, Lecture or Passage",
+            "Active and Passive Verb Forms",
+            "Spelling and Dictionary Use",
+            "Article Writing for Publication",
+            "Stress on Two-Syllable Words",
+            "Paraphrasing Poems and Dramatic Works",
+            "Rules of Concord",
+            "Vowel Sounds and Nasal Consonants",
+            "Adjuncts, Conjuncts and Disjuncts",
+            "Reading for Sentence Patterns and Critical Evaluation",
+            "Expository Essay",
+            "Prepositional Phrases",
+            "Idioms",
+            "Adjectival Clauses"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Vocabulary: Culture, Institutions and Ceremonies",
+            "Sentence Intonation: Falling and Rising Tones",
+            "Nouns and Noun Phrases",
+            "Expository Writing on Current Issues",
+            "Comprehension: Silent Reading",
+            "Summarizing a Talk, Lecture or Expository Passage",
+            "Word-Final Consonant Clusters and the Schwa Sound",
+            "Vocabulary: Motor Vehicles, Travel and Road Words",
+            "Pronouns",
+            "Listening: Main Points of a Speech and Following Directions",
+            "Verbs and Verb Phrases",
+            "Vocabulary: British and American Spellings",
+            "Informal and Formal Letters",
+            "Paraphrasing Prose",
+            "Collocations",
+            "Reading Aloud",
+            "French Loanwords in English",
+            "Sequence of Tenses",
+            "Vocabulary: Science and Technology",
+            "Modal Verbs"
+          ],
+          "secondTerm": [
+            "Vocabulary: Government and Administration",
+            "Reading and Appreciating Poetry",
+            "Listening: Following Arguments and Instructions",
+            "Letters for Different Audiences and for Newspapers",
+            "Adjuncts",
+            "Paraphrasing Dramatic Works and Poetry",
+            "Arguing Topics Effectively",
+            "Summarizing by Outlining Main Points and Argumentative Passages",
+            "Vocabulary: Latin and Greek Words, Law and Order, Idioms",
+            "Continuous Expository Writing",
+            "Adjectival and Adverbial Clauses",
+            "Complex Sentences",
+            "Report Writing",
+            "Comprehension: Silent Reading",
+            "Listening: Dramatic Presentations, Themes and Storylines"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Literature-in-English": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to Literature",
+            "Literary Appreciation",
+            "Literary Devices: Figures of Speech",
+            "Genres of Literature",
+            "Prose: Literary and Non-Literary",
+            "Poetry: Kinds of Poems",
+            "Drama: Forms of Drama"
+          ],
+          "secondTerm": [
+            "Features of Drama",
+            "African Drama: Harvest of Corruption",
+            "Non-African Poetry: The Proud King",
+            "African Poetry: Vanity"
+          ],
+          "thirdTerm": [
+            "Elements of Prose Fiction",
+            "African Prose: Faceless",
+            "Non-African Poetry: The Schoolboy",
+            "African Poetry: Piano and the Drums"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Genres of Literature",
+            "African Poetry: Selected Poems",
+            "Non-African Poetry: Selected Poems"
+          ],
+          "secondTerm": [
+            "Literary Terms and Figures of Speech",
+            "Non-African Prose: Invisible Man and Wuthering Heights",
+            "Plot and Setting",
+            "Characters and Characterisation",
+            "Themes of the Prose Texts",
+            "Style, Language and Narrative Techniques"
+          ],
+          "thirdTerm": [
+            "Non-African Drama: Fences and Look Back in Anger",
+            "Character and Characterisation",
+            "Themes of the Plays",
+            "Style: Language and Dramatic Techniques",
+            "Poetry: Binsey Poplars and The Good Morrow"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "A Midsummer Night's Dream",
+            "Unseen Prose",
+            "Unseen Poetry",
+            "Answering Context and Literature Questions"
+          ],
+          "secondTerm": [
+            "Revision of A Midsummer Night's Dream",
+            "Revision of African and Non-African Prose",
+            "Revision of African and Non-African Drama",
+            "Revision of African and Non-African Poetry"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Civic Education": {
+        "SS1": {
+          "firstTerm": [
+            "Values",
+            "HIV/AIDS",
+            "Youth Empowerment",
+            "Citizenship",
+            "Nationalism and Major World Civic Problems"
+          ],
+          "secondTerm": [
+            "Representative Democracy",
+            "Rule of Law",
+            "Pillars of Democracy",
+            "Strong Institutions as a Pillar of Democracy",
+            "Federalism, State and Local Government",
+            "Political Parties",
+            "Free Press",
+            "Human Rights",
+            "Freedoms in the UDHR"
+          ],
+          "thirdTerm": [
+            "Responsibilities of Individuals and Groups in Maintaining Human Rights",
+            "Responsibilities of Government in Maintaining Human Rights",
+            "Cultism",
+            "Orderliness",
+            "Human Trafficking"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Citizenship Education",
+            "Duties and Obligations of Citizens",
+            "Preserving Nigerian Traditions, Beliefs and Customs",
+            "National Consciousness",
+            "Capitalist Democracy",
+            "Political Parties and Elections",
+            "Poverty and Its Effects",
+            "Political Apathy",
+            "Leaders' Failure to Protect Followers' Interests"
+          ],
+          "secondTerm": [
+            "Popular Participation",
+            "Formation of Popular Organizations",
+            "Human Rights",
+            "Emergency",
+            "Drug Use and Abuse"
+          ],
+          "thirdTerm": [
+            "Responsible Parenthood",
+            "Traffic Regulations and Road Safety",
+            "Interpersonal Relations",
+            "Intercommunal Conflicts and Resolution Skills"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Human Rights",
+            "Fighting Political Apathy",
+            "Public Service in Democracy",
+            "Civil Society",
+            "Popular Participation",
+            "Democracy"
+          ],
+          "secondTerm": [
+            "Rule of Law",
+            "Constitutional Democracy",
+            "Human Trafficking"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Christian Religious Studies": {
+        "SS1": {
+          "firstTerm": [
+            "Jesus as the Door and Good Shepherd",
+            "Jesus as the Living Bread and Water",
+            "Jesus the True Vine",
+            "Jesus the Light of the World",
+            "God's Love for Man",
+            "Love for One Another",
+            "Justification by Faith",
+            "Law and Grace",
+            "New Life in Christ"
+          ],
+          "secondTerm": [
+            "Sonship",
+            "Qualities of the Children of God",
+            "Faith and Works",
+            "The Fruit of the Spirit",
+            "Spiritual Gifts",
+            "Forgiveness",
+            "Rights and Obligations of Family Members"
+          ],
+          "thirdTerm": [
+            "Humility",
+            "Effective Prayer",
+            "Living a Life of Witnessing for Christ",
+            "Christian Attitude Towards Persecution",
+            "Impartiality",
+            "The Resurrection",
+            "The Second Coming of Christ"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "God as Creator of Man and All Things",
+            "The Sovereignty of God",
+            "God as Controller of the Universe",
+            "Leadership: Joseph, Moses, Joshua and Deborah",
+            "God's Guidance, Provision and Protection"
+          ],
+          "secondTerm": [
+            "Parental Responsibility",
+            "Consequences of Obedience and Disobedience",
+            "Friendship",
+            "Making Decisions as a Christian",
+            "Submission to the Will of God",
+            "Greed and Its Effects"
+          ],
+          "thirdTerm": [
+            "Supremacy of God",
+            "Religious Reform: King Josiah",
+            "True Religion and Social Justice: Amos",
+            "Concern for One's Nation",
+            "Faith in God",
+            "Divine Love: Hosea"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Baptism and Temptations of Jesus Christ",
+            "Call to Discipleship",
+            "Mission of the Disciples and the Seventy",
+            "Arrest and Trial of Jesus Christ",
+            "Crucifixion, Death and Burial of Jesus Christ",
+            "Resurrection and Ascension of Jesus"
+          ],
+          "secondTerm": [
+            "Communion and Fellowship",
+            "The Holy Spirit at Pentecost",
+            "Mission to the Gentiles",
+            "Opposition to the Gospel Message"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Islamic Religious Studies": {
+        "SS1": {
+          "firstTerm": [
+            "Quran: Selected Chapters",
+            "Hadith",
+            "Tawhid",
+            "Shirk",
+            "Ibadah",
+            "Sirah: Life of the Prophet Muhammad"
+          ],
+          "secondTerm": [
+            "Sirah: The Rightly Guided Caliphs",
+            "Quran: Fatihah, Quraysh, Amanah Rasul, Bayyinah, Tin and Alaq",
+            "Hadith: An-Nawawi Collection",
+            "Sirah: Ibn Sina and Ar-Razi"
+          ],
+          "thirdTerm": [
+            "Tawhid: Taharah",
+            "Salaat",
+            "Zakaat",
+            "Tarikh: Islamic Political System",
+            "Quran: Adiyah, Zilzal and Shams",
+            "Tafsir of the Quran",
+            "Sirah: Al-Ghazali",
+            "Principles of Inheritance (Mirath)"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Quran: Al-Qari'ah, At-Takathur, Al-Asr and Al-Humazah",
+            "Sawm (Fasting)",
+            "Political Administration of the Prophet",
+            "Hadith: An-Nawawi Collection",
+            "Moral Teachings of Islam",
+            "Hajj and Umrah",
+            "Islamic Economic System",
+            "Jihad"
+          ],
+          "secondTerm": [
+            "Quran: Al-Falaq and An-Nas",
+            "Hadith: An-Nawawi Collection",
+            "Contributions of Muslim Sages to World Civilization",
+            "Talaq (Divorce)",
+            "Mirath (Inheritance) and Wasiyyah",
+            "Moral Lessons from the Quran and Hadith"
+          ],
+          "thirdTerm": []
+        },
+        "SS3": {
+          "firstTerm": [
+            "Sirah: Life of Uthman Dan Fodio",
+            "Hadith: An-Nawawi Collection",
+            "Moral Education: Kindness to Parents, Modesty, Trust, Leadership and Justice",
+            "Moral Education: Perseverance",
+            "Marriage (Nikah): Rights and Duties of Spouses",
+            "Women's Status in Islam and Polygamy",
+            "Talaq (Divorce)",
+            "Quran: Suratul Nasr, Nas and Ikhlas"
+          ],
+          "secondTerm": [
+            "Quran: Revision of Selected Suwar",
+            "Hadith: An-Nawawi Collection",
+            "Marriage: Rights and Duties of Spouses",
+            "Moral Education: Honesty, Unity, Brotherhood and Religious Tolerance",
+            "Moral Education: Hygiene, Sanitation and the Dangers of Smoking",
+            "Moral Education: Prohibition of Bribery, Corruption, Gambling, Intoxicants and Drug Abuse"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Economics": {
+        "SS1": {
+          "firstTerm": [
+            "Meaning and Basic Concepts of Economics",
+            "Basic Tools of Economic Analysis",
+            "Demand and Supply",
+            "Theory of Production",
+            "Division of Labour and Specialization",
+            "Scale of Production"
+          ],
+          "secondTerm": [
+            "Basic Economic Problems of Society",
+            "Firms and Industry",
+            "Population",
+            "Theories of Population",
+            "Population Distribution",
+            "The Labour Market"
+          ],
+          "thirdTerm": [
+            "Nature of the Nigerian Economy",
+            "Agriculture",
+            "Mining",
+            "Financial Institutions",
+            "Money",
+            "Channels of Distribution",
+            "Instruments of Business Finance"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Basic Tools of Economic Analysis",
+            "Measures of Central Tendency",
+            "Measures of Dispersion",
+            "Simultaneous Equations",
+            "Theory of Consumer Behaviour",
+            "Demand and Supply",
+            "Elasticity of Demand and Supply",
+            "Price Control",
+            "Rationing and Hoarding"
+          ],
+          "secondTerm": [
+            "Production Possibility Curve",
+            "Laws of Variable Proportions",
+            "Cost Concepts",
+            "Revenue Concepts",
+            "Economic Systems",
+            "Labour Market and Wage Determination",
+            "Unemployment",
+            "Trade Unions",
+            "Market Structures and Imperfect Markets",
+            "Industries in Nigeria",
+            "Location of Industry"
+          ],
+          "thirdTerm": [
+            "Money",
+            "Financial Institutions (Money and Capital Markets)",
+            "Inflation and Deflation",
+            "Public Finance and Taxation",
+            "Government Revenue and Public Expenditure",
+            "Budget, National Debt and Revenue Allocation",
+            "Stock Exchange and Development Banks",
+            "National Income",
+            "Theory of Income Determination",
+            "Theory of the Multiplier"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Economic Lessons from Asian Tigers, Japan, Europe and America",
+            "Human Capital Development",
+            "Petroleum and the Nigerian Economy",
+            "Manufacturing and Construction",
+            "Service Industries",
+            "Regulatory Agencies of Financial Markets",
+            "International Trade"
+          ],
+          "secondTerm": [
+            "Balance of Payments",
+            "Economic Growth and Development",
+            "Economic Development Planning",
+            "International Economic Organizations",
+            "Current Economic Plans (MDGs, NEEDS, Vision 2020)",
+            "Economic Development Challenges",
+            "Economic Reform Programmes"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Government": {
+        "SS1": {
+          "firstTerm": [
+            "Meaning of Government",
+            "Power and Authority",
+            "Legitimacy",
+            "Sovereignty",
+            "Democracy, Political Culture and Political Socialization",
+            "Communalism",
+            "Feudalism",
+            "Socialism",
+            "Capitalism",
+            "Oligarchy",
+            "Fascism",
+            "Totalitarianism"
+          ],
+          "secondTerm": [
+            "Unitary Government",
+            "Federal Government",
+            "Presidential System",
+            "Parliamentary System",
+            "Confederal Government",
+            "Monarchy",
+            "Republicanism",
+            "Constitutions and Constitutionalism",
+            "The Executive",
+            "The Legislature",
+            "The Judiciary"
+          ],
+          "thirdTerm": [
+            "Basic Principles of Government (Rule of Law)",
+            "Fundamental Human Rights",
+            "Separation of Powers",
+            "Representative Government and Political Participation",
+            "Centralization and Decentralization",
+            "Delegated Legislation",
+            "Citizenship",
+            "Political Parties",
+            "Party Systems",
+            "Pressure Groups"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Electoral Process",
+            "Electoral Systems",
+            "Electoral Commission and Officials",
+            "Public Opinion and Mass Media",
+            "Public Administration and the Civil Service",
+            "Public Corporations",
+            "Local Government"
+          ],
+          "secondTerm": [
+            "Pre-Colonial Administration",
+            "Colonial Administration",
+            "Nationalism",
+            "Constitutional Development Before Independence",
+            "Independence and Post-Independence Constitutions"
+          ],
+          "thirdTerm": [
+            "Federalism in Nigeria",
+            "Political Parties Across the Republics",
+            "Minor Political Crises",
+            "Electoral Crises"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Military Rule in Nigeria",
+            "Conflict Resolution and Management",
+            "Peace Education",
+            "Interdependence of Nations and Globalization",
+            "Nigeria's Foreign Policy",
+            "Africa as Centrepiece of Foreign Policy and Non-Alignment",
+            "International Organizations (UN, AU, Commonwealth)"
+          ],
+          "secondTerm": [
+            "ECOWAS",
+            "OPEC",
+            "MDGs and NEPAD",
+            "E-Government, Leadership and Followership"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "History": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to History",
+            "Sources of History and Dating",
+            "Historical Skills",
+            "ICT in Historical Studies",
+            "Land and People of Nigeria",
+            "Traditions of Origin of Nigerian Groups",
+            "Centres of Ancient Civilization",
+            "State Formation and Centralized States"
+          ],
+          "secondTerm": [
+            "Kanem-Bornu to 1800",
+            "Hausa States to 1800",
+            "Nupe to 1800",
+            "Igala to 1800",
+            "Jukun Kingdom",
+            "Ife and Oyo",
+            "Benin",
+            "Efik",
+            "Igbo",
+            "Itsekiri"
+          ],
+          "thirdTerm": [
+            "Non-Centralized States",
+            "Inter-Group Relations",
+            "Effects of Migration, War and Politics on Inter-Group Relations",
+            "Indigenous Technology, Crafts and Industries",
+            "Trans-Saharan Trade",
+            "Islam in Kanem-Bornu",
+            "Islam in Hausaland",
+            "Early European Contact with Coastal States",
+            "Origins of the Trans-Atlantic Slave Trade"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Amalgamation of Nigeria",
+            "British Colonial Political Administration",
+            "Colonial Economy, Social Development and Inter-Group Relations",
+            "Nationalism and National Movements",
+            "Constitutional Development and the Road to Independence",
+            "First Civilian Republic (1960-1966)",
+            "Military Intervention and the First Coup",
+            "Ironsi Regime",
+            "Counter-Coup and Gowon Regime"
+          ],
+          "secondTerm": [
+            "Nigerian Civil War",
+            "Murtala Muhammed and Obasanjo Regime",
+            "Second Republic (Shagari)",
+            "Buhari and Idiagbon Regime",
+            "Babangida Regime",
+            "Abdulsalam Abubakar Regime",
+            "Return to Civilian Rule (1999-2007)",
+            "Islamic Movements and Muslim States in West Africa"
+          ],
+          "thirdTerm": [
+            "Muslim States and European Colonization in West Africa",
+            "Christian Missionary Activities in West Africa",
+            "Empires of the Western Sudan (Ghana, Mali, Songhai)",
+            "Asante and Dahomey",
+            "Decline of the Great West African Empires"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Definition of History",
+            "Sources of History",
+            "Land and People of Nigeria",
+            "Centres of Ancient Civilization in Nigeria",
+            "State Formation in Pre-Colonial Nigeria",
+            "Peoples of the Sudan and Sahel Savannah",
+            "Peoples of the Semi-Guinea Savannah, Niger-Benue Confluence and Middle Belt",
+            "Peoples of the Forest Regions"
+          ],
+          "secondTerm": [
+            "Debt Relief and International Aid",
+            "Peacekeeping and Interests of Developed Societies",
+            "Land and People of North Africa, Egypt and the Maghreb",
+            "Land and People of East and Central Africa",
+            "Land and People of Southern Africa"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Marketing": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to Marketing",
+            "Marketing Concepts",
+            "Classification of Products",
+            "Marketing Mix"
+          ],
+          "secondTerm": [
+            "Marketing Mix",
+            "Functions of Markets",
+            "Types of Markets",
+            "Consumer and Organizational Behaviour",
+            "Organizational Buying Behaviour",
+            "Marketing Planning Process",
+            "Marketing Research"
+          ],
+          "thirdTerm": [
+            "Pricing",
+            "Advertising",
+            "Promotion",
+            "Merchandising"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Distribution and Its Types",
+            "Channels of Distribution",
+            "Functions of Distribution",
+            "Choice of Distribution Channel",
+            "Transportation and Its Modes",
+            "Choice of Transportation"
+          ],
+          "secondTerm": [
+            "Transportation Documents",
+            "Warehousing",
+            "Primary and Secondary Products and Their Marketing Channels",
+            "Market Unions",
+            "Entrepreneurship"
+          ],
+          "thirdTerm": [
+            "Marketing Facilitators",
+            "Food Processing Industries",
+            "Banks",
+            "Co-operative Societies",
+            "Commodity Boards",
+            "Microfinance Companies",
+            "Marketing of Mineral Products",
+            "Oil and Non-Oil Products",
+            "Methods of Marketing Mineral Products"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "International Marketing",
+            "Importance of International Markets",
+            "Import and Export Trade",
+            "Market Decisions and Reasons for Wider Markets",
+            "Features of International Markets",
+            "Legal, Social, Cultural and Demographic Features of International Markets",
+            "Approaches to International Markets",
+            "Regulations Guiding International Marketing",
+            "ICT in International Marketing"
+          ],
+          "secondTerm": [
+            "Internet Browsing and Electronic Marketing",
+            "Planning a Personal Marketing Outlet",
+            "Location, Setup and Operation of a Marketing Outlet",
+            "Purchase, Supply and Merchandising of Goods and Services",
+            "Selling and Bargaining Skills",
+            "Fund Management"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Office Practice": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to Office Practice",
+            "The Office",
+            "Office Organization",
+            "Functions of an Office",
+            "Organizational Structures",
+            "Departments in an Organization",
+            "Office Personnel",
+            "The Reception Office",
+            "Responsibilities of a Receptionist"
+          ],
+          "secondTerm": [
+            "Office Equipment",
+            "Electrical and Electronic Office Equipment",
+            "Office Automation",
+            "Banking",
+            "Commercial Banks",
+            "Cheques"
+          ],
+          "thirdTerm": [
+            "Communication",
+            "The Post Office",
+            "Business Organizations",
+            "Partnership",
+            "Limited Liability Companies",
+            "Co-operative Societies",
+            "Public Enterprises"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Civil Service",
+            "Office Documents",
+            "Administrative Documents",
+            "Sales Documents",
+            "Purchasing and Stores Documents",
+            "Business Letters",
+            "Personal Letters"
+          ],
+          "secondTerm": [
+            "Memorandum",
+            "Mails and Delivery Methods",
+            "Receiving and Outgoing Mail Procedures",
+            "Filing",
+            "Classification of Filing Systems",
+            "Filing Equipment"
+          ],
+          "thirdTerm": [
+            "Filing Materials",
+            "Methods and Means of Payment",
+            "Wages and Salaries",
+            "Methods and Procedures of Paying Wages",
+            "Payroll and Payslip",
+            "Imprest System"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Sources of Information and Importance of Communication",
+            "Types of Communication",
+            "Methods of Communication",
+            "Communication Services",
+            "Meetings",
+            "Meeting Procedures and Terminology",
+            "Secretary's Responsibilities at Meetings",
+            "Report Writing"
+          ],
+          "secondTerm": [],
+          "thirdTerm": []
+        }
+      },
+      "Data Processing": {
+        "SS1": {
+          "firstTerm": [
+            "History of Computing",
+            "Digitalization of Data",
+            "Data and Information",
+            "Classification of Computers",
+            "Parts of the Computer System"
+          ],
+          "secondTerm": [
+            "ICT Applications in Everyday Life",
+            "Information Processing",
+            "Information Transmission",
+            "Operating Systems",
+            "Word Processing"
+          ],
+          "thirdTerm": [
+            "Spreadsheets",
+            "Database Management Systems",
+            "Computer Ethics",
+            "Safety Measures"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Database Management Systems",
+            "Data Models and Data Modelling",
+            "Normalization",
+            "Entity Relationship Models"
+          ],
+          "secondTerm": [
+            "Relational Model",
+            "Database Security",
+            "Role of Database Administration in Nigeria",
+            "File Organization",
+            "Presentation Packages",
+            "Entrepreneurship"
+          ],
+          "thirdTerm": [
+            "Graphic Packages",
+            "Web Design Packages",
+            "The Internet",
+            "Presentation Packages",
+            "Marketing"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Computer Networking",
+            "Types of Networks",
+            "Network Topology",
+            "The Internet",
+            "Computer Viruses",
+            "Computer Maintenance",
+            "Career Opportunities in Data Processing"
+          ],
+          "secondTerm": [
+            "Application Packages",
+            "Word Processing",
+            "Spreadsheets",
+            "Graphic Package (CorelDRAW)",
+            "Database Management System (MS Access)"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Food and Nutrition": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to Food and Nutrition",
+            "Careers in Food and Nutrition",
+            "Links Between Food and Nutrition and Other Subjects",
+            "Foods in the Locality",
+            "Carbohydrates",
+            "Proteins",
+            "Fats and Oils",
+            "Vitamins",
+            "Minerals",
+            "Water"
+          ],
+          "secondTerm": [
+            "Scientific Study of Foods",
+            "Effects of Heat on Nutrients",
+            "Food Tests for Protein, Carbohydrates, Fats and Oils",
+            "The Digestive System",
+            "Digestion and Absorption",
+            "Reproductive Health",
+            "Kitchen Plans, Equipment and Tools",
+            "Small and Movable Kitchen Tools and Utensils"
+          ],
+          "thirdTerm": [
+            "Cleaning Agents and Abrasives",
+            "Safety Habits in the Kitchen",
+            "Preventing Cuts, Suffocation and Accidental Poisoning",
+            "First Aid Box and Simple First Aid",
+            "Personal Hygiene",
+            "Kitchen Hygiene",
+            "Food Hygiene",
+            "Waste and Refuse Disposal",
+            "Foodborne Diseases"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Meat Cookery",
+            "Poultry",
+            "Eggs",
+            "Milk and Milk Products",
+            "Sea Foods",
+            "Food Additives",
+            "Starchy Roots and Plantain",
+            "Time Management in Food Preparation"
+          ],
+          "secondTerm": [
+            "Energy Management in Food Preparation",
+            "Kitchen Equipment and Utensils",
+            "Labour Saving Devices",
+            "Special Nutritional Needs",
+            "Flour Cookery",
+            "Raising Agents",
+            "Flour Mixtures and Cake Decoration"
+          ],
+          "thirdTerm": [
+            "Convenience Foods",
+            "Preservation of Foods",
+            "Methods of Presenting Foods",
+            "Food Storage",
+            "Budgeting",
+            "Food Purchasing",
+            "Consumer Education",
+            "Rechauffe (Re-use of Leftovers)"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Beverages",
+            "Special Diets",
+            "Cultural Food Habits",
+            "Traditional and Foreign Dishes",
+            "Art of Entertainment",
+            "Being a Good Host and Guest",
+            "Table Setting and Etiquette"
+          ],
+          "secondTerm": [
+            "Food Service",
+            "Self-Employment: Setting Up and Managing a Catering Enterprise",
+            "Work Ethics and Food Packaging",
+            "Experimental Cookery",
+            "Test Interpretation",
+            "Cooking Assignment"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Home Management": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to Home Management",
+            "The Family",
+            "Housing",
+            "Care of the Home",
+            "Food and Nutrition",
+            "Clothing and Textiles"
+          ],
+          "secondTerm": [
+            "Nutritional Needs of Family Members",
+            "Cooking Equipment, Utensils and Tableware"
+          ],
+          "thirdTerm": [
+            "Entrepreneurship and Business Start-up in Textiles"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Principles of Management",
+            "Family Living"
+          ],
+          "secondTerm": [
+            "Feeding the Family",
+            "Clothing the Family"
+          ],
+          "thirdTerm": [
+            "Housing the Family"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Wealth Creation and Management"
+          ],
+          "secondTerm": [
+            "Consumer Education"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Technical Drawing": {
+        "SS1": {
+          "firstTerm": [
+            "Introduction to Technical Drawing",
+            "Safe Working Habits",
+            "Drawing Board Practice",
+            "Types of Lines",
+            "Lettering and Numbering",
+            "Plane Geometry",
+            "Circles",
+            "Angles",
+            "Triangles",
+            "Quadrilaterals"
+          ],
+          "secondTerm": [
+            "Polygons",
+            "Scales",
+            "Enlargement and Reduction of Plane Figures",
+            "Equal Areas of Similar Figures",
+            "Tangents and Tangency"
+          ],
+          "thirdTerm": [
+            "Loci, Parabola, Hyperbola and Ellipse",
+            "Prisms",
+            "Pyramids and Cones",
+            "Surface Development",
+            "Dimensioning",
+            "Isometric Construction"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Special Curves",
+            "Surface Development",
+            "Intersection of Solids",
+            "Pictorial Drawing"
+          ],
+          "secondTerm": [
+            "Orthographic Projection",
+            "Converting Orthographic Views to Isometric Views",
+            "Perspective Drawing",
+            "Auxiliary Views",
+            "Line in Space",
+            "Introduction to Building Drawing"
+          ],
+          "thirdTerm": [
+            "Building Design and Working Drawings",
+            "Orthographic Views of Buildings",
+            "Structural Parts of a Building",
+            "Freehand Sketching"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Engineering Design and Working Drawing",
+            "Screw Threads, Fasteners and Locking Devices",
+            "Sections and Sectional Views",
+            "Block Sectioning"
+          ],
+          "secondTerm": [
+            "Introduction to Computers in Drawing",
+            "Arches",
+            "Roofs",
+            "Conventional Representation of Materials and Symbols",
+            "Blueprint Reading, Reproduction Services and Merchandising"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Visual Art (Fine Art)": {
+        "SS1": {
+          "firstTerm": [
+            "Visual Arts and Visual Sense",
+            "Professions and Job Opportunities in Art",
+            "Drawing Lines",
+            "Drawing Natural and Man-made Objects",
+            "Drawing and Shading",
+            "Drawing Still Life",
+            "Drawing the Human Figure",
+            "Introduction to Art Appreciation"
+          ],
+          "secondTerm": [
+            "Introduction to Graphics",
+            "Introduction to Computer Graphics",
+            "Textile Design",
+            "Terminologies in Two-Dimensional Art",
+            "Terminologies in Three-Dimensional Art"
+          ],
+          "thirdTerm": [
+            "Introduction to Modelling",
+            "Historical Foundations of Nigerian Art",
+            "Museums and Art",
+            "Museums and Galleries in Nigeria"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Drawing",
+            "Painting",
+            "Nigerian Cultural Festivals",
+            "African Traditional Art History",
+            "Graphic Design",
+            "Textile Design on Paper",
+            "Embroidery",
+            "Furniture Making",
+            "Puppetry",
+            "Mosaic and Collage Composition"
+          ],
+          "secondTerm": [
+            "Imaginative Composition",
+            "Nature Painting",
+            "Modern and Traditional Art Institutions in Nigeria",
+            "Pottery",
+            "Book Cover and Jacket Design",
+            "Construction",
+            "Computer in Art"
+          ],
+          "thirdTerm": [
+            "Basic Shapes and Designs",
+            "Indigenous Decorative Motifs",
+            "Calabash Decoration",
+            "Body Decoration",
+            "Mural Design",
+            "Indigenous Basket and Mat Making",
+            "Cloth Weaving",
+            "Modern Nigerian Art and Artists",
+            "African Art History"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Drawing and Painting",
+            "History of Western Art",
+            "Impressionism",
+            "Nigerian Contemporary Artists",
+            "Cubism",
+            "Furniture",
+            "Oriental and Oceanic Art",
+            "Sculpture",
+            "Photography"
+          ],
+          "secondTerm": [
+            "Cultural and Creative Arts",
+            "Imaginative Composition",
+            "Craft in Nigeria",
+            "General Art Terminologies",
+            "Terminologies in Two- and Three-Dimensional Arts"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Music": {
+        "SS1": {
+          "firstTerm": [
+            "Theory of Music Revision",
+            "Musical Scales and Terms",
+            "Transcription",
+            "Transposition",
+            "Intervals",
+            "Triads",
+            "Pre-colonial African Music History",
+            "Medieval Western Music",
+            "Care, Maintenance and Repair of Instruments",
+            "Musical Instruments",
+            "African Ensemble Playing",
+            "Chords",
+            "Cadences",
+            "Rhythm Dictation",
+            "Aural Training",
+            "Form and Analysis"
+          ],
+          "secondTerm": [
+            "Scales Revision",
+            "Music Technology and Care of African Instruments",
+            "Computer Music Software",
+            "Triads",
+            "Harmony and Counterpoint",
+            "Aural Training and Cadences",
+            "Pre-colonial African Music",
+            "Form and Analysis",
+            "Classical and Romantic Composers",
+            "Modulation",
+            "Identification of Tones",
+            "Beethoven and Fela Sowande",
+            "Contrapuntal Form and Dance Styles"
+          ],
+          "thirdTerm": [
+            "Pitch Transcription, Aural Training and Rhythmic Patterns",
+            "Scales",
+            "Pre-colonial Nigerian Music",
+            "Medieval and Renaissance Music",
+            "Transposition",
+            "Cadences",
+            "Structural Analysis of Nigerian Dance",
+            "Two-Part Writing and Accompaniments",
+            "Choreographic Appendages"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Aural Training and Music Performance",
+            "Intervals and Their Inversions",
+            "African and Western Musical Instruments",
+            "African Art Musicians",
+            "Transposition by Clef and Key",
+            "Elementary Harmony and Cadences",
+            "Nigerian and Western Dance Styles",
+            "History of Western Music"
+          ],
+          "secondTerm": [
+            "Triads",
+            "Music Composition",
+            "Harmony",
+            "Ornaments and Abbreviations",
+            "Modulation",
+            "History of the Classical Period",
+            "African Vocal and Instrumental Music",
+            "Nigerian Instruments of Different Ethnic Groups"
+          ],
+          "thirdTerm": [
+            "African Music",
+            "Harmonic Intervals and Cadences",
+            "Analysis of Nigerian and Western Dance",
+            "Form and Analysis",
+            "Modulation",
+            "Aural Test",
+            "Sight Reading",
+            "Music Analysis",
+            "Aural Training"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Rhythmic Patterns",
+            "Aural Training",
+            "Harmony and Counterpoint",
+            "Nationalism in 20th Century Music",
+            "Forms and Analysis",
+            "Theory of Music",
+            "Triads and Chords"
+          ],
+          "secondTerm": [],
+          "thirdTerm": []
+        }
+      },
+      "Physical and Health Education": {
+        "SS1": {
+          "firstTerm": [
+            "Philosophy of Physical Education",
+            "Physical Education Ideologies",
+            "Competitive Sports",
+            "Athletics",
+            "Health and Personal Hygiene",
+            "Recreation and Sports Tourism",
+            "National Sports Championship",
+            "The Skeletal System",
+            "Soccer",
+            "Concept of Health Education",
+            "Health Education in Nigeria",
+            "Muscular System",
+            "Cells and Tissues",
+            "Sensory Organs",
+            "Health Services",
+            "Theory of Wellness",
+            "Physical Exercise and Health"
+          ],
+          "secondTerm": [
+            "First Aid",
+            "Sports Injuries",
+            "Handball",
+            "Indigenous Sports in West Africa",
+            "All Africa Games",
+            "Tennis",
+            "Respiratory System",
+            "Circulatory System",
+            "Housing and Environment",
+            "Water Supply",
+            "Food and Nutrition",
+            "Adequate Diet and Calories",
+            "Accidents",
+            "Safety Education",
+            "Homeostasis",
+            "Drug Education"
+          ],
+          "thirdTerm": [
+            "History of Physical Education in Nigeria",
+            "Dance and Rhythm",
+            "Tournaments",
+            "Basketball",
+            "Digestive System",
+            "Field Events",
+            "Gymnastics",
+            "Physical Fitness",
+            "Nutrition in Sports",
+            "Contact Diseases",
+            "Non-Communicable Diseases",
+            "Human Reproduction",
+            "Family and Family Health",
+            "Sex Education",
+            "Mental Illness and Personality",
+            "Consumer Health"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Technology in Sports",
+            "Soccer",
+            "National Competition",
+            "Tournaments",
+            "Table Tennis",
+            "Corrective and Adaptive Physical Education",
+            "Handball",
+            "Definition and Aims of Health Education",
+            "Mental Health",
+            "Body Systems",
+            "Accidents and Disasters",
+            "Family Health",
+            "Ageing and Death Education",
+            "Pollution and Its Health Hazards",
+            "Waste Disposal"
+          ],
+          "secondTerm": [
+            "Track Events",
+            "Race Starting Methods",
+            "Relay Races",
+            "Hurdles",
+            "Skeletal System",
+            "Jumps",
+            "Throwing Events",
+            "Volleyball",
+            "Basketball",
+            "First Aid Agencies",
+            "Respiratory System",
+            "Housing",
+            "Industrial Health",
+            "Nervous System",
+            "Nutritional Process",
+            "Beverages",
+            "Behaviour-Altering Chemicals"
+          ],
+          "thirdTerm": [
+            "Somatotypes",
+            "Muscular System",
+            "Posture and Postural Defects",
+            "Nervous System",
+            "Nutrition",
+            "Hockey",
+            "Drug Education",
+            "Badminton",
+            "Non-Communicable Diseases",
+            "Family Planning",
+            "Family Life Challenges",
+            "Digestive System",
+            "Consumer Products and Services"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Pioneers of Health Science and Health Education",
+            "Endocrine System",
+            "Skeletal System",
+            "Posture and Postural Defects",
+            "Health Maintenance and Promotion",
+            "Dental Health",
+            "Epidemiology and Vital Statistics"
+          ],
+          "secondTerm": [
+            "Pest and Vector Control",
+            "Disability and Rehabilitation",
+            "Pathogens and Parasites",
+            "Food Hygiene, Prevention and Storage",
+            "Health Insurance and Advertising of Health Products"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Basic Electricity (Electronics)": {
+        "SS1": {
+          "firstTerm": [
+            "Direct Current Circuit Theory",
+            "Magnetic Field and Electromagnetism"
+          ],
+          "secondTerm": [
+            "Measuring Instruments",
+            "Electrical Wiring"
+          ],
+          "thirdTerm": [
+            "Alternating Current Circuit Theory"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Transformers",
+            "Power Supply"
+          ],
+          "secondTerm": [
+            "Electrical Machines",
+            "Digital Electronics"
+          ],
+          "thirdTerm": [
+            "Electrical Energy Supply"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Electricity Transmission and Distribution",
+            "Maintenance and Repair of Electrical Appliances"
+          ],
+          "secondTerm": [],
+          "thirdTerm": []
+        }
+      },
+      "Yoruba": {
+        "SS1": {
+          "firstTerm": [
+            "Revision of Yoruba speech sounds and syllables",
+            "Word structure and formation",
+            "Proverbs and idioms (Owe ati akanlo ede)",
+            "Home training (Eko ile)",
+            "Yoruba foods",
+            "Indigenous occupations",
+            "Marriage",
+            "Pregnancy and antenatal care",
+            "Prose narrative text",
+            "Selected oral poetry and prescribed poetry"
+          ],
+          "secondTerm": [
+            "Comprehension passages",
+            "Report writing",
+            "Word classes",
+            "Naming ceremony",
+            "Child care",
+            "Health care",
+            "Prescribed drama texts",
+            "Prescribed prose texts",
+            "Prescribed poetry"
+          ],
+          "thirdTerm": [
+            "Formal essay writing",
+            "Sentence structure",
+            "Time of work",
+            "Yoruba belief in the Supreme Being (Olorun/Olodumare)",
+            "Yoruba deities (Orisa)",
+            "Prescribed poetry"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Verbal sentences",
+            "Home training (Eko ile)",
+            "Tone marking and vowel combination",
+            "Role of witchcraft in medicine and healing",
+            "Loan words",
+            "Yoruba sentence types",
+            "Idioms and figures of speech",
+            "Comprehension (prose and poetry)",
+            "Modern games and recreation",
+            "Word structure",
+            "Hereditary political systems",
+            "Advertising and trade in Yoruba society",
+            "Prose literature text (Moremi Ajasoro)",
+            "Prescribed WAEC/NECO literature"
+          ],
+          "secondTerm": [
+            "Verbal sentences",
+            "Funeral and inheritance customs",
+            "Proverbs as figures of speech",
+            "Informal letter writing",
+            "Contraction and elision",
+            "Judicial system in traditional Yoruba society",
+            "Transcription",
+            "Direct and reported speech",
+            "Essay writing",
+            "Compound and complex sentences",
+            "Taboos in Yoruba land",
+            "Yoruba belief in life after death",
+            "Dialects of Yoruba",
+            "Phrases in Yoruba sentences",
+            "Yoruba belief in the Supreme Being",
+            "Oral and prescribed poetry"
+          ],
+          "thirdTerm": [
+            "Revision of essay writing and home training",
+            "Revision of syllables and Yoruba language structure",
+            "Revision of word structure",
+            "Modern modes of communication",
+            "Yoruba numerals (up to 50 and beyond)",
+            "Yoruba deities and their worship",
+            "Revision of sound types and phonetics",
+            "Yoruba beliefs on witchcraft and the world",
+            "Beliefs on ghosts and spirit children",
+            "Yoruba belief in destiny (Ori)",
+            "Oral poetry (Oro enu akewi)",
+            "Prescribed WAEC/NECO literature"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Comprehension (prose and verse)",
+            "Essay writing",
+            "Sound system",
+            "Grammar",
+            "Current orthography",
+            "Translation"
+          ],
+          "secondTerm": [
+            "Oral literature",
+            "Written literature"
+          ],
+          "thirdTerm": [
+            "Beliefs and thoughts (Ero ati igbagbo)",
+            "Political system and community security",
+            "Burial and inheritance",
+            "Yoruba numerals",
+            "Ceremonies",
+            "Healthcare",
+            "Traditional games",
+            "Indigenous occupations and food",
+            "Home training"
+          ]
+        }
+      },
+      "Igbo": {
+        "SS1": {
+          "firstTerm": [
+            "Family relationships and kinship names (Ekwumekwu)",
+            "Traditional literature",
+            "Characteristics of the Igbo people",
+            "Igbo speech sounds (Udaasusu)",
+            "The family",
+            "Word formation",
+            "The sentence and its types"
+          ],
+          "secondTerm": [
+            "Sentence types (continued)",
+            "Marriage",
+            "Parts of speech",
+            "Written literature",
+            "Dialects and Standard Igbo",
+            "Characteristics of the Igbo people II",
+            "Adolescent health"
+          ],
+          "thirdTerm": [
+            "Letters of the alphabet and punctuation",
+            "Traditional Igbo government",
+            "Composition and letter writing",
+            "Figures of speech",
+            "Handicrafts",
+            "Translation"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Verbs and their forms (Ekwumekwu)",
+            "Vowel harmony and sounds",
+            "Good and bad character; Igbo life",
+            "Word formation and affixes",
+            "Tense and its types",
+            "Prose and literature texts",
+            "Word division",
+            "Secret societies and masquerades (Mmonwu, Ekpe, Odo, Okonko, Omabe)",
+            "Reading comprehension and environment; literary devices"
+          ],
+          "secondTerm": [
+            "Direct and indirect speech",
+            "Sound changes",
+            "Traditional literature (prescribed)",
+            "Parts of speech",
+            "Written literature",
+            "Traditional healers and spiritual practitioners",
+            "Numbers (one thousand to one million)",
+            "Syllable and sound structure",
+            "Affixes",
+            "Prescribed reading text"
+          ],
+          "thirdTerm": [
+            "Traditional titles and institutions",
+            "Composition writing",
+            "Verb usage in sentences",
+            "Wealth and titles (Iri Ekpe and Ike Ekpe)",
+            "Prescribed literature text",
+            "Proverbs and idioms",
+            "Craft and art language",
+            "Composition on arts",
+            "Prescribed literature"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Age grades",
+            "Letter writing and its types",
+            "Prose literature text",
+            "Oral literature",
+            "Igbo beliefs on life: ogbanje and reincarnation",
+            "Literary devices",
+            "Culture: taboos and customs",
+            "Traditional worship: divination and sacrifice"
+          ],
+          "secondTerm": [
+            "Information and communication technology",
+            "Oral and written arguments",
+            "Traditional rituals and ceremonies",
+            "Translation",
+            "Prose literature text",
+            "Education as a key to opportunity",
+            "Traditional healers: types and functions",
+            "Revision and WASSCE preparation"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "Hausa": {
+        "SS1": {
+          "firstTerm": [
+            "Types of sentences",
+            "Parts of sentences",
+            "Types of oral literature",
+            "Rules of writing",
+            "Sentence and clause construction",
+            "Social life among the Hausa",
+            "Traditional songs",
+            "Narrative writing"
+          ],
+          "secondTerm": [
+            "Types of sentences",
+            "Letter writing",
+            "Oral literature and its importance",
+            "Translation techniques",
+            "Prose text study",
+            "Hausa clothing and adornment",
+            "Reading comprehension"
+          ],
+          "thirdTerm": [
+            "Brain games",
+            "Riddles and puzzles",
+            "Drama text study",
+            "Letter writing",
+            "Types of sentences",
+            "Translation techniques",
+            "Historical elements in oral literature",
+            "Reading"
+          ]
+        },
+        "SS2": {
+          "firstTerm": [
+            "Traditional medicine",
+            "Hausa view of ghosts and spirits",
+            "Word classes in Hausa",
+            "Word formation in Hausa",
+            "Types of translation",
+            "Hausa tenses",
+            "Articulation of Hausa consonants and vowels"
+          ],
+          "secondTerm": [
+            "Traditional occupations",
+            "Comprehension",
+            "Articulation of consonants and vowels",
+            "Composition writing",
+            "Study of songs and poetry",
+            "Study of folktales and stories",
+            "Reading comprehension"
+          ],
+          "thirdTerm": [
+            "Hausa tenses",
+            "Types of translation",
+            "Drama text study",
+            "Superstitions in Hausaland",
+            "Traditional medicine",
+            "Hausa view of spirits",
+            "Hausa customs and traditions",
+            "Classification and types of Hausa sentences"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Hausa festivals",
+            "Rules of writing",
+            "Literature",
+            "Prose text study",
+            "Types of songs by Hausa poets",
+            "Family relations",
+            "Study of a written poetry text",
+            "Translation in practice"
+          ],
+          "secondTerm": [
+            "Revision of Hausa dialects",
+            "Revision of prose text study",
+            "Revision of Hausa poetry and prose styles",
+            "Revision of numerals",
+            "Drama text study"
+          ],
+          "thirdTerm": []
+        }
+      },
+      "French": {
+        "SS1": {
+          "firstTerm": [
+            "Importance of the French language",
+            "Introducing yourself in detail",
+            "Introducing someone else in detail",
+            "Identifying people by profession or title",
+            "Talking about your immediate environment",
+            "Expressing likes and preferences",
+            "Expressing agreement and disagreement, giving reasons",
+            "Expressing needs and offering food",
+            "Talking about daily activities",
+            "Asking for and giving directions"
+          ],
+          "secondTerm": [],
+          "thirdTerm": []
+        },
+        "SS2": {
+          "firstTerm": [
+            "Placing a recent past action",
+            "Expressing a state or repeated action in the past",
+            "Expressing simultaneity",
+            "Reporting conversations and orders",
+            "Expressing anteriority",
+            "Informal letter writing"
+          ],
+          "secondTerm": [
+            "Asking for and giving an opinion",
+            "Complaining",
+            "Expressing hesitation, worry or doubt",
+            "Expressing fear and anxiety",
+            "Expressing confidence",
+            "Composition writing"
+          ],
+          "thirdTerm": [
+            "Expressing appreciation",
+            "Expressing disappointment",
+            "Composition writing",
+            "Nuancing the expression of an opinion"
+          ]
+        },
+        "SS3": {
+          "firstTerm": [
+            "Oral comprehension",
+            "Judging or criticising an act or attitude",
+            "Protesting",
+            "Apologising, justifying and defending",
+            "Forgiving, accusing and defending someone",
+            "Expressing direct and implied obligation",
+            "Composition writing",
+            "Expressing consequence",
+            "Expressing certainty",
+            "Expressing possibility"
+          ],
+          "secondTerm": [
+            "Expressing purpose",
+            "Expressing opposition",
+            "Concession and condition",
+            "Reporting an action (active and passive voice)",
+            "Expressing general truths"
+          ],
+          "thirdTerm": []
+        }
+      }
+    }
+  }

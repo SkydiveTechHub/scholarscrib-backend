@@ -98,8 +98,18 @@ class GetDashboardService:
             self.session, self.student_id, since=utcnow() - timedelta(days=7)
         )
         plan = await plans_repository.active(self.session, self.student_id)
-        today_items = await self._today_items(plan, today)
-        all_topics = await topics_repository.all_ordered(self.session)
+        active_ids = await subjects_repository.active_ids(self.session)
+        today_items = [
+            item
+            for item in await self._today_items(plan, today)
+            if item["subjectId"] in active_ids
+        ]
+        # A deactivated subject leaves every rail below, not just the classroom.
+        all_topics = [
+            topic
+            for topic in await topics_repository.all_ordered(self.session)
+            if topic.subject_id in active_ids
+        ]
         states = await GetTopicMasteryService(
             self.session,
             self.student_id,
@@ -134,7 +144,7 @@ class GetDashboardService:
                 "name": subject.name,
                 "code": subject.code,
             }
-            for subject in await subjects_repository.ordered(self.session)
+            for subject in await subjects_repository.active_ordered(self.session)
             if subject.id in referenced
         }
         return {
@@ -387,9 +397,7 @@ class GetPerformanceService:
             subject
             for subject in await subjects_repository.ordered(self.session)
             if totals.get(subject.id, (0, 0))[0] > 0
-            and (
-                not self.track or subject.track_category in {"CORE", self.track}
-            )
+            and (not self.track or subject.track_category in {"CORE", self.track})
         ]
         all_topics = await topics_repository.all_ordered(self.session)
         states = await GetTopicMasteryService(
@@ -522,7 +530,7 @@ class GetClassroomSubjectsService:
         self.track = track
 
     async def process(self) -> dict:
-        subject_rows = await subjects_repository.ordered(self.session)
+        subject_rows = await subjects_repository.active_ordered(self.session)
         if self.track:
             subject_rows = [
                 subject
@@ -562,7 +570,7 @@ class GetSubjectPageService:
         self.slug = slug
 
     async def process(self) -> dict:
-        subject = await subjects_repository.by_slug(self.session, self.slug)
+        subject = await subjects_repository.active_by_slug(self.session, self.slug)
         if subject is None:
             raise ApiError(404, "Subject not found")
         topic_rows = await topics_repository.for_subject(self.session, subject.id)
@@ -618,7 +626,7 @@ class GetTopicPageService:
         self.view = view
 
     async def process(self) -> dict:
-        subject = await subjects_repository.by_slug(self.session, self.slug)
+        subject = await subjects_repository.active_by_slug(self.session, self.slug)
         if subject is None:
             raise ApiError(404, "Subject not found")
         topic = await topics_repository.by_slug(
@@ -705,7 +713,9 @@ class GetPracticeResultService:
         self.topic_slug = topic_slug
 
     async def process(self) -> dict:
-        subject = await subjects_repository.by_slug(self.session, self.subject_slug)
+        subject = await subjects_repository.active_by_slug(
+            self.session, self.subject_slug
+        )
         topic = None
         if subject is not None:
             topic = await topics_repository.by_slug(

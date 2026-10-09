@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -36,6 +37,9 @@ class Subject(Base):
     is_jamb: Mapped[bool] = mapped_column("isJamb", Boolean, default=False)
     is_neco: Mapped[bool] = mapped_column("isNeco", Boolean, default=False)
     track_category: Mapped[str] = mapped_column("trackCategory", TrackCategory)
+    is_active: Mapped[bool] = mapped_column(
+        "isActive", Boolean, default=True, server_default=text("true")
+    )
 
 
 class SubjectResource(Base):

@@ -103,6 +103,7 @@ class SubjectOut(ApiOut):
     isWaec: bool | None = None
     isJamb: bool | None = None
     isNeco: bool | None = None
+    isActive: bool | None = None
     trackCategory: str | None = None
     count: SubjectCountOut | None = Field(default=None, alias="_count")
 
@@ -130,6 +131,33 @@ class CurriculumLevelOut(ApiOut):
 class SubjectCurriculumOut(ApiOut):
     subject: SubjectOut
     levels: list[CurriculumLevelOut]
+
+
+class AdminCurriculumOut(ApiOut):
+    id: str
+    subjectId: str
+    classLevel: str
+    term: str
+
+
+class AdminCurriculumsOut(ApiOut):
+    curriculums: list[AdminCurriculumOut]
+
+
+class AdminTopicOut(ApiOut):
+    id: str
+    subjectId: str
+    curriculumLevelId: str | None = None
+    title: str
+    slug: str
+    orderIndex: int
+    estimatedMinutes: int
+    waecWeight: float
+    jambWeight: float
+
+
+class AdminTopicsOut(ApiOut):
+    topics: list[AdminTopicOut]
 
 
 class TopicSummaryOut(ApiOut):
