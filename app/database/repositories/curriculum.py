@@ -62,6 +62,25 @@ class TopicRepository(BaseRepository[Topic]):
             return []
         return await self.list_where(session, Topic.id.in_(topic_ids))
 
+    async def for_level(
+        self, session: AsyncSession, curriculum_level_id: str
+    ) -> list[Topic]:
+        return await self.list_where(
+            session,
+            Topic.curriculum_level_id == curriculum_level_id,
+            order_by=(Topic.order_index,),
+        )
+
+    async def max_order_for_level(
+        self, session: AsyncSession, curriculum_level_id: str
+    ) -> int:
+        value = await session.scalar(
+            select(func.max(Topic.order_index)).where(
+                Topic.curriculum_level_id == curriculum_level_id
+            )
+        )
+        return int(value) if value is not None else -1
+
     async def with_levels(
         self,
         session: AsyncSession,
@@ -103,6 +122,15 @@ class CurriculumLevelRepository(BaseRepository[CurriculumLevel]):
             CurriculumLevel.subject_id == subject_id,
             CurriculumLevel.class_level == class_level,
             CurriculumLevel.term == term,
+        )
+
+    async def for_subject(
+        self, session: AsyncSession, subject_id: str
+    ) -> list[CurriculumLevel]:
+        return await self.list_where(
+            session,
+            CurriculumLevel.subject_id == subject_id,
+            order_by=(CurriculumLevel.class_level, CurriculumLevel.term),
         )
 
 

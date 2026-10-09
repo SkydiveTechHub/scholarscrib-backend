@@ -4,6 +4,11 @@ from app.api.admin.admins import router as admins_router
 from app.api.admin.announcements import router as announcements_router
 from app.api.admin.audit import router as audit_router
 from app.api.admin.auth import router as auth_router
+from app.api.admin.catalogue import (
+    curriculums_router,
+    subjects_router,
+    topics_router,
+)
 from app.api.admin.lessons import browse_router, tree_router
 from app.api.admin.lessons import router as lessons_router
 from app.api.admin.materials import router as materials_router
@@ -17,6 +22,9 @@ from app.api.admin.terms import router as terms_router
 router = APIRouter(prefix="/admin/api")
 router.include_router(auth_router)
 router.include_router(admins_router)
+router.include_router(subjects_router)
+router.include_router(curriculums_router)
+router.include_router(topics_router)
 router.include_router(students_router)
 router.include_router(questions_router)
 router.include_router(materials_router)

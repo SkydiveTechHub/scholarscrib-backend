@@ -25,6 +25,9 @@ ProgressStatus = Annotated[Literal["NOT_STARTED", "IN_PROGRESS", "COMPLETED"], C
 MaterialType = Annotated[Literal["PDF", "IMAGE", "VIDEO", "LINK"], Caps]
 ClassLevelIn = Annotated[ClassLevel, Caps]
 TrackIn = Annotated[Track, Caps]
+TrackCategory = Annotated[
+    Literal["CORE", "SCIENCE", "ARTS", "COMMERCIAL", "VOCATIONAL"], Caps
+]
 type Weekday = Literal[1, 2, 3, 4, 5, 6, 7]
 type Phone = Annotated[str, Field(pattern=PHONE_PATTERN)]
 
@@ -412,6 +415,52 @@ class AcademicTermIn(BaseModel):
     term: Term
     startsOn: str
     endsOn: str
+
+
+class SubjectCreateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    code: str = Field(min_length=2, max_length=16)
+    trackCategory: TrackCategory
+    isWaec: bool = False
+    isJamb: bool = False
+    isNeco: bool = False
+
+
+class SubjectPatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    code: str | None = Field(default=None, min_length=2, max_length=16)
+    trackCategory: TrackCategory | None = None
+    isWaec: bool | None = None
+    isJamb: bool | None = None
+    isNeco: bool | None = None
+
+
+class CurriculumCreateIn(BaseModel):
+    subjectId: str = Field(min_length=1)
+    classLevel: ClassLevelIn
+    term: Term
+
+
+class CurriculumPatchIn(BaseModel):
+    classLevel: ClassLevelIn | None = None
+    term: Term | None = None
+
+
+class TopicCreateIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    orderIndex: int | None = Field(default=None, ge=0)
+    estimatedMinutes: int = Field(default=45, ge=1, le=600)
+    waecWeight: float = Field(default=0.0, ge=0, le=1)
+    jambWeight: float = Field(default=0.0, ge=0, le=1)
+
+
+class TopicPatchIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    curriculumLevelId: str | None = None
+    orderIndex: int | None = Field(default=None, ge=0)
+    estimatedMinutes: int | None = Field(default=None, ge=1, le=600)
+    waecWeight: float | None = Field(default=None, ge=0, le=1)
+    jambWeight: float | None = Field(default=None, ge=0, le=1)
 
 
 class ProviderBackfillIn(BaseModel):
