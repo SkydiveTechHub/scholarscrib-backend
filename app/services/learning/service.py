@@ -431,11 +431,21 @@ class RecordTopicAnswersService:
                 recorded += 1
                 continue
             block = checks.get(item.questionId)
-            if (
-                block is not None
-                and item.selectedAnswer is not None
-                and item.questionId not in recorded_checks
-            ):
+            if block is not None and item.questionId not in recorded_checks:
+                if block.get("type") == "short":
+                    # Self-marked: the student's own verdict is the only signal
+                    # there is for a typed answer, so trust it as given.
+                    if item.firstTry is None:
+                        continue
+                    score = 1.0 if item.firstTry else 0.0
+                elif item.selectedAnswer is None:
+                    continue
+                else:
+                    score = (
+                        1.0
+                        if str(item.selectedAnswer) == str(block.get("answer"))
+                        else 0.0
+                    )
                 await learning_events_repository.add(
                     self.session,
                     LearningEvent(
@@ -443,9 +453,7 @@ class RecordTopicAnswersService:
                         subject_id=subject.id,
                         topic_id=topic.id,
                         kind="LESSON_BLOCK_COMPLETED",
-                        score=1.0
-                        if str(item.selectedAnswer) == str(block.get("answer"))
-                        else 0.0,
+                        score=score,
                         source_id=item.questionId,
                         occurred_at=now,
                     ),
@@ -462,6 +470,6 @@ class RecordTopicAnswersService:
             block["id"]: block
             for block in (lesson.blocks or [])
             if isinstance(block, dict)
-            and block.get("type") == "check"
+            and block.get("type") in {"check", "short"}
             and isinstance(block.get("id"), str)
         }

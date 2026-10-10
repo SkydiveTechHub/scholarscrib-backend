@@ -98,6 +98,12 @@ def block_word_count(block: dict) -> int:
         return word_count(block.get("phrase", "")) + sum(
             word_count(e) for e in block.get("encoded", [])
         )
+    if kind == "short":
+        return (
+            word_count(block.get("question", ""))
+            + word_count(block.get("answer", ""))
+            + word_count(block.get("explanation") or "")
+        )
     if kind == "check":
         return word_count(block.get("question", ""))
     return 0
@@ -367,15 +373,18 @@ def _parse_quiz(
         stem = " ".join(q["stem"]).strip()
         label, line, options = q["label"], q["line"], q["options"]
 
-        if not options:  # a theory question — a card, never an error
+        if not options:  # a theory question — never an error
             short = _SHORT_ANSWER.search(stem)
-            block = {
-                "type": "concept",
-                "id": next_id("short-answer" if short else "theory"),
-                "text": _SHORT_ANSWER.sub("", stem, count=1).strip() if short else stem,
-            }
             if short:
-                block["reveal"] = short.group(1).strip()
+                # The student types an answer, then marks it against this one.
+                block = {
+                    "type": "short",
+                    "id": next_id("short-answer"),
+                    "question": _SHORT_ANSWER.sub("", stem, count=1).strip(),
+                    "answer": short.group(1).strip(),
+                }
+            else:  # no model answer to mark against, so it stays a plain card
+                block = {"type": "concept", "id": next_id("theory"), "text": stem}
             blocks.append(block)
             last_non_check = block["id"]
             continue

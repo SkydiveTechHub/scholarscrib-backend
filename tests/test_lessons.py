@@ -42,9 +42,9 @@ Measurement basics.
     check = next(block for block in parsed.blocks if block["type"] == "check")
     assert check["answer"] == "B"
     assert check["options"]["B"] == "Mass"
-    short = next(block for block in parsed.blocks if block.get("reveal"))
-    assert short["reveal"] == "3 kg"
-    assert "3,000 g" in short["text"]
+    short = next(block for block in parsed.blocks if block["type"] == "short")
+    assert short["answer"] == "3 kg"
+    assert "3,000 g" in short["question"]
 
 
 def test_worked_example_keeps_the_bold_answer():

@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import ReviewIn
@@ -33,16 +35,69 @@ from app.services.srs.scheduler import (
     seed_difficulty,
 )
 
+_NOT_STUDY_CONTENT = re.compile(
+    r"^(?:(?:learning\s+)?objectives?|quiz\b|worked\s+examples?\b)", re.IGNORECASE
+)
+
+
+def _card_faces(block: dict) -> tuple[str, str] | None:
+    """The (front, back) a block should study as, or None if it is not study content.
+
+    Objectives and the Quiz / Worked Examples instruction cards describe the
+    lesson rather than teach it, so they never become cards.
+    """
+    kind = (block.get("type") or "").lower()
+    text = (block.get("text") or block.get("body") or "").strip()
+    title = (block.get("title") or "").strip()
+
+    if kind == "concept":
+        if _NOT_STUDY_CONTENT.match(title):
+            return None
+        reveal = (block.get("reveal") or "").strip()
+        if reveal and not title:  # a short-answer question: ask it, answer on the back
+            return text, reveal
+        back = f"{text}\n\n{reveal}" if reveal else text
+        return (title or text[:80]), back
+    if kind == "tip":
+        return text[:80], text
+    if kind == "short":
+        question = (block.get("question") or text).strip()
+        return question, (block.get("answer") or "").strip()
+    if kind == "mnemonic":
+        phrase = (block.get("phrase") or text).strip()
+        encoded = [str(e).strip() for e in block.get("encoded") or [] if str(e).strip()]
+        return phrase, "\n".join(encoded)
+    if kind == "example":
+        problem = (block.get("problem") or text).strip()
+        steps = [str(s).strip() for s in block.get("steps") or [] if str(s).strip()]
+        answer = (block.get("answer") or "").strip()
+        return problem, "\n".join([*steps, f"Answer: {answer}"] if answer else steps)
+    if kind == "check":
+        question = (block.get("question") or text).strip()
+        options = block.get("options") or {}
+        answer = str(block.get("answer") or "").strip()
+        if not answer or answer not in options:
+            return None
+        back = f"{answer}) {options[answer]}"
+        explanation = (block.get("explanation") or "").strip()
+        return question, f"{back}\n\n{explanation}" if explanation else back
+    if kind == "mistake":
+        return (block.get("wrong") or text).strip(), (block.get("right") or "").strip()
+    return None
+
 
 def cards_from_blocks(blocks: list[dict]) -> list[dict]:
     cards_out = []
     seen_keys: set[str] = set()
     for index, block in enumerate(blocks or []):
         kind = (block.get("type") or "").lower()
-        text = (block.get("text") or block.get("body") or "").strip()
-        if not text or len(text.split()) > 120:
+        faces = _card_faces(block)
+        if faces is None:
             continue
-        if kind in {"concept", "mnemonic", "tip"}:
+        front, text = faces[0].strip(), faces[1].strip()
+        if not front or not text or len(text.split()) > 120:
+            continue
+        if kind in {"concept", "mnemonic", "tip", "short"}:
             card_type = "DEFINITION"
         elif kind in {"check", "example"}:
             card_type = "SCENARIO"
@@ -61,7 +116,7 @@ def cards_from_blocks(blocks: list[dict]) -> list[dict]:
                 "cardType": card_type,
                 "sourceKey": key,
                 "payload": {
-                    "front": block.get("title") or text[:80],
+                    "front": front,
                     "back": text,
                     "type": card_type,
                 },

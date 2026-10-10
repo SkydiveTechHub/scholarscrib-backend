@@ -214,8 +214,9 @@ def test_short_answer_accepts_qualified_label():
         "# T\n## A\nt\n## Quiz\n1. Say why. *(Short answer — sample: Because.)*\n"
     )
     block = parsed.blocks[-1]
-    assert block["reveal"] == "Because."
-    assert block["text"] == "Say why."
+    assert block["type"] == "short"
+    assert block["answer"] == "Because."
+    assert block["question"] == "Say why."
 
 
 def test_theory_question_without_answer_is_a_card_not_an_error():
@@ -279,3 +280,36 @@ def test_info_line_only_directly_under_title():
     prose = parse_lesson_markdown("# T\nThis is **important** for WAEC.\n")
     assert prose.doc_info == {}
     assert prose.blocks
+
+
+# ── short blocks: type an answer, self-mark ──────────────────
+
+
+def test_short_answer_becomes_a_short_block_with_a_stable_shape():
+    parsed = validate_lesson_markdown(
+        "# T\n## A\ntext\n## Quiz\n"
+        "1. Define diffusion. *(Short answer: Spreading out.)*\n"
+        "2. Pick one. \n a) x ✔\n b) y\n"
+    )
+    assert parsed.errors == []
+    short = next(b for b in parsed.blocks if b["type"] == "short")
+    assert short == {
+        "type": "short",
+        "id": "short-answer-1",
+        "question": "Define diffusion.",
+        "answer": "Spreading out.",
+    }
+
+
+def test_theory_question_without_model_answer_is_not_a_short_block():
+    parsed = parse_lesson_markdown("# T\n## A\nt\n## Quiz\n1. State one safety rule.\n")
+    assert not any(b["type"] == "short" for b in parsed.blocks)
+    assert parsed.blocks[-1]["type"] == "concept"
+
+
+def test_short_block_counts_towards_the_word_cap():
+    long = " ".join(["w"] * 130)
+    parsed = validate_lesson_markdown(
+        f"# T\n## A\nt\n## Quiz\n1. Why? *(Short answer: {long})*\n"
+    )
+    assert any("cards must be ≤ 120" in m for m in _messages(parsed))
