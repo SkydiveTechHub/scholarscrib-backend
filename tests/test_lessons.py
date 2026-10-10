@@ -1,5 +1,5 @@
 from app.services.console import audience_matches
-from app.services.lessons.markdown import validate_lesson_markdown
+from app.services.lessons.markdown import parse_lesson_markdown
 
 
 class _User:
@@ -11,7 +11,7 @@ class _User:
 
 
 def test_quiz_requires_a_marked_option():
-    parsed = validate_lesson_markdown(
+    parsed = parse_lesson_markdown(
         """# Physics Lesson Note: Measurement
 ## Quiz
 1. Which is a fundamental quantity?
@@ -25,9 +25,11 @@ def test_quiz_requires_a_marked_option():
 
 
 def test_quiz_check_and_short_answer():
-    parsed = validate_lesson_markdown(
+    parsed = parse_lesson_markdown(
         """# Measurement and Units
 **Class:** SSS1 | **Term:** First Term
+## Intro
+Measurement basics.
 ## Quiz
 1. Which is fundamental?
    a) Speed
@@ -46,7 +48,7 @@ def test_quiz_check_and_short_answer():
 
 
 def test_worked_example_keeps_the_bold_answer():
-    parsed = validate_lesson_markdown(
+    parsed = parse_lesson_markdown(
         """# Motion
 ## Worked examples
 **Example 2:** A trip takes 2 hours.

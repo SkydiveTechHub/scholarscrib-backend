@@ -455,6 +455,13 @@ class ImportLessonService:
             )
         if not parsed.blocks:
             raise ApiError(400, "The note produced no lesson blocks")
+        # The Lesson table has no column for these, so say so instead of
+        # accepting them silently.
+        for key in ("summary", "estimatedMinutes", "difficulty"):
+            if key in parsed.meta:
+                parsed.warnings.append(
+                    f'Frontmatter "{key}" is not stored by this server — ignored.'
+                )
         return parsed
 
     async def _save(self, topic: Topic, markdown: str, parsed) -> Lesson:
@@ -481,6 +488,10 @@ class ImportLessonService:
         lesson.content = markdown
         lesson.blocks = parsed.blocks
         lesson.created_by = self.actor_id
+        if "passMarkPercent" in parsed.meta:
+            lesson.pass_mark_percent = parsed.meta["passMarkPercent"]
+        if "practiceCount" in parsed.meta:
+            lesson.practice_count = parsed.meta["practiceCount"]
         lesson.updated_at = utcnow()
         await self.session.flush()
         return lesson
