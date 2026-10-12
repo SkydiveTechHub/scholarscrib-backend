@@ -12,7 +12,6 @@ from app.services.learning.evidence import (
     OBSERVATION_FLOOR,
     PRIOR_STRENGTH,
     SCORING_VERSION,
-    STRONG_MASTERY,
     TARGET,
     WEAK_MASTERY,
     channel_score,
@@ -289,50 +288,3 @@ def sort_gaps(items: list[dict]) -> list[dict]:
         return (abandoned, -item.get("bottleneckScore", 0), item.get("mastery", 0))
 
     return sorted(items, key=key)
-
-
-def recommendation_score(
-    state: TopicState,
-    leverage: float,
-    available: bool,
-    now: datetime,
-) -> float:
-    urgency = max(0.0, (TARGET - state.mastery) / TARGET)
-    decay = 0.0 if state.retention is None else max(0.0, 1 - state.retention)
-    readiness = 1.0 if available else 0.0
-    freshness = 1.0
-    if state.last_effort_at is not None:
-        age_days = (as_utc(now) - as_utc(state.last_effort_at)).total_seconds() / 86400
-        if age_days < 1:
-            freshness = 0.5
-    return (
-        0.30 * urgency
-        + 0.30 * leverage
-        + 0.20 * decay
-        + 0.10 * readiness
-        + 0.10 * freshness
-    )
-
-
-def recommend(
-    states: list[TopicState], leverage: dict[str, float], now: datetime, k: int = 3
-) -> list[TopicState]:
-    eligible = [
-        state for state in states if state.available and state.mastery < STRONG_MASTERY
-    ]
-    if not eligible:
-        eligible = [
-            state
-            for state in states
-            if is_mastered(state)
-            and state.retention is not None
-            and state.retention < DECAY_RETENTION
-        ]
-    ranked = sorted(
-        eligible,
-        key=lambda state: recommendation_score(
-            state, leverage.get(state.topic_id, 0.0), state.available, now
-        ),
-        reverse=True,
-    )
-    return ranked[:k]

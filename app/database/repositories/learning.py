@@ -113,6 +113,46 @@ class PerformanceMetricRepository(BaseRepository[PerformanceMetric]):
 class LearningEventRepository(BaseRepository[LearningEvent]):
     model = LearningEvent
 
+    async def recent_outcomes_by_topic(
+        self,
+        session: AsyncSession,
+        student_id: str,
+        topic_ids: list[str],
+        limit: int = 8,
+    ) -> dict[str, list[bool]]:
+        """Each topic's last `limit` answers, newest first (True = correct)."""
+        if not topic_ids:
+            return {}
+        ranked = (
+            select(
+                LearningEvent.topic_id.label("topic_id"),
+                LearningEvent.correct.label("correct"),
+                func.row_number()
+                .over(
+                    partition_by=LearningEvent.topic_id,
+                    order_by=LearningEvent.seq.desc(),
+                )
+                .label("rank"),
+            )
+            .where(
+                LearningEvent.student_id == student_id,
+                LearningEvent.kind == "QUESTION_ANSWERED",
+                LearningEvent.correct.is_not(None),
+                LearningEvent.topic_id.in_(topic_ids),
+            )
+            .subquery()
+        )
+        rows = await self.rows(
+            session,
+            select(ranked.c.topic_id, ranked.c.correct)
+            .where(ranked.c.rank <= limit)
+            .order_by(ranked.c.topic_id, ranked.c.rank),
+        )
+        found: dict[str, list[bool]] = {}
+        for topic_id, correct in rows.all():
+            found.setdefault(topic_id, []).append(bool(correct))
+        return found
+
     async def for_student(
         self,
         session: AsyncSession,

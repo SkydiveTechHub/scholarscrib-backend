@@ -117,6 +117,29 @@ class FlashcardReviewRepository(BaseRepository[FlashcardReview]):
         )
         return {row[0]: int(row[1]) for row in result.all() if row[0]}
 
+    async def retrievability_rows(
+        self, session: AsyncSession, student_id: str
+    ) -> list[tuple[str, float, datetime]]:
+        """(topic_id, stability_days, last_reviewed_at) for every reviewed card."""
+        topic_id = func.coalesce(FlashcardDeck.topic_id, Subtopic.topic_id)
+        result = await self.rows(
+            session,
+            select(
+                topic_id, FlashcardReview.stability, FlashcardReview.last_reviewed_at
+            )
+            .select_from(FlashcardReview)
+            .join(Flashcard, Flashcard.id == FlashcardReview.flashcard_id)
+            .join(FlashcardDeck, FlashcardDeck.id == Flashcard.deck_id)
+            .outerjoin(Lesson, Lesson.id == FlashcardDeck.lesson_id)
+            .outerjoin(Subtopic, Subtopic.id == Lesson.subtopic_id)
+            .where(
+                FlashcardReview.student_id == student_id,
+                FlashcardReview.last_reviewed_at.is_not(None),
+                FlashcardReview.stability > 0,
+            ),
+        )
+        return [(row[0], row[1], row[2]) for row in result.all() if row[0]]
+
     async def low_retention(
         self,
         session: AsyncSession,

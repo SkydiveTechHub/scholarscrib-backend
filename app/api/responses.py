@@ -462,11 +462,7 @@ class DashboardOut(ApiOut):
     firstName: str | None = None
     streak: int
     tier: str
-    keepLearning: dict | None = None
-    learningPicks: list[dict] = []
-    gaps: list[dict] = []
-    revision: list[dict] = []
-    revisionTotal: int = 0
+    session: dict | None = None
     subjects: dict[str, dict] = {}
     todayItems: list[dict] = []
     hasStudyPlan: bool = False

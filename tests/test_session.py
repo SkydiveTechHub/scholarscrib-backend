@@ -619,3 +619,18 @@ async def test_save_failure_still_returns_session(store):
         FakeSession(), "stu", "2026-10-12", compose=compose, plan_status={}, now=NOW
     )
     assert result["total"] == 1
+
+
+def test_dashboard_out_serves_session_not_old_rails():
+    from app.api.responses import DashboardOut
+
+    out = DashboardOut(streak=1, tier="FREE", achievements={}, session={"total": 0})
+    assert out.session == {"total": 0}
+    for removed in (
+        "keepLearning",
+        "learningPicks",
+        "gaps",
+        "revision",
+        "revisionTotal",
+    ):
+        assert removed not in DashboardOut.model_fields
