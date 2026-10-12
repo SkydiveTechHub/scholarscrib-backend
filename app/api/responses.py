@@ -513,6 +513,7 @@ class TopicPageOut(ApiOut):
     accObservations: int = 0
     lessonObservations: int = 0
     srsObservations: int = 0
+    prerequisites: list[dict] = []
     canonicalLessonId: str | None = None
     createsAttempt: bool | None = None
     lesson: dict | None = None

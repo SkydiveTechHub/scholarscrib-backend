@@ -29,11 +29,12 @@ from app.database.repositories.question import questions_repository
 from app.domain import can, entitlement_denial
 from app.services.assessments.grading import coarse_grade
 from app.services.auth.rules import current_streak
-from app.services.learning.evidence import DECAY_RETENTION, TARGET
+from app.services.learning.evidence import DECAY_RETENTION, GATE, TARGET
 from app.services.learning.graph import (
     GraphEdge,
     GraphNode,
     build_graph,
+    prerequisite_satisfied,
     topic_available,
 )
 from app.services.learning.mastery import (
@@ -676,6 +677,9 @@ class GetTopicPageService:
             "accObservations": state.acc_observations,
             "lessonObservations": state.lesson_observations,
             "srsObservations": state.srs_observations,
+            "prerequisites": await _prerequisites(
+                self.session, topic, states, self.student_id
+            ),
         }
         if self.view == "overview":
             base["canonicalLessonId"] = lesson.id if lesson else None
@@ -694,50 +698,11 @@ class GetTopicPageService:
                 "checkpoint": progress_row.checkpoint_data if progress_row else None,
                 "status": progress_row.status if progress_row else "NOT_STARTED",
                 "unlocked": unlocked,
+                "passMarkPercent": lesson.pass_mark_percent,
+                "practiceCount": lesson.practice_count,
             }
         )
         return base
-
-
-class GetPracticeResultService:
-    def __init__(
-        self,
-        session: AsyncSession,
-        student_id: str,
-        subject_slug: str,
-        topic_slug: str,
-    ) -> None:
-        self.session = session
-        self.student_id = student_id
-        self.subject_slug = subject_slug
-        self.topic_slug = topic_slug
-
-    async def process(self) -> dict:
-        subject = await subjects_repository.active_by_slug(
-            self.session, self.subject_slug
-        )
-        topic = None
-        if subject is not None:
-            topic = await topics_repository.by_slug(
-                self.session, subject.id, self.topic_slug
-            )
-        if subject is None or topic is None:
-            raise ApiError(404, "Topic not found")
-        attempt = await attempts_repository.latest_completed_topic_quiz(
-            self.session, self.student_id, subject.id
-        )
-        if attempt is None:
-            return {"result": None}
-        return {
-            "result": {
-                "attemptId": attempt.id,
-                "percentage": attempt.percentage,
-                "grade": attempt.grade,
-                "completedAt": attempt.completed_at.isoformat()
-                if attempt.completed_at
-                else None,
-            }
-        }
 
 
 async def _attempts(
@@ -777,6 +742,51 @@ async def _attempts(
             }
         )
     return payload
+
+
+async def _prerequisites(
+    session: AsyncSession, topic: Topic, states: dict, student_id: str
+) -> list[dict]:
+    """Each prerequisite of a topic with the student's standing against its gate.
+
+    Uses the same satisfaction rule as `topic_available`, so a chip can never
+    disagree with the lock on the page. A prerequisite outside the subject has
+    no state loaded here and reads as 0, exactly as the gate treats it.
+    """
+    edges = [
+        edge
+        for edge in await topic_edges_repository.for_topics(session, [topic.id])
+        if edge.kind == "PREREQUISITE"
+    ]
+    if not edges:
+        return []
+    passed = set(
+        await metrics_repository.passed_topic_ids(
+            session, student_id, [edge.prereq_topic_id for edge in edges]
+        )
+    )
+    rows = []
+    for edge in edges:
+        source = await topics_repository.by_id(session, edge.prereq_topic_id)
+        if source is None:
+            continue
+        state = states.get(source.id)
+        mastery = 0 if state is None else state.mastery
+        rows.append(
+            {
+                "topicId": source.id,
+                "subjectId": source.subject_id,
+                "title": source.title,
+                "slug": source.slug,
+                "need": round(GATE * edge.strength),
+                "mastery": mastery,
+                "met": prerequisite_satisfied(
+                    mastery, edge.strength, source.id in passed
+                ),
+                "rationale": edge.rationale,
+            }
+        )
+    return rows
 
 
 async def _paint(
