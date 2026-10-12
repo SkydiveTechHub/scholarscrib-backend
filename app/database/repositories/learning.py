@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
     Achievement,
+    DailySession,
     LearningEvent,
     PerformanceMetric,
     StudentAchievement,
@@ -141,6 +142,19 @@ class LearningEventRepository(BaseRepository[LearningEvent]):
         )
         return {source for (source,) in rows.all()}
 
+    async def since(
+        self, session: AsyncSession, student_id: str, moment: datetime
+    ) -> list[LearningEvent]:
+        return await self.many(
+            session,
+            select(LearningEvent)
+            .where(
+                LearningEvent.student_id == student_id,
+                LearningEvent.occurred_at >= moment,
+            )
+            .order_by(LearningEvent.seq),
+        )
+
     async def last_active(
         self, session: AsyncSession, student_ids: list[str]
     ) -> dict[str, object]:
@@ -173,6 +187,19 @@ class TopicMasteryRepository(BaseRepository[TopicMastery]):
         if topic_ids is not None:
             statement = statement.where(TopicMastery.topic_id.in_(topic_ids))
         return await self.many(session, statement)
+
+
+class DailySessionRepository(BaseRepository[DailySession]):
+    model = DailySession
+
+    async def for_day(
+        self, session: AsyncSession, student_id: str, day: str
+    ) -> DailySession | None:
+        return await self.first(
+            session,
+            DailySession.student_id == student_id,
+            DailySession.day == day,
+        )
 
 
 class AchievementRepository(BaseRepository[Achievement]):
@@ -221,5 +248,6 @@ progress_repository = StudentProgressRepository()
 metrics_repository = PerformanceMetricRepository()
 learning_events_repository = LearningEventRepository()
 topic_mastery_repository = TopicMasteryRepository()
+daily_sessions_repository = DailySessionRepository()
 achievements_repository = AchievementRepository()
 student_achievements_repository = StudentAchievementRepository()

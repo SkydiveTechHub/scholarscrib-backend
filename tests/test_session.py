@@ -1,7 +1,10 @@
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import pytest
+
 from app.core.timeutil import lagos_day_start
+from app.services.learning import session_store
 from app.services.learning.mastery import (
     TopicState,
     evidence_level,
@@ -502,3 +505,117 @@ def test_summarise_counts_done_and_minutes():
     assert summary["minutes"] == 15
     assert summary["items"] == [done, open_item]
     assert summarise([]) == {"minutes": 0, "done": 0, "total": 0, "items": []}
+
+
+class FakeSession:
+    def __init__(self):
+        self.flushed = 0
+
+    def begin_nested(self):
+        return self
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        return False
+
+    async def flush(self):
+        self.flushed += 1
+
+
+@pytest.fixture
+def store(monkeypatch):
+    state = SimpleNamespace(row=None, events=[], added=[], fail_add=False)
+
+    async def for_day(_session, _student, _day):
+        return state.row
+
+    async def add(_session, entity, flush=False):
+        if state.fail_add:
+            raise RuntimeError("unique violation")
+        state.added.append(entity)
+        return entity
+
+    async def since(_session, _student, _moment):
+        return state.events
+
+    monkeypatch.setattr(session_store.daily_sessions_repository, "for_day", for_day)
+    monkeypatch.setattr(session_store.daily_sessions_repository, "add", add)
+    monkeypatch.setattr(session_store.learning_events_repository, "since", since)
+    return state
+
+
+def lesson_event(topic_id, kind):
+    return SimpleNamespace(topic_id=topic_id, kind=kind)
+
+
+async def never_compose():
+    raise AssertionError("a stored session must not be recomposed")
+
+
+async def test_first_load_composes_and_stores(store):
+    async def compose():
+        return [engine_item("PRACTICE")]
+
+    result = await session_store.todays_session(
+        FakeSession(), "stu", "2026-10-12", compose=compose, plan_status={}, now=NOW
+    )
+    assert result["total"] == 1 and result["done"] == 0
+    assert len(store.added) == 1
+    assert store.added[0].day == "2026-10-12"
+    assert store.added[0].student_id == "stu"
+    assert store.added[0].items[0]["id"] == "practice:b"
+
+
+async def test_second_load_returns_the_stored_list_unchanged(store):
+    stored = [engine_item("PRACTICE"), {**engine_item("LEARN"), "id": "learn:z"}]
+    store.row = SimpleNamespace(items=stored)
+    result = await session_store.todays_session(
+        FakeSession(),
+        "stu",
+        "2026-10-12",
+        compose=never_compose,
+        plan_status={},
+        now=NOW,
+    )
+    assert [item["id"] for item in result["items"]] == ["practice:b", "learn:z"]
+    assert store.added == []
+
+
+async def test_empty_composition_is_not_stored(store):
+    async def compose():
+        return []
+
+    result = await session_store.todays_session(
+        FakeSession(), "stu", "2026-10-12", compose=compose, plan_status={}, now=NOW
+    )
+    assert result == {"minutes": 0, "done": 0, "total": 0, "items": []}
+    assert store.added == []
+
+
+async def test_done_is_persisted_back_onto_the_stored_row(store):
+    store.row = SimpleNamespace(items=[engine_item("PRACTICE")])
+    store.events = [lesson_event("b", "QUESTION_ANSWERED")] * 5
+    result = await session_store.todays_session(
+        FakeSession(),
+        "stu",
+        "2026-10-12",
+        compose=never_compose,
+        plan_status={},
+        now=NOW,
+    )
+    assert result["done"] == 1
+    assert store.row.items[0]["doneAt"] == NOW.isoformat()
+
+
+async def test_save_failure_still_returns_session(store):
+    store.fail_add = True
+
+    async def compose():
+        return [engine_item("PRACTICE")]
+
+    result = await session_store.todays_session(
+        FakeSession(), "stu", "2026-10-12", compose=compose, plan_status={}, now=NOW
+    )
+    assert result["total"] == 1
