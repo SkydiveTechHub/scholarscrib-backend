@@ -32,6 +32,21 @@ WEAK_MASTERY = 50
 GAP_RETENTION = 0.8
 STALE_RETENTION = 0.9
 
+# Today's session (see docs/superpowers/specs/2026-10-12-todays-session-design.md).
+SESSION_MINUTES = 20
+SESSION_MAX_ITEMS = 4
+RETRIEVE_MAX_MINUTES = 8
+RETRIEVE_NO_CARDS_MINUTES = 5
+PRACTICE_MINUTES = 8
+LEARN_MIN_MINUTES = 5
+# A topic that is due must outrank one that is not, even when retention has not
+# fallen below the decay line (due only for flashcards or a schedule).
+DUE_FLOOR = 0.05
+# Fewer reviewed cards than this say too little about a topic to trust.
+CARD_RETENTION_MIN_CARDS = 3
+DONE_QUESTIONS = 5
+WEAK_PRACTICE_BOOST = 1.5
+
 
 def recency_weight(age_days: float) -> float:
     return 2 ** (-age_days / RECENCY_HALF_LIFE_DAYS)

@@ -3,15 +3,16 @@ from datetime import datetime
 
 from app.core.timeutil import as_utc
 from app.services.learning.evidence import (
+    CARD_RETENTION_MIN_CARDS,
     CHANNEL_WEIGHTS,
     CONFIDENCE_FLOOR,
     DECAY_RETENTION,
     GAP_RETENTION,
+    MASTERY_MIN_QUESTIONS,
     OBSERVATION_FLOOR,
     PRIOR_STRENGTH,
     SCORING_VERSION,
     STRONG_MASTERY,
-    MASTERY_MIN_QUESTIONS,
     TARGET,
     WEAK_MASTERY,
     channel_score,
@@ -207,6 +208,45 @@ TopicStateMap = dict[str, TopicState]
 def is_mastered(state: TopicState) -> bool:
     """A high score alone is not mastery: it must rest on enough answered questions."""
     return state.mastery >= TARGET and state.observations >= MASTERY_MIN_QUESTIONS
+
+
+def evidence_level(state: TopicState) -> str:
+    """How much a student's numbers on a topic can be trusted."""
+    if state.observations == 0:
+        return "NONE"
+    if state.confidence < CONFIDENCE_FLOOR:
+        return "THIN"
+    return "ENOUGH"
+
+
+def topic_retention(
+    state: TopicState, card_retention: tuple[float, int] | None
+) -> tuple[float | None, str]:
+    """Retention from real flashcard data when there is enough, else the estimate."""
+    if card_retention is not None:
+        mean, count = card_retention
+        if count >= CARD_RETENTION_MIN_CARDS:
+            return mean, "CARDS"
+    return state.retention, "ESTIMATE"
+
+
+def mean_retrievability(rows, now: datetime) -> dict[str, tuple[float, int]]:
+    """Per topic: mean current retrievability of reviewed cards, and how many.
+
+    `rows` yields (topic_id, stability_days, last_reviewed_at). Uses the same
+    curve as the scheduler (`evidence.retention`), so a card's number here
+    matches what the flashcard screens would say.
+    """
+    values: dict[str, list[float]] = {}
+    for topic_id, stability, reviewed_at in rows:
+        if not topic_id or reviewed_at is None or not stability or stability <= 0:
+            continue
+        days = max(0.0, (as_utc(now) - as_utc(reviewed_at)).total_seconds() / 86400)
+        values.setdefault(topic_id, []).append(retention(days, stability))
+    return {
+        topic_id: (sum(found) / len(found), len(found))
+        for topic_id, found in values.items()
+    }
 
 
 def graph_colour(state: TopicState) -> str:
