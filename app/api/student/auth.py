@@ -57,9 +57,7 @@ async def logout(request: Request, response: Response, session: AnSession):
             # Kills this device's token server-side: replaying it after sign-out
             # fails the device check in optional_student.
             device.revoked_at = utcnow()
-            await push_subscriptions_repository.delete_for_devices(
-                session, [device.id]
-            )
+            await push_subscriptions_repository.delete_for_devices(session, [device.id])
     response.delete_cookie("scholarscrib.session", path="/")
     return {"ok": True}
 
