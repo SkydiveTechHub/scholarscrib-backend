@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -229,7 +230,9 @@ def topic_retention(
     return state.retention, "ESTIMATE"
 
 
-def mean_retrievability(rows, now: datetime) -> dict[str, tuple[float, int]]:
+def mean_retrievability(
+    rows: Iterable[tuple[str | None, float | None, datetime | None]], now: datetime
+) -> dict[str, tuple[float, int]]:
     """Per topic: mean current retrievability of reviewed cards, and how many.
 
     `rows` yields (topic_id, stability_days, last_reviewed_at). Uses the same

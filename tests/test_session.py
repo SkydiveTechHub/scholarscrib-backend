@@ -634,3 +634,33 @@ def test_dashboard_out_serves_session_not_old_rails():
         "revisionTotal",
     ):
         assert removed not in DashboardOut.model_fields
+
+
+SESSION_ITEM_KEYS = {
+    "id", "kind", "source", "topicId", "subjectId", "title", "slug", "minutes",
+    "reason", "doneAt", "lessonId", "dueCards", "planItemId", "activityType",
+    "mastery", "retention", "retentionSource", "evidenceLevel", "confidence",
+    "accObservations", "lessonObservations", "srsObservations", "lastStudy",
+}  # fmt: skip
+
+
+def test_every_session_item_has_exactly_the_contract_keys():
+    engine = compose_session(
+        make_inputs(
+            [make_topic("a")],
+            [make_state("a", mastery=30, confidence=0.6, observations=8, last_days=1)],
+        )
+    )
+    mock = compose_session(
+        make_inputs(
+            [],
+            [],
+            plan_items=[
+                plan_item(item_id="m1", topic_id=None, activity="MOCK_EXAM", minutes=60)
+            ],
+        )
+    )
+    assert engine[0]["source"] == "ENGINE"
+    assert mock[0]["kind"] == "MOCK"
+    assert set(engine[0]) == SESSION_ITEM_KEYS
+    assert set(mock[0]) == SESSION_ITEM_KEYS
