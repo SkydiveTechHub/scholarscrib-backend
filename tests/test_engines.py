@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.core.errors import RateLimited
 from app.core.rate_limit import hit, reset_memory
-from app.domain import can
+from app.domain import PAID_ENTITLEMENTS, can
 from app.services.assessments.grading import score_jamb_paper, waec_grade
 from app.services.auth.rules import cron_decision, current_streak, is_session_revoked
 from app.services.billing.rules import (
@@ -77,9 +77,16 @@ def test_evidence_prior_blocks_a_perfect_score():
 
 
 def test_entitlements_and_session_revocation():
-    assert can("FREEMIUM", "flashcards") is False
-    assert can("STANDARD", "flashcards") is True
+    # Beta: flashcards and the study planner are open to every tier.
+    assert can("FREEMIUM", "flashcards") is True
+    assert can("FREEMIUM", "studyPlanner") is True
+    # The paid tiers still gate everything else.
+    assert can("FREEMIUM", "premiumLibrary") is False
+    assert can("STANDARD", "advancedAnalytics") is False
     assert can("PREMIUM", "advancedAnalytics") is True
+    # Ending the beta restores the original tiers without touching this table.
+    assert PAID_ENTITLEMENTS["flashcards"] == "STANDARD"
+    assert PAID_ENTITLEMENTS["studyPlanner"] == "STANDARD"
     moment = datetime(2026, 1, 1, tzinfo=UTC)
     assert is_session_revoked(False, None, 10) is True
     assert is_session_revoked(True, None, 10) is False
