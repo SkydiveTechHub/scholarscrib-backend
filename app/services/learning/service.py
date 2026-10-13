@@ -34,6 +34,7 @@ from app.database.repositories.question import questions_repository
 from app.domain import can
 from app.services.assessments.grading import coarse_grade
 from app.services.auth.rules import current_streak
+from app.services.learning.checkpoint import sanitise_checkpoint
 from app.services.learning.evidence import PRETEST_PASS
 
 STATUS_RANK = {"NOT_STARTED": 0, "IN_PROGRESS": 1, "COMPLETED": 2}
@@ -130,20 +131,24 @@ class SaveLessonProgressService:
 
     def _apply(self, row: StudentProgress) -> None:
         fields = self.body.model_fields_set
+        # A client reports progress, never completion: COMPLETED is set only by
+        # passing the practice exit (see services/practice_exit.py), and the
+        # mastery score is derived from those attempts, so neither is taken here.
         incoming_status = self.body.status or row.status
+        if incoming_status == "COMPLETED":
+            incoming_status = "IN_PROGRESS"
         if STATUS_RANK.get(incoming_status, 0) >= STATUS_RANK.get(row.status, 0):
             row.status = incoming_status
         if "completionPercent" in fields and self.body.completionPercent is not None:
+            ceiling = 100 if row.status == "COMPLETED" else 99
             row.completion_percent = max(
                 row.completion_percent or 0,
-                self.body.completionPercent,
+                min(self.body.completionPercent, ceiling),
             )
         if self.body.checkpointData:
             merged = dict(row.checkpoint_data or {})
-            merged.update(self.body.checkpointData)
+            merged.update(sanitise_checkpoint(self.body.checkpointData))
             row.checkpoint_data = merged
-        if "masteryScore" in fields and self.body.masteryScore is not None:
-            row.mastery_score = self.body.masteryScore
         if "timeSpentMinutes" in fields and self.body.timeSpentMinutes is not None:
             row.time_spent_minutes = (row.time_spent_minutes or 0) + (
                 self.body.timeSpentMinutes

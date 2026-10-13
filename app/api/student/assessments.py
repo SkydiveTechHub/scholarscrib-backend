@@ -19,7 +19,6 @@ from app.api.schemas import (
     JambIn,
     PastPaperIn,
     PastPaperMoreIn,
-    PracticeExitIn,
     ScopedMockIn,
     SubmitIn,
 )
@@ -45,6 +44,10 @@ from app.services.assessments import (
 )
 from app.services.learning import AwardAchievementsService
 from app.services.planner import MarkStudyPlanItemService
+from app.services.practice_exit import (
+    CompletePracticeExitService,
+    StartPracticeExitService,
+)
 from app.services.provider import EnsureProviderQuestionsService
 from app.services.provider.cache import AsyncRedisClient
 
@@ -60,6 +63,9 @@ async def generate_quiz(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"generate:{student.id}", 20, 60)
+
+    if body.practiceExit:
+        return await StartPracticeExitService(session, student.id, body).process()
 
     async def schedule(subject, exam_type, exam_year):
         if not settings.provider_enabled:
@@ -144,15 +150,25 @@ async def submit_attempt(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     payload, created = await SubmitAttemptService(session, student.id, body).process()
+    exit_passed = None
+    if created and body.practiceExit:
+        # Judged here, in the request, so completion commits with the attempt.
+        exit_passed = await CompletePracticeExitService(
+            session,
+            student.id,
+            body.attemptId,
+            float(payload.get("percentage") or 0),
+            body.practiceExit,
+        ).process()
     if created:
         background.add_task(
-            _after_submit, student.id, payload.get("assessmentType"), body.practiceExit
+            _after_submit, student.id, payload.get("assessmentType"), exit_passed
         )
     return payload
 
 
 async def _after_submit(
-    student_id: str, assessment_type: str | None, practice_exit: PracticeExitIn | None
+    student_id: str, assessment_type: str | None, exit_passed: bool | None
 ) -> None:
     async with get_session() as session:
         try:
@@ -162,10 +178,12 @@ async def _after_submit(
                 "MOCK_EXAM": "MOCK_EXAM",
                 "CBT_PRACTICE": "MOCK_EXAM",
             }.get(assessment_type or "", "PRACTICE")
-            if not practice_exit:
-                await MarkStudyPlanItemService(session, student_id, activity).process()
-            elif practice_exit:
+            # A plan lesson is done only by passing its exit; a failed exit
+            # counts for nothing, and anything else is ordinary practice.
+            if exit_passed is True:
                 await MarkStudyPlanItemService(session, student_id, "LESSON").process()
+            elif exit_passed is None:
+                await MarkStudyPlanItemService(session, student_id, activity).process()
             await session.commit()
         except Exception:
             await session.rollback()

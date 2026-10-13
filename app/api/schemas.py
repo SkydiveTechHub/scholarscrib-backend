@@ -107,6 +107,10 @@ class GenerateQuizIn(BaseModel):
     title: str | None = None
     count: int = Field(default=10, ge=5, le=60)
     untimed: bool = False
+    # Start the graded exit that completes a lesson. The server then picks the
+    # count, timing and pass mark itself from the lesson; the fields above that
+    # would otherwise shape the quiz are ignored.
+    practiceExit: bool = False
 
     @model_validator(mode="after")
     def subject_present(self):

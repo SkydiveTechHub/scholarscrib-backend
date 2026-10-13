@@ -158,3 +158,26 @@ class StudentAchievement(Base):
     earned_at: Mapped[datetime] = mapped_column(
         "earnedAt", DateTime(timezone=True), server_default=func.now()
     )
+
+
+class DailySession(Base):
+    """The study session composed for one student on one Lagos day.
+
+    Stored so the list does not reshuffle while the student works through it.
+    Each item carries its own `doneAt`, which is also how completion is measured.
+    """
+
+    __tablename__ = "DailySession"
+    __table_args__ = (
+        UniqueConstraint("studentId", "day", name="DailySession_studentId_day_key"),
+    )
+
+    id: Mapped[str] = id_column()
+    student_id: Mapped[str] = mapped_column(
+        "studentId", ForeignKey("User.id", ondelete="CASCADE")
+    )
+    day: Mapped[str] = mapped_column(String)
+    items: Mapped[list] = mapped_column(JSONB)
+    generated_at: Mapped[datetime] = mapped_column(
+        "generatedAt", DateTime(timezone=True), server_default=func.now()
+    )

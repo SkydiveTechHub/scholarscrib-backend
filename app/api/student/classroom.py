@@ -12,10 +12,10 @@ from app.api.responses import (
 from app.database.db import AnSession
 from app.services.pages import (
     GetClassroomSubjectsService,
-    GetPracticeResultService,
     GetSubjectPageService,
     GetTopicPageService,
 )
+from app.services.practice_exit import GetPracticeResultService
 
 router = APIRouter(prefix="/classroom", tags=["Student / Classroom"])
 
@@ -107,7 +107,8 @@ async def classroom_practice_result(
     topic_slug: str,
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
+    attemptId: str | None = None,
 ):
     return await GetPracticeResultService(
-        session, student.id, slug, topic_slug
+        session, student.id, slug, topic_slug, attemptId
     ).process()

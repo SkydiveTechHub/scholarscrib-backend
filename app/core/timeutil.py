@@ -24,3 +24,9 @@ def previous_day_key(day: str) -> str:
     from app.services.planner.days import add_days
 
     return add_days(day, -1)
+
+
+def lagos_day_start(day: str) -> datetime:
+    """The UTC instant at which a Lagos civil day (YYYY-MM-DD) begins."""
+    local = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=LAGOS)
+    return local.astimezone(UTC)

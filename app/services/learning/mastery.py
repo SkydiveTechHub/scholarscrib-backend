@@ -3,15 +3,15 @@ from datetime import datetime
 
 from app.core.timeutil import as_utc
 from app.services.learning.evidence import (
+    CARD_RETENTION_MIN_CARDS,
     CHANNEL_WEIGHTS,
     CONFIDENCE_FLOOR,
     DECAY_RETENTION,
     GAP_RETENTION,
+    MASTERY_MIN_QUESTIONS,
     OBSERVATION_FLOOR,
     PRIOR_STRENGTH,
     SCORING_VERSION,
-    STRONG_MASTERY,
-    MASTERY_MIN_QUESTIONS,
     TARGET,
     WEAK_MASTERY,
     channel_score,
@@ -209,6 +209,45 @@ def is_mastered(state: TopicState) -> bool:
     return state.mastery >= TARGET and state.observations >= MASTERY_MIN_QUESTIONS
 
 
+def evidence_level(state: TopicState) -> str:
+    """How much a student's numbers on a topic can be trusted."""
+    if state.observations == 0:
+        return "NONE"
+    if state.confidence < CONFIDENCE_FLOOR:
+        return "THIN"
+    return "ENOUGH"
+
+
+def topic_retention(
+    state: TopicState, card_retention: tuple[float, int] | None
+) -> tuple[float | None, str]:
+    """Retention from real flashcard data when there is enough, else the estimate."""
+    if card_retention is not None:
+        mean, count = card_retention
+        if count >= CARD_RETENTION_MIN_CARDS:
+            return mean, "CARDS"
+    return state.retention, "ESTIMATE"
+
+
+def mean_retrievability(rows, now: datetime) -> dict[str, tuple[float, int]]:
+    """Per topic: mean current retrievability of reviewed cards, and how many.
+
+    `rows` yields (topic_id, stability_days, last_reviewed_at). Uses the same
+    curve as the scheduler (`evidence.retention`), so a card's number here
+    matches what the flashcard screens would say.
+    """
+    values: dict[str, list[float]] = {}
+    for topic_id, stability, reviewed_at in rows:
+        if not topic_id or reviewed_at is None or not stability or stability <= 0:
+            continue
+        days = max(0.0, (as_utc(now) - as_utc(reviewed_at)).total_seconds() / 86400)
+        values.setdefault(topic_id, []).append(retention(days, stability))
+    return {
+        topic_id: (sum(found) / len(found), len(found))
+        for topic_id, found in values.items()
+    }
+
+
 def graph_colour(state: TopicState) -> str:
     if not state.available:
         return "LOCKED"
@@ -249,50 +288,3 @@ def sort_gaps(items: list[dict]) -> list[dict]:
         return (abandoned, -item.get("bottleneckScore", 0), item.get("mastery", 0))
 
     return sorted(items, key=key)
-
-
-def recommendation_score(
-    state: TopicState,
-    leverage: float,
-    available: bool,
-    now: datetime,
-) -> float:
-    urgency = max(0.0, (TARGET - state.mastery) / TARGET)
-    decay = 0.0 if state.retention is None else max(0.0, 1 - state.retention)
-    readiness = 1.0 if available else 0.0
-    freshness = 1.0
-    if state.last_effort_at is not None:
-        age_days = (as_utc(now) - as_utc(state.last_effort_at)).total_seconds() / 86400
-        if age_days < 1:
-            freshness = 0.5
-    return (
-        0.30 * urgency
-        + 0.30 * leverage
-        + 0.20 * decay
-        + 0.10 * readiness
-        + 0.10 * freshness
-    )
-
-
-def recommend(
-    states: list[TopicState], leverage: dict[str, float], now: datetime, k: int = 3
-) -> list[TopicState]:
-    eligible = [
-        state for state in states if state.available and state.mastery < STRONG_MASTERY
-    ]
-    if not eligible:
-        eligible = [
-            state
-            for state in states
-            if is_mastered(state)
-            and state.retention is not None
-            and state.retention < DECAY_RETENTION
-        ]
-    ranked = sorted(
-        eligible,
-        key=lambda state: recommendation_score(
-            state, leverage.get(state.topic_id, 0.0), state.available, now
-        ),
-        reverse=True,
-    )
-    return ranked[:k]

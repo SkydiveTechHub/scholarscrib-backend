@@ -36,6 +36,7 @@ from app.database.models.identity import (
 from app.database.models.jamb import JambCombination
 from app.database.models.learning import (
     Achievement,
+    DailySession,
     LearningEvent,
     PerformanceMetric,
     StudentAchievement,
@@ -78,6 +79,7 @@ __all__ = [
     "AssessmentQuestion",
     "AuthSession",
     "CurriculumLevel",
+    "DailySession",
     "Flashcard",
     "FlashcardDeck",
     "FlashcardEnrollment",
