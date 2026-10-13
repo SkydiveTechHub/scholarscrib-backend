@@ -5,8 +5,23 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 
 from app.api.deps import StudentPrincipal, optional_student, require_student
-from app.api.responses import OkOut, RegisterOut, SessionOut, TokenOut
-from app.api.schemas import LoginIn, RegisterIn
+from app.api.responses import (
+    MessageOut,
+    OkOut,
+    OtpStatusOut,
+    RegisterOut,
+    SessionOut,
+    TokenOut,
+)
+from app.api.schemas import (
+    ForgotPasswordIn,
+    GoogleTokensIn,
+    LoginIn,
+    OTPRequestIn,
+    OTPVerifyIn,
+    RegisterIn,
+    ResetPasswordIn,
+)
 from app.api.student.cookies import _cookie, _ip
 from app.core.config import settings
 from app.core.errors import ApiError
@@ -15,9 +30,13 @@ from app.database.db import AnSession
 from app.database.repositories.identity import devices_repository
 from app.database.repositories.notification import push_subscriptions_repository
 from app.services.auth import (
+    DirectGoogleSignInService,
     GoogleSignInService,
     LoginStudentService,
     RegisterStudentService,
+    StudentForgotPasswordService,
+    StudentOTPService,
+    StudentResetPasswordService,
     exchange_google_code,
 )
 
@@ -107,3 +126,45 @@ async def google_callback(
     return RedirectResponse(
         f"{settings.app_url.rstrip('/')}/complete-profile#token={result['accessToken']}"
     )
+
+
+@router.post("/forgot-password", response_model=MessageOut)
+async def forgot_password(body: ForgotPasswordIn, request: Request, session: AnSession):
+    return await StudentForgotPasswordService(
+        session, body.email, _ip(request)
+    ).process()
+
+
+@router.post("/reset-password", response_model=MessageOut)
+async def reset_password(body: ResetPasswordIn, session: AnSession):
+    return await StudentResetPasswordService(
+        session, body.email, body.token, body.newPassword
+    ).process()
+
+
+@router.post("/otp/send", response_model=MessageOut)
+async def send_otp(body: OTPRequestIn, session: AnSession):
+    await StudentOTPService(session).send_otp(body.email)
+    return {"message": "Verification code sent to your email"}
+
+
+@router.post("/otp/verify", response_model=OtpStatusOut)
+async def verify_otp(body: OTPVerifyIn, session: AnSession):
+    ok, detail = await StudentOTPService(session).verify_otp(body.email, body.otp)
+    if not ok:
+        raise ApiError(400, detail)
+    return {"detail": detail, "status": True}
+
+
+@router.post("/google/tokens", response_model=TokenOut)
+async def google_tokens(
+    body: GoogleTokensIn, request: Request, response: Response, session: AnSession
+):
+    result = await DirectGoogleSignInService(
+        session,
+        body.code,
+        body.redirectUri,
+        body.deviceLabel or request.headers.get("user-agent", "Browser"),
+    ).process()
+    _cookie(response, result["accessToken"])
+    return result

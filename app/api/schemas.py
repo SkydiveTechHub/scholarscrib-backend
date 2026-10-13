@@ -69,6 +69,41 @@ class PasswordIn(BaseModel):
     newPassword: str = Field(min_length=6)
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    email: EmailStr
+    token: str
+    newPassword: str = Field(min_length=6)
+
+
+class AdminForgotPasswordIn(BaseModel):
+    identifier: str = Field(min_length=3)
+
+
+class AdminResetPasswordIn(BaseModel):
+    identifier: str = Field(min_length=3)
+    token: str
+    newPassword: str = Field(min_length=6)
+
+
+class OTPRequestIn(BaseModel):
+    email: EmailStr
+
+
+class OTPVerifyIn(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=4, max_length=10)
+
+
+class GoogleTokensIn(BaseModel):
+    code: str
+    redirectUri: str | None = None
+    deviceLabel: str | None = None
+
+
 class DeviceIn(BaseModel):
     deviceId: str | None = None
     allOthers: bool | None = None

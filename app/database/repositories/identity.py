@@ -1,9 +1,10 @@
-"""Repositories for accounts, devices, and schools."""
+from datetime import datetime
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from app.core.timeutil import utcnow
 from app.database.models import (
     Account,
     AuthSession,
@@ -159,6 +160,31 @@ class AuthSessionRepository(BaseRepository[AuthSession]):
 
 class VerificationTokenRepository(BaseRepository[VerificationToken]):
     model = VerificationToken
+
+    async def create_token(
+        self, session: AsyncSession, identifier: str, token: str, expires: datetime
+    ) -> VerificationToken:
+        await self.delete_by_identifier(session, identifier)
+        record = VerificationToken(identifier=identifier, token=token, expires=expires)
+        await self.add(session, record, flush=True)
+        return record
+
+    async def get_valid_token(
+        self, session: AsyncSession, identifier: str, token: str
+    ) -> VerificationToken | None:
+        return await self.first(
+            session,
+            VerificationToken.identifier == identifier,
+            VerificationToken.token == token,
+            VerificationToken.expires > utcnow(),
+        )
+
+    async def delete_by_identifier(
+        self, session: AsyncSession, identifier: str
+    ) -> None:
+        await session.execute(
+            delete(VerificationToken).where(VerificationToken.identifier == identifier)
+        )
 
 
 users_repository = UserRepository()

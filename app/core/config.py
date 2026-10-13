@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     vapid_subject: str | None
     cron_secret: str | None
 
+    resend_api_key: str | None = None
+    email_from: str = "noreply@scholarscrib.com"
+
     @model_validator(mode="after")
     def secrets_must_differ(self) -> "Settings":
         if self.auth_secret == self.admin_auth_secret:

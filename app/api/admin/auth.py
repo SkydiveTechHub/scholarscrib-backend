@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_admin
-from app.api.responses import AdminSessionOut, AdminTokenOut, OkOut
+from app.api.responses import AdminSessionOut, AdminTokenOut, MessageOut, OkOut
+from app.api.schemas import AdminForgotPasswordIn, AdminResetPasswordIn
+from app.api.student.cookies import _ip
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.core.security import admin_token, decode_token, read_bearer, verify_password
@@ -12,7 +14,11 @@ from app.core.timeutil import utcnow
 from app.database.db import AnSession
 from app.database.models import Admin
 from app.database.repositories.admin import admins_repository
-from app.services.admin import admin_row
+from app.services.admin import (
+    AdminForgotPasswordService,
+    AdminResetPasswordService,
+    admin_row,
+)
 from app.services.auth import ADMIN_IDENTIFIER
 
 router = APIRouter(prefix="/auth", tags=["Admin / Auth"])
@@ -81,3 +87,19 @@ async def admin_session(admin: Annotated[Admin, Depends(require_admin)]):
             "isActive": admin.is_active,
         }
     }
+
+
+@router.post("/forgot-password", response_model=MessageOut)
+async def admin_forgot_password(
+    body: AdminForgotPasswordIn, request: Request, session: AnSession
+):
+    return await AdminForgotPasswordService(
+        session, body.identifier, _ip(request)
+    ).process()
+
+
+@router.post("/reset-password", response_model=MessageOut)
+async def admin_reset_password(body: AdminResetPasswordIn, session: AnSession):
+    return await AdminResetPasswordService(
+        session, body.identifier, body.token, body.newPassword
+    ).process()

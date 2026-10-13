@@ -1,6 +1,8 @@
 import hashlib
 import logging
 import re
+import secrets
+from datetime import timedelta
 
 import httpx
 from sqlalchemy.exc import IntegrityError
@@ -25,6 +27,7 @@ from app.database.repositories.identity import (
     accounts_repository,
     devices_repository,
     users_repository,
+    verification_tokens_repository,
 )
 from app.database.repositories.notification import (
     preferences_repository,
@@ -34,6 +37,7 @@ from app.domain import DEVICE_LIMIT, NIGERIAN_STATES, PHONE_PATTERN, TIER_RANK
 from app.services.auth.rules import is_session_revoked
 from app.services.billing import RefreshUserTierService
 from app.services.billing.rules import resolve_live_tier
+from app.services.email import EmailService
 
 PHONE = re.compile(PHONE_PATTERN)
 ADMIN_IDENTIFIER = re.compile(r"^[a-z0-9._-]{3,32}$")
@@ -656,3 +660,113 @@ def validate_phone(value: str | None) -> str | None:
             400, "Validation failed", details={"phone": "Enter a Nigerian phone number"}
         )
     return value
+
+
+class StudentForgotPasswordService:
+    def __init__(self, session: AsyncSession, email: str, ip: str) -> None:
+        self.session = session
+        self.email = email
+        self.ip = ip
+
+    async def process(self) -> dict:
+        normalised = self.email.strip().lower()
+        self._limit(normalised)
+        user = await users_repository.by_email(self.session, normalised)
+        if user is not None and user.is_active:
+            token = secrets.token_urlsafe(32)
+            identifier = f"student:reset:{normalised}"
+            expires = utcnow() + timedelta(hours=1)
+            await verification_tokens_repository.create_token(
+                self.session, identifier=identifier, token=token, expires=expires
+            )
+            base = settings.app_url.rstrip("/")
+            reset_url = f"{base}/reset-password?token={token}&email={normalised}"
+            await EmailService.send_email(
+                to_email=normalised,
+                subject="Reset your ScholarsCrib password",
+                template_name="student_password_reset.html",
+                context={"reset_url": reset_url, "email": normalised},
+            )
+
+        return {
+            "message": (
+                "If this email is registered, instructions to reset your "
+                "password have been sent."
+            )
+        }
+
+    def _limit(self, normalised: str) -> None:
+        hit(f"forgot-pass-ip:{self.ip}", 10, 3600)
+        hit(f"forgot-pass-email:{normalised}", 5, 3600)
+
+
+class StudentResetPasswordService:
+    def __init__(
+        self, session: AsyncSession, email: str, token: str, new_password: str
+    ) -> None:
+        self.session = session
+        self.email = email
+        self.token = token
+        self.new_password = new_password
+
+    async def process(self) -> dict:
+        normalised = self.email.strip().lower()
+        if len(self.new_password) < 6:
+            raise ApiError(400, "Password must be at least 6 characters")
+
+        identifier = f"student:reset:{normalised}"
+        token_row = await verification_tokens_repository.get_valid_token(
+            self.session, identifier=identifier, token=self.token.strip()
+        )
+        if token_row is None:
+            raise ApiError(400, "Invalid or expired reset token")
+
+        user = await users_repository.by_email(self.session, normalised)
+        if user is None or not user.is_active:
+            raise ApiError(400, "Invalid or expired reset token")
+
+        if user.password_hash and verify_password(
+            self.new_password, user.password_hash
+        ):
+            raise ApiError(
+                400, "New password cannot be the same as your current password"
+            )
+
+        user.password_hash = hash_password(self.new_password)
+        user.sessions_valid_from = utcnow()
+        await self.session.flush()
+
+        # Revoke other devices
+        await RevokeOtherDevicesService(self.session, user.id, None).process()
+
+        # Delete used verification token
+        await verification_tokens_repository.delete_by_identifier(
+            self.session, identifier
+        )
+
+        return {
+            "message": (
+                "Password reset successfully. You can now sign in with your "
+                "new password."
+            )
+        }
+
+
+class DirectGoogleSignInService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        code: str,
+        redirect_uri: str | None,
+        label: str | None,
+    ) -> None:
+        self.session = session
+        self.code = code
+        self.redirect_uri = (
+            redirect_uri or f"{settings.app_url.rstrip('/')}/complete-profile"
+        )
+        self.label = label or "Browser"
+
+    async def process(self) -> dict:
+        profile = await exchange_google_code(self.code, self.redirect_uri)
+        return await GoogleSignInService(self.session, profile, self.label).process()

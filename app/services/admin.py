@@ -1,5 +1,7 @@
 import hashlib
+import secrets
 import time
+from datetime import timedelta
 from urllib.parse import urlparse
 
 from sqlalchemy.exc import IntegrityError
@@ -16,7 +18,8 @@ from app.core.config import settings
 from app.core.errors import ApiError
 from app.core.ids import cuid
 from app.core.logger import logger
-from app.core.security import hash_password
+from app.core.rate_limit import hit
+from app.core.security import hash_password, verify_password
 from app.core.timeutil import utcnow
 from app.database.models import (
     AcademicTerm,
@@ -35,6 +38,7 @@ from app.database.repositories.identity import (
     devices_repository,
     schools_repository,
     users_repository,
+    verification_tokens_repository,
 )
 from app.database.repositories.learning import learning_events_repository
 from app.database.repositories.notification import push_subscriptions_repository
@@ -45,6 +49,7 @@ from app.services.billing import (
     RevokeSubscriptionService,
 )
 from app.services.catalogue import bust_catalogue
+from app.services.email import EmailService
 from app.services.learning.mastery_store import GetTopicMasteryService
 from app.services.planner.term_context import TermRange, validate_term_ranges
 from app.services.provider.rules import objective_ok
@@ -709,3 +714,102 @@ def validate_terms(
     errors = validate_term_ranges(ranges)
     if errors:
         raise ApiError(400, " ".join(errors))
+
+
+class AdminForgotPasswordService:
+    def __init__(self, session: AsyncSession, identifier: str, ip: str) -> None:
+        self.session = session
+        self.identifier = identifier
+        self.ip = ip
+
+    async def process(self) -> dict:
+        ident = self.identifier.strip().lower()
+        self._limit(ident)
+        if "@" in ident:
+            admin = await admins_repository.by_email(self.session, ident)
+        elif ADMIN_IDENTIFIER.match(ident):
+            admin = await admins_repository.by_username(self.session, ident)
+        else:
+            admin = None
+
+        if admin is not None and admin.is_active and admin.email:
+            token = secrets.token_urlsafe(32)
+            identifier_key = f"admin:reset:{admin.email.lower()}"
+            expires = utcnow() + timedelta(hours=1)
+            await verification_tokens_repository.create_token(
+                self.session, identifier=identifier_key, token=token, expires=expires
+            )
+            base = settings.app_url.rstrip("/")
+            email = admin.email.lower()
+            reset_url = f"{base}/admin/reset-password?token={token}&email={email}"
+            await EmailService.send_email(
+                to_email=email,
+                subject="Reset your ScholarsCrib Admin password",
+                template_name="admin_password_reset.html",
+                context={"reset_url": reset_url, "email": email},
+            )
+
+        return {
+            "message": (
+                "If this account is registered, instructions to reset your "
+                "password have been sent."
+            )
+        }
+
+    def _limit(self, ident: str) -> None:
+        hit(f"admin-forgot-ip:{self.ip}", 10, 3600)
+        hit(f"admin-forgot-id:{ident}", 5, 3600)
+
+
+class AdminResetPasswordService:
+    def __init__(
+        self, session: AsyncSession, identifier: str, token: str, new_password: str
+    ) -> None:
+        self.session = session
+        self.identifier = identifier
+        self.token = token
+        self.new_password = new_password
+
+    async def process(self) -> dict:
+        ident = self.identifier.strip().lower()
+        if len(self.new_password) < 6:
+            raise ApiError(400, "Password must be at least 6 characters")
+
+        if "@" in ident:
+            admin = await admins_repository.by_email(self.session, ident)
+        elif ADMIN_IDENTIFIER.match(ident):
+            admin = await admins_repository.by_username(self.session, ident)
+        else:
+            admin = None
+
+        if admin is None or not admin.is_active or not admin.email:
+            raise ApiError(400, "Invalid or expired reset token")
+
+        identifier_key = f"admin:reset:{admin.email.lower()}"
+        token_row = await verification_tokens_repository.get_valid_token(
+            self.session, identifier=identifier_key, token=self.token.strip()
+        )
+        if token_row is None:
+            raise ApiError(400, "Invalid or expired reset token")
+
+        if admin.password_hash and verify_password(
+            self.new_password, admin.password_hash
+        ):
+            raise ApiError(
+                400, "New password cannot be the same as your current password"
+            )
+
+        admin.password_hash = hash_password(self.new_password)
+        admin.sessions_valid_from = utcnow()
+        await self.session.flush()
+
+        await verification_tokens_repository.delete_by_identifier(
+            self.session, identifier_key
+        )
+
+        return {
+            "message": (
+                "Password reset successfully. You can now sign in with your "
+                "new password."
+            )
+        }

@@ -36,9 +36,7 @@ def stub(monkeypatch):
         return SUBJECT
 
     async def completed(_session, student_id, *, subject_id, exam_type):
-        calls.append(
-            {"student": student_id, "subject": subject_id, "exam": exam_type}
-        )
+        calls.append({"student": student_id, "subject": subject_id, "exam": exam_type})
         return rows
 
     monkeypatch.setattr(past_paper, "resolve_subject", resolve)

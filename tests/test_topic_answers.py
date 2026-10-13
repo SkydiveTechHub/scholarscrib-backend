@@ -60,16 +60,16 @@ def added(monkeypatch):
     monkeypatch.setattr(r.topics_repository, "by_id", by_id)
     monkeypatch.setattr(r.questions_repository, "many", many)
     monkeypatch.setattr(r.lessons_repository, "latest_for_topic", latest_for_topic)
-    monkeypatch.setattr(r.learning_events_repository, "recorded_sources", recorded_sources)
+    monkeypatch.setattr(
+        r.learning_events_repository, "recorded_sources", recorded_sources
+    )
     monkeypatch.setattr(r.learning_events_repository, "add", add)
     events.already = already
     return events
 
 
 async def _run(*answers):
-    body = TopicAnswersIn(
-        subjectId="physics", topic="gas-laws", answers=list(answers)
-    )
+    body = TopicAnswersIn(subjectId="physics", topic="gas-laws", answers=list(answers))
     return await learning_service.RecordTopicAnswersService(
         FakeSession(), "student-1", body
     ).process()

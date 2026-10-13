@@ -17,6 +17,11 @@ class MessageOut(ApiOut):
     message: str
 
 
+class OtpStatusOut(ApiOut):
+    detail: str
+    status: bool
+
+
 class IdOut(ApiOut):
     id: str
 
