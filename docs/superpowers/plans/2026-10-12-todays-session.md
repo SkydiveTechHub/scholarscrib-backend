@@ -17,7 +17,7 @@
 - Session defaults: `SESSION_MINUTES = 20`, `SESSION_MAX_ITEMS = 4`, retrieval ≤ 8 min (5 when no cards are due), practice 8 min, new-material slot needs ≥ 5 min remaining.
 - Day key is `lagos_day_key()` (Africa/Lagos). "Today's events" are events with `occurred_at >= lagos_day_start(day)`.
 - Done thresholds: `DONE_QUESTIONS = 5`. `LEARN`/`CONTINUE` are done after ≥ 1 `LESSON_BLOCK_COMPLETED` or `LESSON_COMPLETED` event on the topic (no service emits `LESSON_COMPLETED` today).
-- Reasons quote percentages only when `evidenceLevel == "ENOUGH"`. Practice reasons use counts only.
+- Reasons quote percentages only when `evidenceLevel == "ENOUGH"` or `retentionSource == "CARDS"` (card retention has its own `CARD_RETENTION_MIN_CARDS` gate). Practice reasons use counts only.
 - Items from deactivated subjects never reach the student, including items already stored in today's session.
 - The existing project has no `git` repository (`Is a git repository: false`). Where a normal plan would commit, this plan says **Checkpoint** and runs the test/lint commands instead. If the executor is working in a git checkout, commit at each Checkpoint with a `feat:`/`refactor:` message.
 - Frontend: `scholarscrib-frontend/AGENTS.md` says this Next.js has breaking changes. This plan only adds plain server components and a pure helper, but read the relevant guide in `node_modules/next/dist/docs/` before touching routing or data-fetching code.
