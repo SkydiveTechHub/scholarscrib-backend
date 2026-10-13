@@ -55,11 +55,19 @@ PHONE_PATTERN = r"^(\+234|0)[789]\d{9}$"
 
 TIER_RANK = {"FREEMIUM": 0, "STANDARD": 1, "PREMIUM": 2}
 TIER_DISPLAY = {"FREEMIUM": "Free", "STANDARD": "Standard", "PREMIUM": "Premium"}
-ENTITLEMENTS = {
+PAID_ENTITLEMENTS = {
     "flashcards": "STANDARD",
     "studyPlanner": "STANDARD",
     "premiumLibrary": "PREMIUM",
     "advancedAnalytics": "PREMIUM",
+}
+# Beta: these features are open to every tier while testers try the product.
+# Ending the beta is emptying this set (and the matching one in the frontend's
+# lib/subscription.ts); the paid tiers above are untouched.
+BETA_OPEN_FEATURES = frozenset({"flashcards", "studyPlanner"})
+ENTITLEMENTS = {
+    feature: "FREEMIUM" if feature in BETA_OPEN_FEATURES else tier
+    for feature, tier in PAID_ENTITLEMENTS.items()
 }
 PRICES_KOBO = {
     ("FREEMIUM", "MONTHLY"): 0,
