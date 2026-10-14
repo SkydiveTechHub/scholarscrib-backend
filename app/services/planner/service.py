@@ -24,6 +24,7 @@ from app.database.repositories.planner import (
     plan_positions_repository,
     plans_repository,
 )
+from app.domain import CLASS_LEVELS
 from app.services.learning.graph import GraphEdge, GraphNode, build_graph
 from app.services.planner.days import add_days
 from app.services.planner.mode import (
@@ -31,6 +32,8 @@ from app.services.planner.mode import (
     DEFAULT_MINUTES,
     MANUAL_LOOKBACK_DAYS,
     PlanSettingsCheck,
+    at_or_below_class,
+    compute_runway_start,
     plan_settings_problem,
     resolve_plan_mode,
 )
@@ -41,7 +44,9 @@ from app.services.planner.term_context import (
     term_header_label,
 )
 from app.services.planner.term_plan import PlannerInput, PlannerSubject, plan_window
-from app.services.planner.topics import CarryOver, PlanTopic
+from app.services.planner.topics import CarryOver, PlanTopic, calendar_topic_id
+
+_TERMS = ("FIRST", "SECOND", "THIRD")
 
 
 def _day(value) -> str:
@@ -64,6 +69,56 @@ def _as_date(value):
 
 async def _active(session: AsyncSession, student_id: str) -> StudyPlan | None:
     return await plans_repository.active(session, student_id)
+
+
+def position_options(topics: list[PlanTopic], class_level: str) -> list[dict]:
+    """Topics a student may pick as "my class is here": up to their own class."""
+    allowed = [t for t in topics if at_or_below_class(t.class_level, class_level)]
+    allowed.sort(
+        key=lambda t: (
+            CLASS_LEVELS.index(t.class_level),
+            _TERMS.index(t.term),
+            t.order_index,
+            t.id,
+        )
+    )
+    return [
+        {
+            "id": t.id,
+            "title": t.title,
+            "scope": f"{t.class_level} {t.term.capitalize()} term",
+        }
+        for t in allowed
+    ]
+
+
+async def _plan_topics(session: AsyncSession, subject_id: str) -> list[PlanTopic]:
+    rows = await topics_repository.for_subject(session, subject_id)
+    topics = []
+    for topic in rows:
+        level, term = "SS1", "FIRST"
+        if topic.curriculum_level_id:
+            curriculum = await curriculum_levels_repository.by_id(
+                session, topic.curriculum_level_id
+            )
+            if curriculum:
+                level, term = curriculum.class_level, curriculum.term
+        topics.append(
+            PlanTopic(
+                id=topic.id,
+                subject_id=topic.subject_id,
+                title=topic.title,
+                slug=topic.slug,
+                order_index=topic.order_index,
+                estimated_minutes=topic.estimated_minutes,
+                waec_weight=topic.waec_weight,
+                jamb_weight=topic.jamb_weight,
+                prerequisite_topic_id=topic.prerequisite_topic_id,
+                class_level=level,
+                term=term,
+            )
+        )
+    return topics
 
 
 async def _term_context(session: AsyncSession, today: str) -> dict:
@@ -131,10 +186,15 @@ class GetStudyPlanService:
             "daysToExam": self._days_to_exam(plan, today),
             "defaults": DEFAULT_MINUTES.get(self.class_level or "SS1"),
             "subjects": [
-                {"id": subject.id, "name": subject.name, "slug": subject.slug}
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "code": subject.code,
+                    "slug": subject.slug,
+                }
                 for subject in subject_rows
             ],
-            "plan": None if plan is None else await self._serialize(plan),
+            "plan": None if plan is None else await self._serialize(plan, ctx),
         }
 
     def _days_to_exam(self, plan: StudyPlan | None, today: str) -> int | None:
@@ -149,25 +209,50 @@ class GetStudyPlanService:
 
         return days_between(today, _day(plan.target_date))
 
-    async def _serialize(self, plan: StudyPlan) -> dict:
+    async def _serialize(self, plan: StudyPlan, ctx: dict) -> dict:
         # Items already laid out for a subject that has since been deactivated
         # are hidden now; the next replan stops generating them.
         active_ids = await subjects_repository.active_ids(self.session)
-        items = [
+        subjects = {
+            subject.id: subject
+            for subject in await subjects_repository.active_ordered(self.session)
+        }
+        plan_items = [
             item
             for item in await plan_items_repository.for_plan(self.session, plan.id)
             if item.subject_id in active_ids
         ]
-        positions = [
-            row
+        topic_rows = await topics_repository.for_ids(
+            self.session, [i.topic_id for i in plan_items if i.topic_id]
+        )
+        topic_by_id = {topic.id: topic for topic in topic_rows}
+        positions = {
+            row.subject_id: row.topic_id
             for row in await plan_positions_repository.for_plan(self.session, plan.id)
-            if row.subject_id in active_ids
-        ]
+            if row.subject_id in active_ids and row.topic_id
+        }
+        class_level = self.class_level or "SS1"
+        target = _day(plan.target_date) if plan.target_date else None
+        mode = resolve_plan_mode(class_level, target, plan.force_exam_mode)
+        plan_start = _day(plan.created_at) if plan.created_at else lagos_day_key()
+        runway_start = (
+            compute_runway_start(plan_start, target)
+            if target and mode != "TERM"
+            else None
+        )
+        subject_ids = [s for s in plan.subject_ids or [] if s in active_ids]
+        calendar_positions: dict[str, str | None] = {}
+        options: dict[str, list[dict]] = {}
+        for subject_id in subject_ids:
+            topics = await _plan_topics(self.session, subject_id)
+            calendar_positions[subject_id] = calendar_topic_id(topics, class_level, ctx)
+            options[subject_id] = position_options(topics, class_level)
         return {
             "id": plan.id,
-            "subjectIds": [s for s in plan.subject_ids or [] if s in active_ids],
+            "mode": mode,
+            "subjectIds": subject_ids,
             "targetExam": plan.target_exam,
-            "targetDate": _day(plan.target_date) if plan.target_date else None,
+            "targetDate": target,
             "forceExamMode": plan.force_exam_mode,
             "studyDays": plan.study_days,
             "weekdayMinutes": plan.weekday_minutes,
@@ -175,6 +260,7 @@ class GetStudyPlanService:
             "plannedThrough": _day(plan.planned_through)
             if plan.planned_through
             else None,
+            "runwayStart": runway_start,
             "outline": plan.outline,
             "overload": plan.overload,
             "items": [
@@ -182,7 +268,18 @@ class GetStudyPlanService:
                     "id": item.id,
                     "date": _day(item.date),
                     "subjectId": item.subject_id,
+                    "subject": {
+                        "name": subjects[item.subject_id].name,
+                        "code": subjects[item.subject_id].code,
+                        "slug": subjects[item.subject_id].slug,
+                    },
                     "topicId": item.topic_id,
+                    "topicSlug": topic_by_id[item.topic_id].slug
+                    if item.topic_id in topic_by_id
+                    else None,
+                    "topicTitle": topic_by_id[item.topic_id].title
+                    if item.topic_id in topic_by_id
+                    else None,
                     "activityType": item.activity_type,
                     "durationMinutes": item.duration_minutes,
                     "status": item.status,
@@ -191,16 +288,15 @@ class GetStudyPlanService:
                     if item.completed_at
                     else None,
                     "completionSource": item.completion_source,
-                    "carriedFromDate": _day(item.carried_from_date)
+                    "carriedFrom": _day(item.carried_from_date)
                     if item.carried_from_date
                     else None,
                 }
-                for item in items
+                for item in plan_items
             ],
-            "positions": [
-                {"subjectId": row.subject_id, "topicId": row.topic_id}
-                for row in positions
-            ],
+            "positions": positions,
+            "calendarPositions": calendar_positions,
+            "positionOptions": options,
         }
 
 
@@ -484,45 +580,21 @@ class ReplanStudyPlanService:
             subject = await subjects_repository.by_id(self.session, subject_id)
             if subject is None or not subject.is_active:
                 continue
-            topic_rows = await topics_repository.for_subject(self.session, subject_id)
-            built = []
-            for topic in topic_rows:
-                level = "SS1"
-                term = "FIRST"
-                if topic.curriculum_level_id:
-                    curriculum = await curriculum_levels_repository.by_id(
-                        self.session, topic.curriculum_level_id
-                    )
-                    if curriculum:
-                        level = curriculum.class_level
-                        term = curriculum.term
-                plan_topic = PlanTopic(
-                    id=topic.id,
-                    subject_id=topic.subject_id,
-                    title=topic.title,
-                    slug=topic.slug,
-                    order_index=topic.order_index,
-                    estimated_minutes=topic.estimated_minutes,
-                    waec_weight=topic.waec_weight,
-                    jamb_weight=topic.jamb_weight,
-                    prerequisite_topic_id=topic.prerequisite_topic_id,
-                    class_level=level,
-                    term=term,
+            built = await _plan_topics(self.session, subject_id)
+            nodes.extend(
+                GraphNode(
+                    topic.id,
+                    topic.subject_id,
+                    topic.title,
+                    topic.slug,
+                    topic.order_index,
+                    topic.estimated_minutes,
+                    topic.waec_weight,
+                    topic.jamb_weight,
+                    topic.prerequisite_topic_id,
                 )
-                built.append(plan_topic)
-                nodes.append(
-                    GraphNode(
-                        topic.id,
-                        topic.subject_id,
-                        topic.title,
-                        topic.slug,
-                        topic.order_index,
-                        topic.estimated_minutes,
-                        topic.waec_weight,
-                        topic.jamb_weight,
-                        topic.prerequisite_topic_id,
-                    )
-                )
+                for topic in built
+            )
             planner_subjects.append(PlannerSubject(subject.id, subject.name, built))
         return planner_subjects, nodes
 
