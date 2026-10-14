@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
@@ -156,6 +156,31 @@ class FlashcardReviewRepository(BaseRepository[FlashcardReview]):
 
 class FlashcardReviewLogRepository(BaseRepository[FlashcardReviewLog]):
     model = FlashcardReviewLog
+
+    async def since(
+        self, session: AsyncSession, student_id: str, moment: datetime
+    ) -> list[FlashcardReviewLog]:
+        return await self.list_where(
+            session,
+            FlashcardReviewLog.student_id == student_id,
+            FlashcardReviewLog.reviewed_at >= moment,
+        )
+
+    async def outcomes(
+        self, session: AsyncSession, student_id: str
+    ) -> dict[str, tuple[int, int]]:
+        """All-time (reviews, successful reviews) per card."""
+        result = await self.rows(
+            session,
+            select(
+                FlashcardReviewLog.flashcard_id,
+                func.count(),
+                func.sum(case((FlashcardReviewLog.rating != "AGAIN", 1), else_=0)),
+            )
+            .where(FlashcardReviewLog.student_id == student_id)
+            .group_by(FlashcardReviewLog.flashcard_id),
+        )
+        return {row[0]: (int(row[1]), int(row[2] or 0)) for row in result.all()}
 
 
 class FlashcardEnrollmentRepository(BaseRepository[FlashcardEnrollment]):

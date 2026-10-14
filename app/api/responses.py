@@ -341,8 +341,58 @@ class DeckCreatedOut(ApiOut):
     deck: DeckRefOut
 
 
+class ActivityPointOut(ApiOut):
+    date: str
+    reviews: int
+    successful: int
+
+
+class DeckStatOut(ApiOut):
+    deckId: str
+    title: str
+    total: int
+    due: int
+    fresh: int
+    reviewed: int
+    retention: float | None
+
+
+class DifficultyMixOut(ApiOut):
+    easy: int
+    medium: int
+    hard: int
+
+
+class LeechCardOut(ApiOut):
+    cardId: str
+    prompt: str
+    deckTitle: str
+    lapses: int
+    reviews: int
+    successRate: int
+
+
+class FlashcardStatsBody(ApiOut):
+    reviewsToday: int
+    reviewsThisWeek: int
+    totalReviews: int
+    cardsLearned: int
+    learnedToday: int
+    measuredRetention: float | None
+    predictedRetention: float | None
+    avgIntervalDays: float | None
+    streak: int
+    medianResponseTimeMs: int | None
+    activity: list[ActivityPointOut]
+    decks: list[DeckStatOut]
+    difficultyMix: DifficultyMixOut
+    leechCards: list[LeechCardOut]
+    totalDue: int
+    totalNew: int
+
+
 class FlashcardStatsOut(ApiOut):
-    stats: dict
+    stats: FlashcardStatsBody
 
 
 class RecommendationsOut(ApiOut):

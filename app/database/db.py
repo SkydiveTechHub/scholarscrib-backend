@@ -53,4 +53,6 @@ class Base(AsyncAttrs, DeclarativeBase):
         return json.loads(json.dumps(self.to_dict(), default=str))
 
 
-AnSession = Annotated[AsyncSession, Depends(db_session)]
+# scope="function": commit before the response is sent, so a client that reads
+# right after a write sees it.
+AnSession = Annotated[AsyncSession, Depends(db_session, scope="function")]
