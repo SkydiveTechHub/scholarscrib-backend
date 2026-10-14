@@ -34,23 +34,31 @@ from app.database.repositories.learning import (
     progress_repository,
 )
 from app.services.learning.evidence import CARD_OUTCOMES
+from app.services.srs.analytics import (
+    LOG_WINDOW_DAYS,
+    CardRow,
+    DeckRow,
+    LogRow,
+    ReviewSnapshot,
+    build_stats,
+)
 from app.services.srs.scheduler import (
     DAILY_NEW_BUDGET,
     INITIAL_EASE,
     CardSchedule,
+    is_leech,
     review_card,
     seed_difficulty,
 )
 from app.services.srs.sync import ExistingCard, plan_card_sync
 
-LEECH_LAPSES = 4
 OVERDUE_MIN_DAYS = 7
 LOW_RETENTION = 0.75
 MAX_RECOMMENDATIONS = 4
 MAX_UNBUILT_LESSONS = 1
 _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
-_NOT_STUDY_CONTENT =re.compile(
+_NOT_STUDY_CONTENT = re.compile(
     r"^(?:(?:learning\s+)?objectives?|quiz\b|worked\s+examples?\b)", re.IGNORECASE
 )
 
@@ -583,18 +591,63 @@ class GetFlashcardStatsService:
         self.user_id = user_id
 
     async def process(self) -> dict:
-        rows = await reviews_repository.for_student(self.session, self.user_id)
         now = utcnow()
-        due = sum(1 for review in rows if review.due_at and review.due_at <= now)
+        owned = await decks_repository.owned_by(self.session, self.user_id)
+        enrolled = await decks_repository.enrolled_for(self.session, self.user_id)
+        seen = {deck.id for deck in owned}
+        decks = [*owned, *[deck for deck in enrolled if deck.id not in seen]]
+        cards = await cards_repository.list_where(
+            self.session, Flashcard.deck_id.in_([deck.id for deck in decks])
+        )
+        reviews = await reviews_repository.for_cards(
+            self.session, self.user_id, [card.id for card in cards]
+        )
+        by_card = {review.flashcard_id: review for review in reviews}
+        logs = await review_logs_repository.since(
+            self.session, self.user_id, now - timedelta(days=LOG_WINDOW_DAYS)
+        )
         return {
-            "stats": {
-                "reviews": len(rows),
-                "due": due,
-                "learning": sum(
-                    1 for review in rows if review.state in {"LEARNING", "RELEARNING"}
+            "stats": build_stats(
+                now=now,
+                decks=[DeckRow(deck.id, deck.title) for deck in decks],
+                cards=[
+                    CardRow(
+                        card.id,
+                        card.deck_id,
+                        str((card.payload or {}).get("front") or ""),
+                        card.difficulty,
+                        _snapshot(by_card.get(card.id)),
+                    )
+                    for card in cards
+                ],
+                logs=[
+                    LogRow(
+                        log.flashcard_id,
+                        log.reviewed_at,
+                        log.rating,
+                        log.response_time_ms,
+                    )
+                    for log in logs
+                ],
+                outcomes=await review_logs_repository.outcomes(
+                    self.session, self.user_id
                 ),
-            }
+            )
         }
+
+
+def _snapshot(review: FlashcardReview | None) -> ReviewSnapshot | None:
+    if review is None:
+        return None
+    return ReviewSnapshot(
+        state=review.state,
+        difficulty=review.difficulty,
+        stability=review.stability,
+        interval_days=review.interval_days,
+        lapses=review.lapses,
+        due_at=review.due_at,
+        last_reviewed_at=review.last_reviewed_at,
+    )
 
 
 class GetFlashcardRecommendationsService:
@@ -626,6 +679,7 @@ class GetFlashcardRecommendationsService:
             self.session, Flashcard.id.in_([r.flashcard_id for r in started])
         )
         deck_of = {card.id: card.deck_id for card in cards}
+        outcomes = await review_logs_repository.outcomes(self.session, self.user_id)
 
         # Each card lands in its most serious bucket only, so one weak card is
         # never reported three times.
@@ -634,7 +688,8 @@ class GetFlashcardRecommendationsService:
             deck_id = deck_of.get(review.flashcard_id)
             if deck_id is None:
                 continue
-            if review.lapses >= LEECH_LAPSES:
+            reviews, successes = outcomes.get(review.flashcard_id, (0, 0))
+            if is_leech(review.lapses, reviews, successes):
                 kind = "leech"
             elif review.due_at and now - review.due_at > timedelta(
                 days=max(review.interval_days * 2, OVERDUE_MIN_DAYS)
@@ -716,7 +771,7 @@ class GetFlashcardRecommendationsService:
                 {
                     "id": f"build:{lesson.id}",
                     "priority": "medium",
-                    "title": f"Turn \"{lesson.title}\" into cards",
+                    "title": f'Turn "{lesson.title}" into cards',
                     "rationale": "You finished this lesson. Cards help you remember "
                     "it weeks from now, not just today.",
                     "href": "/flashcards#build",
