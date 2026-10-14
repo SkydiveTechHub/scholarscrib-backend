@@ -18,7 +18,11 @@ from app.database.repositories.curriculum import (
     topic_edges_repository,
     topics_repository,
 )
-from app.database.repositories.flashcard import reviews_repository
+from app.database.repositories.flashcard import (
+    decks_repository,
+    enrollments_repository,
+    reviews_repository,
+)
 from app.database.repositories.learning import (
     learning_events_repository,
     metrics_repository,
@@ -588,6 +592,7 @@ class GetTopicPageService:
             "accObservations": state.acc_observations,
             "lessonObservations": state.lesson_observations,
             "srsObservations": state.srs_observations,
+            "deckId": await _deck_for_student(self.session, self.student_id, lesson),
             "prerequisites": await _prerequisites(
                 self.session, topic, states, self.student_id
             ),
@@ -653,6 +658,28 @@ async def _attempts(
             }
         )
     return payload
+
+
+async def _deck_for_student(
+    session: AsyncSession, student_id: str, lesson: Lesson | None
+) -> str | None:
+    """The lesson's flashcard deck, only when this student can open it.
+
+    A lesson's deck is shared, but reaching it takes an enrolment. Offering the
+    link to someone without one sends them to a deck that is not theirs, so they
+    are told there is no deck yet and building it enrols them.
+    """
+    if lesson is None:
+        return None
+    deck = await decks_repository.for_lesson(session, lesson.id)
+    if deck is None:
+        return None
+    if deck.created_by == student_id:
+        return deck.id
+    enrolled = await enrollments_repository.for_student_deck(
+        session, student_id, deck.id
+    )
+    return deck.id if enrolled is not None else None
 
 
 async def _prerequisites(

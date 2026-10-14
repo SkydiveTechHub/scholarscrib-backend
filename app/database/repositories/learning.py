@@ -36,6 +36,16 @@ class StudentProgressRepository(BaseRepository[StudentProgress]):
             StudentProgress.status == "COMPLETED",
         )
 
+    async def completed_for_student(
+        self, session: AsyncSession, student_id: str
+    ) -> list[StudentProgress]:
+        return await self.list_where(
+            session,
+            StudentProgress.student_id == student_id,
+            StudentProgress.status == "COMPLETED",
+            order_by=(StudentProgress.last_accessed_at.desc(),),
+        )
+
     async def revision_due_by_topic(
         self, session: AsyncSession, student_id: str
     ) -> dict[str, datetime]:

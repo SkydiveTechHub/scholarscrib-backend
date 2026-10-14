@@ -19,6 +19,7 @@ from app.services.learning.evidence import (
     LEARN_MIN_MINUTES,
     PRACTICE_MINUTES,
     RETRIEVE_MAX_MINUTES,
+    RETRIEVE_MIN_MINUTES,
     RETRIEVE_NO_CARDS_MINUTES,
     SESSION_MAX_ITEMS,
     SESSION_MINUTES,
@@ -170,7 +171,7 @@ def _plan_entry(plan_item: dict, topics: dict, states: dict) -> dict:
 def _pick_retrieval(
     inputs: SessionInputs, used: set[str], remaining: int
 ) -> dict | None:
-    if remaining < 3:
+    if remaining < RETRIEVE_MIN_MINUTES:
         return None
     max_blocked = max(inputs.dependents.values(), default=0)
     best = None

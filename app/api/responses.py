@@ -515,6 +515,7 @@ class TopicPageOut(ApiOut):
     lessonObservations: int = 0
     srsObservations: int = 0
     prerequisites: list[dict] = []
+    deckId: str | None = None
     canonicalLessonId: str | None = None
     createsAttempt: bool | None = None
     lesson: dict | None = None

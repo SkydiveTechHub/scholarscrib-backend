@@ -63,7 +63,7 @@ Multiple-choice guessing is already absorbed by the scoring scale: a wrong answe
 
 ### 4.4 Evidence sufficiency
 
-`evidence_level(state)` returns `NONE` (no observations), `THIN` (confidence < `CONFIDENCE_FLOOR`) or `ENOUGH`. Reasons only quote percentages for `ENOUGH`; otherwise they quote counts ("2 questions answered"). This extends, and reuses, `evidence-display.ts` on the frontend.
+`evidence_level(state)` returns `NONE` (no observations), `THIN` (confidence < `CONFIDENCE_FLOOR`) or `ENOUGH`. Reasons only quote percentages when `evidenceLevel == "ENOUGH"` or `retentionSource == "CARDS"` (card retention has its own sufficiency gate of `CARD_RETENTION_MIN_CARDS` reviewed cards); otherwise they quote counts ("2 questions answered"). This extends, and reuses, `evidence-display.ts` on the frontend.
 
 ## 5. Session composer
 
@@ -73,7 +73,7 @@ Multiple-choice guessing is already absorbed by the scoring scale: a wrong answe
 
 1. **Budget.** `budget = 20`. Plan items for today with status `PENDING` or `COMPLETED` come first (source `PLAN`). Only `PENDING` ones subtract their duration, so finishing the plan does not hide the rest of the session. If plan minutes ≥ budget, no engine items are added.
 2. **Retrieval slot (≤ 8 min).** Candidates: topics with `last_effort_at` set and (retention < `DECAY_RETENTION` or cards due or cadence due). Highest fixed priority from 4.2 wins. Minutes: `min(8, ceil(1 + due_cards * 0.5))` when cards are due, otherwise 5. Kind `RETRIEVE`, `href` = topic practice page (or the flashcard deck when cards are due and exactly one deck applies).
-3. **Practice slot (8 min).** Candidates: topics that are `available`, `mastery < TARGET`, with `evidence_level != NONE`, excluding the retrieval topic. Value: `(TARGET - mastery)/TARGET * (1 + leverage) * exam_weight`. `WEAK` topics (confidence ≥ 0.35 and mastery < 50) get a 1.5× multiplier. Topics at `THIN` evidence are included but never shown a percentage. Kind `PRACTICE`, 8 minutes (sized so a 20-minute session still has room for the new-material slot).
+3. **Practice slot (8 min).** Candidates: topics that are `available`, `mastery < TARGET`, with `evidence_level != NONE`, excluding the retrieval topic. Value: `(TARGET - mastery)/TARGET * (1 + leverage) * exam_weight`. `WEAK` topics (confidence ≥ 0.35 and mastery < 50) get a 1.5× multiplier. Topics at `THIN` evidence are included but never shown a percentage. Kind `PRACTICE`, 8 minutes (sized so a 20-minute session still has room for the new-material slot). The in-progress lesson's topic is held out of the retrieval and practice slots so the `CONTINUE` item is not pre-empted.
 4. **New slot (remaining minutes, ≥ 5).** First the in-progress lesson (kind `CONTINUE`). Otherwise the first available topic by curriculum order with `evidence_level == NONE`, all prerequisites at ≥ `GATE` mastery or pretest-passed, and not already used. Kind `LEARN`, minutes from `topic.estimated_minutes` capped to the remaining budget.
 5. Drop any slot with no candidate. If all are empty return `[]`, and the UI shows a neutral "Nothing urgent today — pick any subject" card instead of a fake item.
 
@@ -85,7 +85,7 @@ Templates, filled from real numbers only:
 
 - RETRIEVE: `"Retention about {r}% — last studied {d} days ago"` / `"{n} flashcards due"` / `"Scheduled revision is due"`. The first form is used only when `retentionSource == "CARDS"`; with an estimate it reads `"Probably fading — last studied {d} days ago"`.
 - PRACTICE: `"{c} of your last {n} answers here were right"` when n ≥ 3, plus `"· unlocks {u} topics"` when `unlocks ≥ 1`, plus `"· ~{w} exam weight"` when weight > 0.
-- LEARN: `"{prereq} is solid ({m}%) — this is the next step"` when a prerequisite exists, else `"New topic in {subject}"`.
+- LEARN: `"New topic — you're ready for it"` when the topic has no solid prerequisite (the composer has no subject names), else `"{prereq} is solid ({m}%) — this is the next step"`.
 - CONTINUE: `"Continue where you left off"`.
 
 Recent accuracy comes from a new query `learning_events_repository.recent_outcomes_by_topic(session, student_id, topic_ids, limit=8)` returning the last ≤ 8 `QUESTION_ANSWERED` outcomes per topic.
@@ -122,7 +122,7 @@ Backend (`app/api/responses.py`, `app/services/pages.py`):
 Frontend (`scholarscrib-frontend`):
 
 - `src/lib/api/types.ts`: add `SessionItem`; remove the three rail types.
-- `src/lib/dashboard.ts`: map `session`; `todayPlan` is derived from `session.done`/`total` when a session exists, otherwise from plan items as today.
+- `src/lib/dashboard.ts`: map `session`; the hero button's "Today: X of Y done" stays derived from today's plan items (it links to `/study-plan`), not from the session.
 - New `src/components/path/todays-session.tsx`: a numbered list, one primary "Start" action per item, minutes, reason, a check mark when done, and a progress line. Links are built from `kind` and the `subjects` map using the existing routes (`/classroom/[subject]/[topic]/practice`, `/study`, `/flashcards`).
 - `src/app/(dashboard)/dashboard/page.tsx`: replace the two sections with one "Today's session" section, hidden until `hasActivity`.
 - Delete `next-topics.tsx`, `gap-list.tsx`, `revision-queue.tsx` only if `grep` shows no other importers. `graph-view.tsx`, `view-toggle.tsx` and `pretest-dialog.tsx` are untouched.

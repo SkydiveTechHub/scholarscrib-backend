@@ -1,5 +1,7 @@
 import re
+from datetime import timedelta
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import ReviewIn
@@ -16,6 +18,7 @@ from app.database.models import (
 )
 from app.database.repositories.curriculum import (
     lessons_repository,
+    subjects_repository,
     subtopics_repository,
     topics_repository,
 )
@@ -26,16 +29,28 @@ from app.database.repositories.flashcard import (
     review_logs_repository,
     reviews_repository,
 )
-from app.database.repositories.learning import learning_events_repository
+from app.database.repositories.learning import (
+    learning_events_repository,
+    progress_repository,
+)
 from app.services.learning.evidence import CARD_OUTCOMES
 from app.services.srs.scheduler import (
     DAILY_NEW_BUDGET,
+    INITIAL_EASE,
     CardSchedule,
     review_card,
     seed_difficulty,
 )
+from app.services.srs.sync import ExistingCard, plan_card_sync
 
-_NOT_STUDY_CONTENT = re.compile(
+LEECH_LAPSES = 4
+OVERDUE_MIN_DAYS = 7
+LOW_RETENTION = 0.75
+MAX_RECOMMENDATIONS = 4
+MAX_UNBUILT_LESSONS = 1
+_PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+_NOT_STUDY_CONTENT =re.compile(
     r"^(?:(?:learning\s+)?objectives?|quiz\b|worked\s+examples?\b)", re.IGNORECASE
 )
 
@@ -125,6 +140,34 @@ def cards_from_blocks(blocks: list[dict]) -> list[dict]:
     return cards_out
 
 
+def _next_intervals(
+    review: FlashcardReview | None, difficulty: str | None, now
+) -> dict[str, float]:
+    """Days until the next review for each rating, so the buttons can say so."""
+    if review is None:
+        base = CardSchedule(difficulty=seed_difficulty(difficulty))
+    else:
+        base = CardSchedule(
+            state=review.state,
+            ease_factor=review.ease_factor,
+            stability=review.stability,
+            difficulty=review.difficulty,
+            interval_days=review.interval_days,
+            repetitions=review.repetitions,
+            lapses=review.lapses,
+        )
+    out = {}
+    for rating in ("AGAIN", "HARD", "GOOD", "EASY"):
+        scheduled = review_card(base, rating, now)
+        # Short learning steps are stored as a due time, not an interval.
+        out[rating] = (
+            (scheduled.due_at - now).total_seconds() / 86400
+            if scheduled.due_at
+            else scheduled.interval_days
+        )
+    return out
+
+
 async def can_review(session: AsyncSession, user_id: str, deck: FlashcardDeck) -> bool:
     if deck.created_by == user_id:
         return True
@@ -134,6 +177,33 @@ async def can_review(session: AsyncSession, user_id: str, deck: FlashcardDeck) -
     return enrollment is not None
 
 
+async def ensure_enrolled(
+    session: AsyncSession, user_id: str, deck: FlashcardDeck
+) -> None:
+    """Gives a student access to a deck. Safe to repeat and to race."""
+    await session.execute(
+        pg_insert(FlashcardEnrollment)
+        .values(id=cuid(), student_id=user_id, deck_id=deck.id)
+        .on_conflict_do_nothing(
+            index_elements=[FlashcardEnrollment.student_id, FlashcardEnrollment.deck_id]
+        )
+    )
+
+
+async def adopt_shared_deck(session: AsyncSession, deck: FlashcardDeck) -> None:
+    """Turns a lesson deck made under the old owner model into a shared one.
+
+    Decks built from a lesson used to record whoever built them first as owner,
+    and only that student could open it. Shared decks have no owner, so the
+    creator is enrolled like everyone else and the owner link is cleared, which
+    also lets them leave the deck without deleting it for the cohort.
+    """
+    if deck.source != "LESSON" or deck.created_by is None:
+        return
+    await ensure_enrolled(session, deck.created_by, deck)
+    deck.created_by = None
+
+
 class ListFlashcardDecksService:
     def __init__(self, session: AsyncSession, user_id: str) -> None:
         self.session = session
@@ -141,17 +211,54 @@ class ListFlashcardDecksService:
 
     async def process(self) -> dict:
         owned = await decks_repository.owned_by(self.session, self.user_id)
+        for deck in owned:
+            await adopt_shared_deck(self.session, deck)
+        await self.session.flush()
+        owned = [deck for deck in owned if deck.created_by == self.user_id]
         enrolled = await decks_repository.enrolled_for(self.session, self.user_id)
         seen = {deck.id for deck in owned}
+        followed = {deck.id for deck in enrolled}
+        now = utcnow()
         payload = []
         for deck in [*owned, *[d for d in enrolled if d.id not in seen]]:
-            count = await cards_repository.count_for_deck(self.session, deck.id)
+            cards = await cards_repository.for_deck(self.session, deck.id)
+            reviews = await reviews_repository.for_cards(
+                self.session, self.user_id, [card.id for card in cards]
+            )
+            by_card = {review.flashcard_id: review for review in reviews}
+            started = [r for r in by_card.values() if r.state != "NEW"]
+            subject = (
+                await subjects_repository.by_id(self.session, deck.subject_id)
+                if deck.subject_id
+                else None
+            )
+            topic = (
+                await topics_repository.by_id(self.session, deck.topic_id)
+                if deck.topic_id
+                else None
+            )
+            last = max(
+                (r.last_reviewed_at for r in started if r.last_reviewed_at),
+                default=None,
+            )
             payload.append(
                 {
                     "id": deck.id,
                     "title": deck.title,
                     "source": deck.source,
-                    "cardCount": count or 0,
+                    "cardCount": len(cards),
+                    "totalCards": len(cards),
+                    "due": sum(1 for r in started if r.due_at and r.due_at <= now),
+                    "fresh": sum(
+                        1
+                        for card in cards
+                        if card.id not in by_card or by_card[card.id].state == "NEW"
+                    ),
+                    "reviewed": len(started),
+                    "enrolled": deck.id in followed,
+                    "subjectName": subject.name if subject else None,
+                    "topicTitle": topic.title if topic else None,
+                    "lastReviewedAt": last.isoformat() if last else None,
                     "owned": deck.created_by == self.user_id,
                 }
             )
@@ -223,6 +330,8 @@ class GenerateFlashcardsService:
         if lesson is None:
             raise ApiError(404, "Lesson not found")
         deck = await self._deck_for(lesson)
+        await adopt_shared_deck(self.session, deck)
+        await ensure_enrolled(self.session, self.user_id, deck)
         await self._sync_cards(deck, preview["cards"])
         await self.session.flush()
         return {
@@ -240,42 +349,65 @@ class GenerateFlashcardsService:
         )
         deck = await decks_repository.for_lesson(self.session, self.lesson_id)
         if deck is None:
-            deck = FlashcardDeck(
-                id=cuid(),
-                title=lesson.title,
-                lesson_id=self.lesson_id,
-                topic_id=topic.id if topic else None,
-                subject_id=topic.subject_id if topic else None,
-                source="LESSON",
-                created_by=self.user_id,
+            # A deck built from a lesson is shared, so it has no owner. Two
+            # students building it at once is normal, and the loser must find the
+            # winner's deck rather than fail on the (lesson, source) uniqueness.
+            await self.session.execute(
+                pg_insert(FlashcardDeck)
+                .values(
+                    id=cuid(),
+                    title=lesson.title,
+                    lesson_id=self.lesson_id,
+                    topic_id=topic.id if topic else None,
+                    subject_id=topic.subject_id if topic else None,
+                    source="LESSON",
+                    created_by=None,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[FlashcardDeck.lesson_id, FlashcardDeck.source]
+                )
             )
-            await decks_repository.add(self.session, deck, flush=True)
+            deck = await decks_repository.for_lesson(self.session, self.lesson_id)
+        if deck is None:
+            raise ApiError(409, "This deck is being built. Try again in a moment.")
         return deck
 
     async def _sync_cards(self, deck: FlashcardDeck, preview_cards: list[dict]) -> None:
         existing = await cards_repository.for_deck(self.session, deck.id)
-        by_key = {card.source_key: card for card in existing if card.source_key}
-        incoming_keys = set()
-        for card in preview_cards:
-            incoming_keys.add(card["sourceKey"])
-            current = by_key.get(card["sourceKey"])
-            if current:
-                current.payload = card["payload"]
-                current.card_type = card["cardType"]
-            else:
-                await cards_repository.add(
-                    self.session,
-                    Flashcard(
-                        id=cuid(),
-                        deck_id=deck.id,
-                        card_type=card["cardType"],
-                        payload=card["payload"],
-                        source_key=card["sourceKey"],
-                    ),
+        by_id = {card.id: card for card in existing}
+        plan = plan_card_sync(
+            [
+                ExistingCard(
+                    id=card.id,
+                    source_key=card.source_key,
+                    front=str((card.payload or {}).get("front") or ""),
                 )
-        for card in existing:
-            if card.source_key and card.source_key not in incoming_keys:
-                await cards_repository.remove(self.session, card)
+                for card in existing
+            ],
+            preview_cards,
+        )
+        for card_id, key in plan.adopt.items():
+            by_id[card_id].source_key = key
+        for card_id, fresh in plan.update.items():
+            by_id[card_id].payload = fresh["payload"]
+            by_id[card_id].card_type = fresh["cardType"]
+        for fresh in plan.insert:
+            # Concurrent syncs may both add a card; the loser's insert is a no-op.
+            await self.session.execute(
+                pg_insert(Flashcard)
+                .values(
+                    id=cuid(),
+                    deck_id=deck.id,
+                    card_type=fresh["cardType"],
+                    payload=fresh["payload"],
+                    source_key=fresh["sourceKey"],
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[Flashcard.deck_id, Flashcard.source_key]
+                )
+            )
+        for card_id in plan.delete:
+            await cards_repository.remove(self.session, by_id[card_id])
 
 
 class ReviewFlashcardService:
@@ -328,7 +460,16 @@ class ReviewFlashcardService:
                 id=cuid(),
                 student_id=self.user_id,
                 flashcard_id=card.id,
+                # Column defaults only apply at INSERT, but the scheduler reads
+                # these fields before the row is flushed, so state them here.
+                state="NEW",
+                ease_factor=INITIAL_EASE,
+                stability=0.0,
                 difficulty=seed_difficulty(card.difficulty),
+                interval_days=0.0,
+                repetitions=0,
+                lapses=0,
+                retention=0.0,
             )
             await reviews_repository.add(self.session, row)
         return row
@@ -421,6 +562,15 @@ class DeleteFlashcardDeckService:
         deck = await decks_repository.by_id(self.session, self.deck_id)
         if deck is None:
             raise ApiError(404, "Deck not found")
+        if deck.source == "LESSON":
+            # Shared with the cohort: leaving removes it from this student's
+            # list, never from everyone's. Their review history is kept.
+            await adopt_shared_deck(self.session, deck)
+            existing = await enrollments_repository.for_student_deck(
+                self.session, self.user_id, deck.id
+            )
+            await enrollments_repository.remove(self.session, existing)
+            return {"deckId": self.deck_id}
         if deck.created_by != self.user_id:
             raise ApiError(403, "Not permitted")
         await decks_repository.remove(self.session, deck)
@@ -453,16 +603,128 @@ class GetFlashcardRecommendationsService:
         self.user_id = user_id
 
     async def process(self) -> dict:
-        rows = await reviews_repository.low_retention(self.session, self.user_id)
-        return {
-            "recommendations": [
-                {
-                    "flashcardId": review.flashcard_id,
-                    "retention": review.retention,
-                }
-                for review in rows
-            ]
+        recommendations = [
+            *await self._review_health(),
+            *await self._unbuilt_lessons(),
+        ]
+        recommendations.sort(key=lambda rec: _PRIORITY_ORDER[rec["priority"]])
+        return {"recommendations": recommendations[:MAX_RECOMMENDATIONS]}
+
+    async def _review_health(self) -> list[dict]:
+        """Leeches, overdue and fading cards, rolled up to one item per deck."""
+        now = utcnow()
+        started = [
+            review
+            for review in await reviews_repository.for_student(
+                self.session, self.user_id
+            )
+            if review.state != "NEW"
+        ]
+        if not started:
+            return []
+        cards = await cards_repository.list_where(
+            self.session, Flashcard.id.in_([r.flashcard_id for r in started])
+        )
+        deck_of = {card.id: card.deck_id for card in cards}
+
+        # Each card lands in its most serious bucket only, so one weak card is
+        # never reported three times.
+        buckets: dict[str, dict[str, int]] = {}
+        for review in started:
+            deck_id = deck_of.get(review.flashcard_id)
+            if deck_id is None:
+                continue
+            if review.lapses >= LEECH_LAPSES:
+                kind = "leech"
+            elif review.due_at and now - review.due_at > timedelta(
+                days=max(review.interval_days * 2, OVERDUE_MIN_DAYS)
+            ):
+                kind = "overdue"
+            elif review.retention < LOW_RETENTION:
+                kind = "fading"
+            else:
+                continue
+            counts = buckets.setdefault(deck_id, {})
+            counts[kind] = counts.get(kind, 0) + 1
+
+        decks = {
+            deck.id: deck
+            for deck in await decks_repository.list_where(
+                self.session, FlashcardDeck.id.in_(list(buckets))
+            )
         }
+        out = []
+        for deck_id, counts in buckets.items():
+            deck = decks.get(deck_id)
+            if deck is None:
+                continue
+            href = f"/flashcards/{deck_id}"
+            if counts.get("leech"):
+                n = counts["leech"]
+                out.append(
+                    {
+                        "id": f"leech:{deck_id}",
+                        "priority": "high",
+                        "title": f"Relearn the hard cards in {deck.title}",
+                        "rationale": f"{n} card{'s' if n != 1 else ''} keep slipping "
+                        "after repeated misses. Revisit the lesson, then retry them.",
+                        "href": href,
+                        "deckId": deck_id,
+                    }
+                )
+            if counts.get("overdue"):
+                n = counts["overdue"]
+                out.append(
+                    {
+                        "id": f"overdue:{deck_id}",
+                        "priority": "high",
+                        "title": f"Catch up on {deck.title}",
+                        "rationale": f"{n} card{'s are' if n != 1 else ' is'} well "
+                        "past due. The longer you wait, the more you forget.",
+                        "href": href,
+                        "deckId": deck_id,
+                    }
+                )
+            if counts.get("fading"):
+                n = counts["fading"]
+                out.append(
+                    {
+                        "id": f"fading:{deck_id}",
+                        "priority": "medium",
+                        "title": f"Refresh {deck.title}",
+                        "rationale": f"Your recall on {n} card{'s' if n != 1 else ''} "
+                        "has dropped below 75%. A quick review will lock it back in.",
+                        "href": href,
+                        "deckId": deck_id,
+                    }
+                )
+        return out
+
+    async def _unbuilt_lessons(self) -> list[dict]:
+        """Finished lessons that were never turned into cards."""
+        completed = await progress_repository.completed_for_student(
+            self.session, self.user_id
+        )
+        out = []
+        for progress in completed:
+            if await decks_repository.for_lesson(self.session, progress.lesson_id):
+                continue
+            lesson = await lessons_repository.by_id(self.session, progress.lesson_id)
+            if lesson is None:
+                continue
+            out.append(
+                {
+                    "id": f"build:{lesson.id}",
+                    "priority": "medium",
+                    "title": f"Turn \"{lesson.title}\" into cards",
+                    "rationale": "You finished this lesson. Cards help you remember "
+                    "it weeks from now, not just today.",
+                    "href": "/flashcards#build",
+                }
+            )
+            if len(out) == MAX_UNBUILT_LESSONS:
+                break
+        return out
 
 
 class GetFlashcardStudyQueueService:
@@ -497,13 +759,31 @@ class GetFlashcardStudyQueueService:
         due.sort(key=lambda card: by_card[card.id].due_at or now)
         new_budget = max(0, DAILY_NEW_BUDGET - len(due))
         queue = due + fresh[:new_budget]
+        followers = await enrollments_repository.count(
+            self.session, FlashcardEnrollment.deck_id == deck.id
+        )
         return {
-            "deck": {"id": deck.id, "title": deck.title},
+            "deck": {
+                "id": deck.id,
+                "title": deck.title,
+                "lessonId": deck.lesson_id,
+                "source": deck.source,
+                # Only a deck you made yourself is yours to delete. A deck built
+                # from a lesson belongs to everyone; you can only leave it.
+                "isOwner": deck.source != "LESSON" and deck.created_by == self.user_id,
+                "followerCount": followers,
+            },
             "queue": [
                 {
                     "id": card.id,
                     "type": card.card_type,
+                    "cardId": card.id,
+                    "cardType": card.card_type,
                     "payload": card.payload,
+                    "authoredDifficulty": card.difficulty or "INTERMEDIATE",
+                    "nextIntervals": _next_intervals(
+                        by_card.get(card.id), card.difficulty, now
+                    ),
                 }
                 for card in queue
             ],
