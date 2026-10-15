@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 
 from sqlalchemy.engine import CursorResult
@@ -24,7 +25,6 @@ from app.database.repositories.planner import (
     plan_positions_repository,
     plans_repository,
 )
-from app.domain import CLASS_LEVELS
 from app.services.learning.graph import GraphEdge, GraphNode, build_graph
 from app.services.planner.days import add_days
 from app.services.planner.mode import (
@@ -32,7 +32,6 @@ from app.services.planner.mode import (
     DEFAULT_MINUTES,
     MANUAL_LOOKBACK_DAYS,
     PlanSettingsCheck,
-    at_or_below_class,
     compute_runway_start,
     plan_settings_problem,
     resolve_plan_mode,
@@ -46,7 +45,7 @@ from app.services.planner.term_context import (
 from app.services.planner.term_plan import PlannerInput, PlannerSubject, plan_window
 from app.services.planner.topics import CarryOver, PlanTopic, calendar_topic_id
 
-_TERMS = ("FIRST", "SECOND", "THIRD")
+logger = logging.getLogger(__name__)
 
 
 def _day(value) -> str:
@@ -71,17 +70,12 @@ async def _active(session: AsyncSession, student_id: str) -> StudyPlan | None:
     return await plans_repository.active(session, student_id)
 
 
-def position_options(topics: list[PlanTopic], class_level: str) -> list[dict]:
-    """Topics a student may pick as "my class is here": up to their own class."""
-    allowed = [t for t in topics if at_or_below_class(t.class_level, class_level)]
-    allowed.sort(
-        key=lambda t: (
-            CLASS_LEVELS.index(t.class_level),
-            _TERMS.index(t.term),
-            t.order_index,
-            t.id,
-        )
-    )
+def position_options(
+    topics: list[PlanTopic], class_level: str, term: str
+) -> list[dict]:
+    """Topics a student may pick as "my class is here": the plan's own term only."""
+    allowed = [t for t in topics if t.class_level == class_level and t.term == term]
+    allowed.sort(key=lambda t: (t.order_index, t.id))
     return [
         {
             "id": t.id,
@@ -93,16 +87,23 @@ def position_options(topics: list[PlanTopic], class_level: str) -> list[dict]:
 
 
 async def _plan_topics(session: AsyncSession, subject_id: str) -> list[PlanTopic]:
+    """Topics with a curriculum level. Unmapped topics are left out of every plan."""
     rows = await topics_repository.for_subject(session, subject_id)
     topics = []
     for topic in rows:
-        level, term = "SS1", "FIRST"
-        if topic.curriculum_level_id:
-            curriculum = await curriculum_levels_repository.by_id(
-                session, topic.curriculum_level_id
+        curriculum = (
+            await curriculum_levels_repository.by_id(session, topic.curriculum_level_id)
+            if topic.curriculum_level_id
+            else None
+        )
+        if curriculum is None:
+            logger.warning(
+                "Topic %s (subject %s) has no curriculum level; "
+                "left out of study plans",
+                topic.id,
+                subject_id,
             )
-            if curriculum:
-                level, term = curriculum.class_level, curriculum.term
+            continue
         topics.append(
             PlanTopic(
                 id=topic.id,
@@ -114,8 +115,8 @@ async def _plan_topics(session: AsyncSession, subject_id: str) -> list[PlanTopic
                 waec_weight=topic.waec_weight,
                 jamb_weight=topic.jamb_weight,
                 prerequisite_topic_id=topic.prerequisite_topic_id,
-                class_level=level,
-                term=term,
+                class_level=curriculum.class_level,
+                term=curriculum.term,
             )
         )
     return topics
@@ -410,15 +411,18 @@ class SetStudyPlanPositionsService:
         topic = await topics_repository.by_id(self.session, item.topicId)
         if topic is None or topic.subject_id != item.subjectId:
             raise ApiError(400, "Topic is not on that subject")
-        if topic.curriculum_level_id:
-            curriculum = await curriculum_levels_repository.by_id(
+        curriculum = (
+            await curriculum_levels_repository.by_id(
                 self.session, topic.curriculum_level_id
             )
-            if curriculum and self.class_level:
-                from app.services.planner.mode import at_or_below_class
-
-                if not at_or_below_class(curriculum.class_level, self.class_level):
-                    raise ApiError(400, "That topic is above your class")
+            if topic.curriculum_level_id
+            else None
+        )
+        if curriculum is None or (curriculum.class_level, curriculum.term) != (
+            plan.scope_class_level,
+            plan.scope_term,
+        ):
+            raise ApiError(400, "That topic is outside your plan's term")
         if existing:
             existing.topic_id = topic.id
         else:

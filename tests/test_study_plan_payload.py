@@ -20,28 +20,50 @@ def _topic(topic_id, class_level, term, order_index, title=None):
     )
 
 
-def test_position_options_offer_topics_up_to_the_class_in_curriculum_order():
+def test_position_options_offer_only_the_plans_scope_in_curriculum_order():
     topics = [
-        _topic("ss2-first", "SS2", "FIRST", 1, "Matrices"),
-        _topic("ss3-first", "SS3", "FIRST", 1),
-        _topic("ss1-second", "SS1", "SECOND", 1, "Sets"),
-        _topic("ss1-first-b", "SS1", "FIRST", 2),
+        _topic("ss1-first-b", "SS1", "FIRST", 2, "Sets"),
         _topic("ss1-first-a", "SS1", "FIRST", 1),
+        _topic("ss1-second", "SS1", "SECOND", 1),
+        _topic("ss2-first", "SS2", "FIRST", 1),
     ]
 
-    options = position_options(topics, "SS2")
+    options = position_options(topics, "SS1", "FIRST")
 
-    assert [o["id"] for o in options] == [
-        "ss1-first-a",
-        "ss1-first-b",
-        "ss1-second",
-        "ss2-first",
-    ]
-    assert options[2] == {
-        "id": "ss1-second",
+    assert [o["id"] for o in options] == ["ss1-first-a", "ss1-first-b"]
+    assert options[1] == {
+        "id": "ss1-first-b",
         "title": "Sets",
-        "scope": "SS1 Second term",
+        "scope": "SS1 First term",
     }
+
+
+async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypatch):
+    from types import SimpleNamespace as NS
+
+    from app.services.planner import service
+
+    def row(topic_id, level_id):
+        return NS(
+            id=topic_id, subject_id="maths", title=topic_id, slug=topic_id,
+            order_index=1, estimated_minutes=30, waec_weight=1, jamb_weight=1,
+            prerequisite_topic_id=None, curriculum_level_id=level_id,
+        )
+
+    async def for_subject(_, subject_id):
+        return [row("mapped", "lv1"), row("unmapped", None), row("dangling", "gone")]
+
+    async def by_id(_, level_id):
+        return NS(class_level="SS2", term="SECOND") if level_id == "lv1" else None
+
+    monkeypatch.setattr(service.topics_repository, "for_subject", for_subject)
+    monkeypatch.setattr(service.curriculum_levels_repository, "by_id", by_id)
+
+    topics = await service._plan_topics(None, "maths")
+
+    assert [(t.id, t.class_level, t.term) for t in topics] == [
+        ("mapped", "SS2", "SECOND")
+    ]
 
 
 async def test_plan_payload_carries_every_field_the_page_reads(monkeypatch):
