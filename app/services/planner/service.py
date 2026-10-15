@@ -330,8 +330,14 @@ class GetStudyPlanService:
             "positionOptions": options,
             "scope": {"classLevel": class_level, "term": term},
             "followsCalendar": follow_calendar
-            and ctx["kind"] == "in_term"
-            and ctx["current"].term == term,
+            and (
+                (ctx["kind"] == "in_term" and ctx["current"].term == term)
+                or (
+                    ctx["kind"] == "holiday"
+                    and bool(ctx.get("previous"))
+                    and ctx["previous"].term == term
+                )
+            ),
         }
 
 

@@ -318,3 +318,60 @@ async def test_delete_without_an_active_plan_is_a_404(monkeypatch):
         await service.DeleteStudyPlanService(None, "s1").process()
 
     assert raised.value.status_code == 404
+
+
+async def _follows_in_holiday(monkeypatch, scope_term):
+    from datetime import date, datetime
+
+    from app.services.planner import service
+    from app.services.planner.term_context import TermRange, resolve_term_context
+
+    plan = NS(
+        id="p1", subject_ids=["maths"], target_exam=None, target_date=None,
+        force_exam_mode=False, study_days=[1], weekday_minutes=30,
+        weekend_minutes=60, planned_through=date(2026, 12, 20), outline=[],
+        overload=None, created_at=datetime(2026, 9, 14, tzinfo=UTC),
+        scope_class_level="SS1", scope_term=scope_term,
+    )
+
+    async def empty(*_):
+        return []
+
+    async def active_ids(_):
+        return {"maths"}
+
+    async def plan_topics(_, subject_id):
+        return [
+            _topic("a", "SS1", "FIRST", 1),
+            _topic("b", "SS1", "FIRST", 2),
+            _topic("c", "SS1", "SECOND", 1),
+        ]
+
+    monkeypatch.setattr(service.subjects_repository, "active_ids", active_ids)
+    monkeypatch.setattr(service.subjects_repository, "active_ordered", empty)
+    monkeypatch.setattr(service.plan_items_repository, "for_plan", empty)
+    monkeypatch.setattr(service.plan_positions_repository, "for_plan", empty)
+    monkeypatch.setattr(service.topics_repository, "for_ids", empty)
+    monkeypatch.setattr(service, "_plan_topics", plan_topics)
+
+    ctx = resolve_term_context(
+        "2026-12-20",
+        [
+            TermRange("2026/2027", "FIRST", "2026-09-07", "2026-12-15"),
+            TermRange("2026/2027", "SECOND", "2027-01-06", "2027-04-10"),
+        ],
+    )
+    assert ctx["kind"] == "holiday"
+    return await service.GetStudyPlanService(None, "s1", "SS1")._serialize(plan, ctx)
+
+
+async def test_holiday_follows_the_calendar_for_the_term_just_ended(monkeypatch):
+    payload = await _follows_in_holiday(monkeypatch, "FIRST")
+    assert payload["calendarPositions"] == {"maths": "b"}  # last topic
+    assert payload["followsCalendar"] is True
+
+
+async def test_holiday_does_not_follow_the_calendar_for_another_term(monkeypatch):
+    payload = await _follows_in_holiday(monkeypatch, "SECOND")
+    assert payload["calendarPositions"] == {"maths": "c"}
+    assert payload["followsCalendar"] is False
