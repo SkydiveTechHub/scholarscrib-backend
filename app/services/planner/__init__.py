@@ -1,5 +1,6 @@
 from app.services.planner.service import (
     CreateStudyPlanService,
+    DeleteStudyPlanService,
     GetStudyPlanService,
     MarkStudyPlanItemService,
     ReplanStudyPlanService,
@@ -11,6 +12,7 @@ from app.services.planner.service import (
 __all__ = [
     "GetStudyPlanService",
     "CreateStudyPlanService",
+    "DeleteStudyPlanService",
     "UpdateStudyPlanSettingsService",
     "SetStudyPlanPositionsService",
     "SetStudyPlanItemStatusService",

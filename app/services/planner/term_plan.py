@@ -27,6 +27,8 @@ class PlannerInput:
     plan_start: DayKey
     mode: PlanMode
     class_level: str
+    term: str
+    home_class_level: str
     target_date: DayKey | None
     term_context: dict
     availability: Availability
@@ -54,6 +56,8 @@ def plan_window(planner: PlannerInput) -> dict:
         select_term_topics(
             subject_id=subject.id,
             class_level=planner.class_level,
+            term=planner.term,
+            follow_calendar=planner.class_level == planner.home_class_level,
             term_context=planner.term_context,
             topics=subject.topics,
             graph=planner.graph,

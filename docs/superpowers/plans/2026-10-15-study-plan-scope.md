@@ -33,6 +33,7 @@
 5. Mastery loading throws: replan still succeeds with empty mastery (Task 6).
 6. Profile class update fails from the prompt: the plan is not saved and an error shows (Task 8).
 7. Profile class is null: defaults fall back to SS1 and no prompt appears (Tasks 5, 7).
+8. Delete with no active plan, or twice in a row: a clean 404, no crash (Task 10).
 
 ---
 
@@ -1427,12 +1428,263 @@ Run: `npx tsc --noEmit` and `npm test`. Repeat the manual reproduction from Step
 
 ---
 
+### Task 10: Delete (deactivate) a plan, backend
+
+**Files:**
+- Modify: `app/services/planner/service.py`
+- Modify: `app/services/planner/__init__.py`
+- Modify: `app/api/student/study_plan.py`
+- Modify: `tests/test_study_plan_payload.py`
+
+**Interfaces:**
+- Produces: `DeleteStudyPlanService(session, student_id).process() -> {"ok": True}`; route `DELETE /api/study-plan` (same `studyPlanner` entitlement as the other routes). Soft delete: sets `is_active = False`, rows and items stay.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `tests/test_study_plan_payload.py`:
+
+```python
+async def test_delete_deactivates_the_active_plan_and_keeps_it(monkeypatch):
+    from types import SimpleNamespace as NS
+
+    from app.services.planner import service
+
+    plan = NS(id="p1", is_active=True)
+    locked = []
+
+    async def active(_, student_id):
+        return plan
+
+    async def lock(_, *conditions):
+        locked.append(conditions)
+
+    monkeypatch.setattr(service.plans_repository, "active", active)
+    monkeypatch.setattr(service.plans_repository, "lock", lock)
+
+    result = await service.DeleteStudyPlanService(None, "s1").process()
+
+    assert result == {"ok": True}
+    assert plan.is_active is False
+    assert len(locked) == 1
+
+
+async def test_delete_without_an_active_plan_is_a_404(monkeypatch):
+    import pytest
+
+    from app.core.errors import ApiError
+    from app.services.planner import service
+
+    async def active(_, student_id):
+        return None
+
+    monkeypatch.setattr(service.plans_repository, "active", active)
+
+    with pytest.raises(ApiError) as raised:
+        await service.DeleteStudyPlanService(None, "s1").process()
+
+    assert raised.value.status_code == 404
+```
+(If `ApiError` exposes the status under a different attribute name, check `app/core/errors.py` and adjust the last assertion.)
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `uv run pytest tests/test_study_plan_payload.py -v`
+Expected: FAIL (`AttributeError: ... has no attribute 'DeleteStudyPlanService'`).
+
+- [ ] **Step 3: Implement**
+
+In `app/services/planner/service.py`, after `UpdateStudyPlanSettingsService`:
+
+```python
+class DeleteStudyPlanService:
+    """Soft delete: the plan stops being active; its items and history are kept."""
+
+    def __init__(self, session: AsyncSession, student_id: str) -> None:
+        self.session = session
+        self.student_id = student_id
+
+    async def process(self) -> dict:
+        plan = await _active(self.session, self.student_id)
+        if plan is None:
+            raise ApiError(404, "No active study plan")
+        # Same lock a replan takes, so a delete cannot race a rebuild.
+        await plans_repository.lock(self.session, StudyPlan.id == plan.id)
+        plan.is_active = False
+        return {"ok": True}
+```
+
+In `app/services/planner/__init__.py` import `DeleteStudyPlanService` and add `"DeleteStudyPlanService",` to `__all__`.
+
+In `app/api/student/study_plan.py` import `DeleteStudyPlanService` from `app.services.planner` and add after `patch_plan`:
+
+```python
+@router.delete(
+    "",
+    dependencies=[Depends(require_feature("studyPlanner"))],
+    response_model=OkOut,
+)
+async def delete_plan(
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    return await DeleteStudyPlanService(session, student.id).process()
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `uv run pytest tests/test_study_plan_payload.py -v`
+Expected: all pass.
+
+- [ ] **Step 5: Verify**
+
+Run: `uv run pytest -q` and `uv run ruff check app tests`. Check nothing else reads inactive plans' items by mistake: `grep -rn "StudyPlanItem" app --include=*.py` and confirm every reader goes through the active plan (`pages.py` and `push.py` filter on `is_active`).
+
+---
+
+### Task 11: Delete a plan, frontend
+
+**Files:**
+- Modify: `src/hooks/api/use-study-plan.ts`
+- Create: `src/components/study-plan/delete-plan-modal.tsx`
+- Modify: `src/components/study-plan/plan-setup-form.tsx`
+- Modify: `src/components/study-plan/study-plan-view.tsx`
+
+**Interfaces:**
+- Consumes: `endpoints.studyPlan.root`, `Modal`.
+- Produces: `useDeleteStudyPlan()` mutation (no arguments); `PlanSetupForm` prop `onDelete?: () => Promise<string | null>`.
+
+- [ ] **Step 1: Hook**
+
+In `src/hooks/api/use-study-plan.ts` add:
+
+```ts
+export function useDeleteStudyPlan() {
+  const invalidate = useInvalidateStudyPlan();
+  return useMutation({
+    mutationFn: () =>
+      request<unknown>({ method: "DELETE", url: endpoints.studyPlan.root }),
+    onSuccess: invalidate,
+  });
+}
+```
+
+- [ ] **Step 2: Confirmation modal**
+
+Create `src/components/study-plan/delete-plan-modal.tsx`:
+
+```tsx
+"use client";
+
+import { Modal } from "@/components/ui/modal";
+import { buttonClass } from "@/components/ui/button";
+
+export function DeletePlanModal({
+  open,
+  busy,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  busy: boolean;
+  error: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      open={open}
+      title="Delete your study plan?"
+      description="Your schedule goes away and you can build a new plan any time. Sessions you already completed stay in your progress."
+      busy={busy}
+      onClose={onClose}
+      footer={
+        <div className="flex flex-wrap justify-end gap-3">
+          <button type="button" disabled={busy} onClick={onClose} className={buttonClass("secondary", "md")}>
+            Keep my plan
+          </button>
+          <button type="button" disabled={busy} onClick={onConfirm} className={buttonClass("primary", "md")}>
+            {busy ? "Deleting..." : "Delete plan"}
+          </button>
+        </div>
+      }
+    >
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </Modal>
+  );
+}
+```
+
+- [ ] **Step 3: Form button**
+
+In `plan-setup-form.tsx` add the prop `onDelete?: () => Promise<string | null>` to the component props, import `DeletePlanModal`, and add state:
+
+```ts
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function confirmDelete() {
+    if (!onDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+    const problem = await onDelete();
+    setDeleting(false);
+    if (problem) setDeleteError(problem);
+  }
+```
+In the button row (after the Cancel button) add:
+
+```tsx
+        {plan && onDelete && (
+          <button type="button" onClick={() => setConfirmingDelete(true)}
+            className={cn(buttonClass("secondary", "lg"), "ml-auto text-danger")}>
+            Delete plan
+          </button>
+        )}
+```
+and render, next to the class mismatch modal:
+
+```tsx
+      {onDelete && (
+        <DeletePlanModal
+          open={confirmingDelete}
+          busy={deleting}
+          error={deleteError}
+          onConfirm={confirmDelete}
+          onClose={() => { setConfirmingDelete(false); setDeleteError(""); }}
+        />
+      )}
+```
+On success the page refreshes and the form unmounts (`editing` becomes false in the view), so no extra reset is needed.
+
+- [ ] **Step 4: View wiring**
+
+In `study-plan-view.tsx` import `useDeleteStudyPlan`, create `const removePlan = useDeleteStudyPlan();`, add
+
+```ts
+  async function deletePlan() {
+    const problem = await run(() => removePlan.mutateAsync());
+    if (!problem) setEditing(false);
+    return problem;
+  }
+```
+and pass `onDelete={plan ? deletePlan : undefined}` to `<PlanSetupForm ... />`.
+
+- [ ] **Step 5: Verify**
+
+Run `npx tsc --noEmit`, `npx eslint src/components/study-plan src/hooks/api/use-study-plan.ts`, then `npm test`.
+Manual: with a plan, Change plan → Delete plan → "Keep my plan" leaves it; "Delete plan" returns to the "No study plan yet" empty state; creating a new plan works afterwards. With the backend route stopped, confirm the modal shows the error and the plan is still there.
+
+---
+
 ## Self-Review
 
 **Spec coverage**
 - §4 data model → Task 3. §5.1 scope helper → Task 1. §5.2 selection (scope, gap-fill, holiday, preview) → Task 2. §5.3 unmapped topics → Task 4. §5.4 mastery → Task 6. §6 API (scope fields, SS3-by-plan-class, positions in scope, payload, plan mode from scope) → Tasks 3, 4, 5. §7.1–7.3 → Tasks 7, 8. §7.4 classroom → Task 9. §8 error handling: empty scope (Task 2 test), unmapped (Task 4), migration (Task 3), prompt failure (Task 8 manual). §9 tests → covered per task; "Migration backfill" is verified by `alembic heads` only (no database test harness exists); flagged for the user to run on a staging copy before production.
 - Deviation from the spec: §5.2 says skipped same/later-scope prerequisites are "logged once". The plan skips them silently (`by_id` never contains them), to avoid threading extra state through `_gaps_for`. Unmapped topics are still logged (Task 4).
 - Spec §7.2's three outcomes are in Task 8's modal and manual checks.
+- Spec §10 (plan deletion, soft delete) → Tasks 10 and 11.
 - Not in the spec but required by it: `plan.followsCalendar` and `currentTerm` (header rule in §7.3 and defaults in §7.1), `_drop_positions_outside_scope` (Review Focus 4).
 
 **Placeholders:** none. Revision-due reason text is a concrete string chosen here ("Fading from memory, time to refresh it"); it becomes the note on the revision item.
