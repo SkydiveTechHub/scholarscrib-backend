@@ -119,6 +119,17 @@ def term_header_label(ctx: dict) -> str:
     return "Holiday"
 
 
+def default_term(ctx: dict) -> str:
+    """The term a new plan should start on: the live one, else the upcoming one."""
+    if ctx["kind"] == "in_term":
+        return ctx["current"].term
+    upcoming = ctx.get("next")
+    if upcoming:
+        return upcoming.term
+    previous = ctx.get("previous")
+    return previous.term if previous else "FIRST"
+
+
 def has_term_coverage(
     configured: list[TermRange], today: DayKey, ahead_days: int = 30
 ) -> bool:
