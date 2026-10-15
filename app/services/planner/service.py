@@ -39,6 +39,7 @@ from app.services.planner.mode import (
 from app.services.planner.slots import Availability
 from app.services.planner.term_context import (
     TermRange,
+    default_term,
     resolve_term_context,
     term_header_label,
 )
@@ -131,11 +132,11 @@ async def _term_context(session: AsyncSession, today: str) -> dict:
     return resolve_term_context(today, configured)
 
 
-def _check(class_level: str | None, body: StudyPlanIn) -> None:
+def _check(body: StudyPlanIn) -> None:
     target = body.targetDate.isoformat() if body.targetDate else None
     problem = plan_settings_problem(
         PlanSettingsCheck(
-            class_level=class_level,
+            class_level=body.classLevel,
             target_date=target,
             force_exam_mode=body.forceExamMode,
             study_days=body.studyDays,
@@ -157,6 +158,26 @@ async def _ensure_subjects(session: AsyncSession, subject_ids: list[str]) -> Non
             raise ApiError(404, "Subject not found")
 
 
+async def _drop_positions_outside_scope(session: AsyncSession, plan: StudyPlan) -> None:
+    """A position belongs to one class and term; changing scope invalidates it."""
+    for row in await plan_positions_repository.for_plan(session, plan.id):
+        topic = (
+            await topics_repository.by_id(session, row.topic_id)
+            if row.topic_id
+            else None
+        )
+        curriculum = (
+            await curriculum_levels_repository.by_id(session, topic.curriculum_level_id)
+            if topic and topic.curriculum_level_id
+            else None
+        )
+        if curriculum is None or (curriculum.class_level, curriculum.term) != (
+            plan.scope_class_level,
+            plan.scope_term,
+        ):
+            await plan_positions_repository.remove(session, row)
+
+
 class GetStudyPlanService:
     def __init__(
         self,
@@ -170,13 +191,12 @@ class GetStudyPlanService:
 
     async def process(self) -> dict:
         today = lagos_day_key()
+        profile_class = self.class_level or "SS1"
         plan = await _active(self.session, self.student_id)
         if plan is not None and (
             plan.last_replanned_at is None or _day(plan.last_replanned_at) < today
         ):
-            await ReplanStudyPlanService(
-                self.session, plan, self.class_level or "SS1"
-            ).process()
+            await ReplanStudyPlanService(self.session, plan, profile_class).process()
         ctx = await _term_context(self.session, today)
         subject_rows = await subjects_repository.active_ordered(self.session)
         return {
@@ -184,8 +204,9 @@ class GetStudyPlanService:
             "classLevel": self.class_level,
             "termLabel": term_header_label(ctx),
             "termSource": ctx["source"],
+            "currentTerm": default_term(ctx),
             "daysToExam": self._days_to_exam(plan, today),
-            "defaults": DEFAULT_MINUTES.get(self.class_level or "SS1"),
+            "defaults": DEFAULT_MINUTES.get(profile_class),
             "subjects": [
                 {
                     "id": subject.id,
@@ -202,7 +223,7 @@ class GetStudyPlanService:
         if plan is None or plan.target_date is None:
             return None
         mode = resolve_plan_mode(
-            self.class_level, _day(plan.target_date), plan.force_exam_mode
+            plan.scope_class_level, _day(plan.target_date), plan.force_exam_mode
         )
         if mode == "TERM":
             return None
@@ -232,7 +253,9 @@ class GetStudyPlanService:
             for row in await plan_positions_repository.for_plan(self.session, plan.id)
             if row.subject_id in active_ids and row.topic_id
         }
-        class_level = self.class_level or "SS1"
+        class_level = plan.scope_class_level
+        term = plan.scope_term
+        follow_calendar = class_level == (self.class_level or "SS1")
         target = _day(plan.target_date) if plan.target_date else None
         mode = resolve_plan_mode(class_level, target, plan.force_exam_mode)
         plan_start = _day(plan.created_at) if plan.created_at else lagos_day_key()
@@ -246,8 +269,10 @@ class GetStudyPlanService:
         options: dict[str, list[dict]] = {}
         for subject_id in subject_ids:
             topics = await _plan_topics(self.session, subject_id)
-            calendar_positions[subject_id] = calendar_topic_id(topics, class_level, ctx)
-            options[subject_id] = position_options(topics, class_level)
+            calendar_positions[subject_id] = calendar_topic_id(
+                topics, class_level, term, follow_calendar, ctx
+            )
+            options[subject_id] = position_options(topics, class_level, term)
         return {
             "id": plan.id,
             "mode": mode,
@@ -298,6 +323,10 @@ class GetStudyPlanService:
             "positions": positions,
             "calendarPositions": calendar_positions,
             "positionOptions": options,
+            "scope": {"classLevel": class_level, "term": term},
+            "followsCalendar": follow_calendar
+            and ctx["kind"] == "in_term"
+            and ctx["current"].term == term,
         }
 
 
@@ -315,7 +344,7 @@ class CreateStudyPlanService:
         self.body = body
 
     async def process(self) -> dict:
-        _check(self.class_level, self.body)
+        _check(self.body)
         await _ensure_subjects(self.session, self.body.subjectIds)
         previous = await plans_repository.list_active(self.session, self.student_id)
         for row in previous:
@@ -330,6 +359,8 @@ class CreateStudyPlanService:
             study_days=self.body.studyDays,
             weekday_minutes=self.body.weekdayMinutes,
             weekend_minutes=self.body.weekendMinutes,
+            scope_class_level=self.body.classLevel,
+            scope_term=self.body.term,
             is_active=True,
         )
         await plans_repository.add(self.session, plan, flush=True)
@@ -356,7 +387,7 @@ class UpdateStudyPlanSettingsService:
         plan = await _active(self.session, self.student_id)
         if plan is None:
             raise ApiError(404, "No active study plan")
-        _check(self.class_level, self.body)
+        _check(self.body)
         await _ensure_subjects(self.session, self.body.subjectIds)
         plan.subject_ids = self.body.subjectIds
         plan.target_exam = self.body.targetExam
@@ -365,6 +396,9 @@ class UpdateStudyPlanSettingsService:
         plan.study_days = self.body.studyDays
         plan.weekday_minutes = self.body.weekdayMinutes
         plan.weekend_minutes = self.body.weekendMinutes
+        plan.scope_class_level = self.body.classLevel
+        plan.scope_term = self.body.term
+        await _drop_positions_outside_scope(self.session, plan)
         await ReplanStudyPlanService(
             self.session, plan, self.class_level or "SS1"
         ).process()
@@ -533,7 +567,8 @@ class ReplanStudyPlanService:
             self.session, self.plan.id
         )
         target = _day(self.plan.target_date) if self.plan.target_date else None
-        mode = resolve_plan_mode(self.class_level, target, self.plan.force_exam_mode)
+        scope_class = self.plan.scope_class_level
+        mode = resolve_plan_mode(scope_class, target, self.plan.force_exam_mode)
         ctx = await _term_context(self.session, today)
         output = plan_window(
             PlannerInput(
@@ -542,7 +577,9 @@ class ReplanStudyPlanService:
                 if self.plan.created_at
                 else today,
                 mode=mode,
-                class_level=self.class_level,
+                class_level=scope_class,
+                term=self.plan.scope_term,
+                home_class_level=self.class_level,
                 target_date=target,
                 term_context=ctx,
                 availability=Availability(

@@ -1,4 +1,7 @@
 from datetime import UTC
+from types import SimpleNamespace as NS
+
+import pytest
 
 from app.services.planner.service import position_options
 from app.services.planner.topics import PlanTopic
@@ -101,6 +104,8 @@ async def test_plan_payload_carries_every_field_the_page_reads(monkeypatch):
         outline=[],
         overload=None,
         created_at=datetime(2026, 9, 14, tzinfo=UTC),
+        scope_class_level="SS1",
+        scope_term="FIRST",
     )
 
     async def active_ids(_):
@@ -150,3 +155,125 @@ async def test_plan_payload_carries_every_field_the_page_reads(monkeypatch):
     assert payload["items"][0]["topicTitle"] == "Sets"
     assert payload["items"][0]["topicSlug"] == "sets"
     assert payload["items"][0]["carriedFrom"] == "2026-09-10"
+    assert payload["scope"] == {"classLevel": "SS1", "term": "FIRST"}
+    assert payload["followsCalendar"] is True
+
+
+async def test_plan_for_another_class_does_not_follow_the_calendar(monkeypatch):
+    from datetime import date, datetime
+
+    from app.services.planner import service
+    from app.services.planner.term_context import TermRange, resolve_term_context
+
+    plan = NS(
+        id="p1", subject_ids=["maths"], target_exam=None, target_date=None,
+        force_exam_mode=False, study_days=[1], weekday_minutes=30,
+        weekend_minutes=60, planned_through=date(2026, 9, 28), outline=[],
+        overload=None, created_at=datetime(2026, 9, 14, tzinfo=UTC),
+        scope_class_level="SS2", scope_term="SECOND",
+    )
+
+    async def empty(*_):
+        return []
+
+    async def active_ids(_):
+        return {"maths"}
+
+    async def plan_topics(_, subject_id):
+        return [
+            _topic("a", "SS2", "SECOND", 1),
+            _topic("b", "SS2", "SECOND", 2),
+            _topic("x", "SS1", "FIRST", 1),
+        ]
+
+    monkeypatch.setattr(service.subjects_repository, "active_ids", active_ids)
+    monkeypatch.setattr(service.subjects_repository, "active_ordered", empty)
+    monkeypatch.setattr(service.plan_items_repository, "for_plan", empty)
+    monkeypatch.setattr(service.plan_positions_repository, "for_plan", empty)
+    monkeypatch.setattr(service.topics_repository, "for_ids", empty)
+    monkeypatch.setattr(service, "_plan_topics", plan_topics)
+
+    ctx = resolve_term_context(
+        "2026-09-14", [TermRange("2026/2027", "FIRST", "2026-09-07", "2026-11-29")]
+    )
+    payload = await service.GetStudyPlanService(None, "s1", "SS1")._serialize(plan, ctx)
+
+    assert payload["scope"] == {"classLevel": "SS2", "term": "SECOND"}
+    assert payload["followsCalendar"] is False
+    assert payload["calendarPositions"] == {"maths": "a"}
+    assert [o["id"] for o in payload["positionOptions"]["maths"]] == ["a", "b"]
+
+
+async def test_changing_scope_drops_positions_outside_it(monkeypatch):
+    from app.services.planner import service
+
+    inside = NS(topic_id="in")
+    outside = NS(topic_id="out")
+    removed = []
+
+    async def for_plan(_, plan_id):
+        return [inside, outside]
+
+    async def topic_by_id(_, topic_id):
+        return NS(id=topic_id, curriculum_level_id=f"lv-{topic_id}")
+
+    async def level_by_id(_, level_id):
+        return NS(class_level="SS2", term="SECOND") if level_id == "lv-in" else NS(
+            class_level="SS1", term="FIRST"
+        )
+
+    async def remove(_, row):
+        removed.append(row)
+
+    monkeypatch.setattr(service.plan_positions_repository, "for_plan", for_plan)
+    monkeypatch.setattr(service.plan_positions_repository, "remove", remove)
+    monkeypatch.setattr(service.topics_repository, "by_id", topic_by_id)
+    monkeypatch.setattr(service.curriculum_levels_repository, "by_id", level_by_id)
+
+    plan = NS(id="p1", scope_class_level="SS2", scope_term="SECOND")
+    await service._drop_positions_outside_scope(None, plan)
+
+    assert removed == [outside]
+
+
+@pytest.mark.parametrize("level", [NS(class_level="SS2", term="SECOND"), None])
+async def test_position_outside_the_plans_term_is_rejected(monkeypatch, level):
+    from app.api.schemas import PositionIn
+    from app.core.errors import ApiError
+    from app.services.planner import service
+
+    writes = []
+
+    async def for_plan_subject(_, plan_id, subject_id):
+        return None
+
+    async def topic_by_id(_, topic_id):
+        return NS(
+            id=topic_id,
+            subject_id="maths",
+            curriculum_level_id="lv" if level else None,
+        )
+
+    async def level_by_id(_, level_id):
+        return level
+
+    async def add(*args, **kwargs):
+        writes.append(args)
+
+    monkeypatch.setattr(
+        service.plan_positions_repository, "for_plan_subject", for_plan_subject
+    )
+    monkeypatch.setattr(service.plan_positions_repository, "add", add)
+    monkeypatch.setattr(service.topics_repository, "by_id", topic_by_id)
+    monkeypatch.setattr(service.curriculum_levels_repository, "by_id", level_by_id)
+
+    plan = NS(id="p1", scope_class_level="SS1", scope_term="FIRST")
+    svc = service.SetStudyPlanPositionsService(None, "s1", "SS1", [])
+    with pytest.raises(ApiError) as caught:
+        await svc._apply_position(
+            plan, {"maths"}, PositionIn(subjectId="maths", topicId="t9")
+        )
+
+    assert caught.value.status_code == 400
+    assert caught.value.payload["error"] == "That topic is outside your plan's term"
+    assert writes == []
