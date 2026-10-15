@@ -5,8 +5,13 @@ Revises: e8b2c4f7a613
 Create Date: 2026-10-15 10:00:00.000000
 
 A plan now stores the class and term it is for. Existing plans are backfilled
-with the student's class (SS1 when unset) and the term the plan was created in,
-read from AcademicTerm when configured, else the built-in calendar.
+with the student's class (SS1 when unset). Before this change plans followed
+the live calendar term, so ACTIVE plans get the term live at migration time
+(AcademicTerm containing CURRENT_DATE, else the built-in calendar, else FIRST);
+INACTIVE plans get the term they were created in (same lookup on createdAt).
+
+Built-in calendar mapping (between terms the upcoming term is used):
+Jan 1 - Apr 26 -> SECOND, Apr 27 - Jul 31 -> THIRD, Aug 1 - Dec 31 -> FIRST.
 """
 
 import sqlalchemy as sa
@@ -37,6 +42,32 @@ def upgrade() -> None:
         )
         """
     )
+    # active plans followed the live calendar: use today's term
+    op.execute(
+        """
+        UPDATE "StudyPlan" p
+        SET "scopeTerm" = COALESCE(
+            (
+                SELECT t."term" FROM "AcademicTerm" t
+                WHERE CURRENT_DATE BETWEEN t."startsOn" AND t."endsOn"
+                ORDER BY t."startsOn" DESC
+                LIMIT 1
+            ),
+            CASE
+                WHEN EXTRACT(MONTH FROM CURRENT_DATE) IN (1, 2, 3)
+                     THEN 'SECOND'::"Term"
+                WHEN EXTRACT(MONTH FROM CURRENT_DATE) = 4
+                     AND EXTRACT(DAY FROM CURRENT_DATE) <= 26
+                     THEN 'SECOND'::"Term"
+                WHEN EXTRACT(MONTH FROM CURRENT_DATE) IN (4, 5, 6, 7)
+                     THEN 'THIRD'::"Term"
+                ELSE 'FIRST'::"Term"
+            END
+        )
+        WHERE p."isActive" = true
+        """
+    )
+    # inactive plans keep the term they were created in
     op.execute(
         """
         UPDATE "StudyPlan" p
@@ -44,6 +75,7 @@ def upgrade() -> None:
             (
                 SELECT t."term" FROM "AcademicTerm" t
                 WHERE p."createdAt"::date BETWEEN t."startsOn" AND t."endsOn"
+                ORDER BY t."startsOn" DESC
                 LIMIT 1
             ),
             CASE
@@ -57,6 +89,7 @@ def upgrade() -> None:
                 ELSE 'FIRST'::"Term"
             END
         )
+        WHERE p."isActive" IS NOT TRUE
         """
     )
     op.alter_column("StudyPlan", "scopeClassLevel", nullable=False)
