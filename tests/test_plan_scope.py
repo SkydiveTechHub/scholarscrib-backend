@@ -44,6 +44,7 @@ def test_default_term_falls_back_to_the_previous_then_first():
     assert default_term(ctx) == "THIRD"
     assert default_term({"kind": "holiday", "previous": None, "next": None}) == "FIRST"
 
+
 def _topic(topic_id, class_level="SS1", term="FIRST", order=1):
     return PlanTopic(
         id=topic_id,
@@ -161,12 +162,64 @@ def test_a_position_outside_the_scope_is_ignored():
     topics = [
         _topic("a1", order=1),
         _topic("a2", order=2),
+        _topic("a3", order=3),
+        _topic("a4", order=4),
         _topic("b1", term="SECOND"),
     ]
-    selection = _select(topics, position="b1")
-    assert selection.term_topics
-    assert all(t.term == "FIRST" for t in selection.term_topics)
-    assert selection.class_index == 0
+    late = _in_term("FIRST", 10)  # the calendar alone would pick the last topic
+    calendar = _select(topics, ctx=late)
+    assert calendar.class_index == 3
+    ignored = _select(topics, ctx=late, position="b1")
+    assert all(t.term == "FIRST" for t in ignored.term_topics)
+    assert ignored.class_index == calendar.class_index
+    honoured = _select(topics, ctx=late, position="a2")
+    assert honoured.class_index == 1
+
+
+async def test_only_scope_or_earlier_topics_may_be_revised(monkeypatch):
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace as NS
+
+    from app.services.learning.mastery import TopicState
+    from app.services.planner import service
+    from app.services.planner.term_plan import PlannerSubject
+
+    class FakeSession:
+        @asynccontextmanager
+        async def begin_nested(self):
+            yield
+
+    class FakeMastery:
+        def __init__(self, session, student_id, topic_ids):
+            self.ids = topic_ids
+
+        async def process(self):
+            return {
+                i: TopicState(i, mastery=60, observations=10, retention=0.3)
+                for i in self.ids
+            }
+
+    async def passed(_, student_id, topic_ids):
+        return []
+
+    monkeypatch.setattr(service, "GetTopicMasteryService", FakeMastery)
+    monkeypatch.setattr(service.metrics_repository, "passed_topic_ids", passed)
+
+    topics = [
+        _topic("here", "SS1", "FIRST"),
+        _topic("earlier", "SS1", "FIRST"),
+        _topic("later-term", "SS1", "SECOND"),
+        _topic("later-class", "SS2", "FIRST"),
+    ]
+    plan = NS(student_id="s1", scope_class_level="SS1", scope_term="FIRST")
+    ids = service._scope_topic_ids(
+        [PlannerSubject("maths", "Maths", topics)], plan
+    )
+    assert ids == {"here", "earlier"}
+    nodes = [GraphNode(t.id, "maths", t.title, t.slug, 1) for t in topics]
+    replan = service.ReplanStudyPlanService(FakeSession(), plan, "SS1")
+    _, _, due = await replan._learning_inputs(nodes, ids)
+    assert {d.topic_id for d in due} == {"here", "earlier"}
 
 
 async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkeypatch):
@@ -205,7 +258,7 @@ async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkey
     replan = service.ReplanStudyPlanService(FakeSession(), plan, "SS1")
     nodes = [GraphNode("fresh", "maths", "Fresh", "fresh", 1),
              GraphNode("fading", "maths", "Fading", "fading", 2)]
-    state, pretest, due = await replan._learning_inputs(nodes)
+    state, pretest, due = await replan._learning_inputs(nodes, {"fresh", "fading"})
 
     assert set(state) == {"fresh", "fading"}
     assert pretest == {"fresh"}
@@ -233,6 +286,8 @@ async def test_learning_inputs_fall_back_to_empty_when_loading_fails(monkeypatch
 
     monkeypatch.setattr(service, "GetTopicMasteryService", Boom)
     replan = service.ReplanStudyPlanService(FakeSession(), NS(student_id="s1"), "SS1")
-    result = await replan._learning_inputs([GraphNode("t", "maths", "T", "t", 1)])
+    result = await replan._learning_inputs(
+        [GraphNode("t", "maths", "T", "t", 1)], {"t"}
+    )
 
     assert result == ({}, set(), [])

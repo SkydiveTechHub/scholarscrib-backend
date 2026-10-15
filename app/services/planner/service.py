@@ -39,6 +39,7 @@ from app.services.planner.mode import (
     compute_runway_start,
     plan_settings_problem,
     resolve_plan_mode,
+    scope_ordinal,
 )
 from app.services.planner.slots import Availability
 from app.services.planner.term_context import (
@@ -570,6 +571,17 @@ class MarkStudyPlanItemService:
                 return
 
 
+def _scope_topic_ids(subjects: list[PlannerSubject], plan: StudyPlan) -> set[str]:
+    """Ids of topics in the plan's scope or an earlier one, never a later one."""
+    limit = scope_ordinal(plan.scope_class_level, plan.scope_term)
+    return {
+        topic.id
+        for subject in subjects
+        for topic in subject.topics
+        if scope_ordinal(topic.class_level, topic.term) <= limit
+    }
+
+
 class ReplanStudyPlanService:
     def __init__(
         self, session: AsyncSession, plan: StudyPlan, class_level: str
@@ -584,7 +596,9 @@ class ReplanStudyPlanService:
         carry = await self._miss_and_clear(today)
         planner_subjects, nodes = await self._build_subjects()
         edges = await self._edges(nodes)
-        state, pretest_passed, revision_due = await self._learning_inputs(nodes)
+        state, pretest_passed, revision_due = await self._learning_inputs(
+            nodes, _scope_topic_ids(planner_subjects, self.plan)
+        )
         position_rows = await plan_positions_repository.for_plan(
             self.session, self.plan.id
         )
@@ -621,9 +635,12 @@ class ReplanStudyPlanService:
         await self._persist_output(output)
 
     async def _learning_inputs(
-        self, nodes: list[GraphNode]
+        self, nodes: list[GraphNode], in_scope: set[str]
     ) -> tuple[dict, set[str], list[RevisionDue]]:
-        """Mastery, pretests and fading topics; a failure must not fail a replan."""
+        """Mastery, pretests and fading topics; a failure must not fail a replan.
+
+        Only topics in `in_scope` (the plan's scope or earlier) may be revised.
+        """
         topic_ids = [node.id for node in nodes]
         if not topic_ids:
             return {}, set(), []
@@ -651,7 +668,9 @@ class ReplanStudyPlanService:
                 reason="Fading from memory, time to refresh it",
             )
             for node in nodes
-            if node.id in state and graph_colour(state[node.id]) == "DECAYED"
+            if node.id in in_scope
+            and node.id in state
+            and graph_colour(state[node.id]) == "DECAYED"
         ]
         return state, passed, due
 
