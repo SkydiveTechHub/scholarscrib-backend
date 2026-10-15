@@ -19,6 +19,7 @@ from app.database.repositories.curriculum import (
     topic_edges_repository,
     topics_repository,
 )
+from app.database.repositories.learning import metrics_repository
 from app.database.repositories.planner import (
     academic_terms_repository,
     plan_items_repository,
@@ -26,7 +27,10 @@ from app.database.repositories.planner import (
     plans_repository,
 )
 from app.services.learning.graph import GraphEdge, GraphNode, build_graph
+from app.services.learning.mastery import graph_colour
+from app.services.learning.mastery_store import GetTopicMasteryService
 from app.services.planner.days import add_days
+from app.services.planner.layout import RevisionDue
 from app.services.planner.mode import (
     CARRY_OVER_DAYS,
     DEFAULT_MINUTES,
@@ -563,6 +567,7 @@ class ReplanStudyPlanService:
         carry = await self._miss_and_clear(today)
         planner_subjects, nodes = await self._build_subjects()
         edges = await self._edges(nodes)
+        state, pretest_passed, revision_due = await self._learning_inputs(nodes)
         position_rows = await plan_positions_repository.for_plan(
             self.session, self.plan.id
         )
@@ -589,12 +594,49 @@ class ReplanStudyPlanService:
                 ),
                 subjects=planner_subjects,
                 graph=build_graph(nodes, edges),
-                state={},
+                state=state,
+                pretest_passed=pretest_passed,
+                revision_due=revision_due,
                 positions={row.subject_id: row.topic_id for row in position_rows},
                 carry_over=carry,
             )
         )
         await self._persist_output(output)
+
+    async def _learning_inputs(
+        self, nodes: list[GraphNode]
+    ) -> tuple[dict, set[str], list[RevisionDue]]:
+        """Mastery, pretests and fading topics; a failure must not fail a replan."""
+        topic_ids = [node.id for node in nodes]
+        if not topic_ids:
+            return {}, set(), []
+        try:
+            async with self.session.begin_nested():
+                state = await GetTopicMasteryService(
+                    self.session, self.plan.student_id, topic_ids
+                ).process()
+                passed = set(
+                    await metrics_repository.passed_topic_ids(
+                        self.session, self.plan.student_id, topic_ids
+                    )
+                )
+        except Exception:
+            logger.exception(
+                "Could not load learning state for plan of student %s",
+                self.plan.student_id,
+            )
+            return {}, set(), []
+        due = [
+            RevisionDue(
+                topic_id=node.id,
+                subject_id=node.subject_id,
+                title=node.title,
+                reason="Fading from memory, time to refresh it",
+            )
+            for node in nodes
+            if node.id in state and graph_colour(state[node.id]) == "DECAYED"
+        ]
+        return state, passed, due
 
     async def _miss_and_clear(self, today: str) -> list[CarryOver]:
         pending = await plan_items_repository.pending_for_plan(

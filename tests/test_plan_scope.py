@@ -167,3 +167,72 @@ def test_a_position_outside_the_scope_is_ignored():
     assert selection.term_topics
     assert all(t.term == "FIRST" for t in selection.term_topics)
     assert selection.class_index == 0
+
+
+async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkeypatch):
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace as NS
+
+    from app.services.learning.mastery import TopicState
+    from app.services.planner import service
+
+    class FakeSession:
+        @asynccontextmanager
+        async def begin_nested(self):
+            yield
+
+    class FakeMastery:
+        def __init__(self, session, student_id, topic_ids):
+            pass
+
+        async def process(self):
+            return {
+                "fresh": TopicState(
+                    "fresh", mastery=90, observations=20, retention=0.95
+                ),
+                "fading": TopicState(
+                    "fading", mastery=60, observations=10, retention=0.3
+                ),
+            }
+
+    async def passed(_, student_id, topic_ids):
+        return ["fresh"]
+
+    monkeypatch.setattr(service, "GetTopicMasteryService", FakeMastery)
+    monkeypatch.setattr(service.metrics_repository, "passed_topic_ids", passed)
+
+    plan = NS(student_id="s1")
+    replan = service.ReplanStudyPlanService(FakeSession(), plan, "SS1")
+    nodes = [GraphNode("fresh", "maths", "Fresh", "fresh", 1),
+             GraphNode("fading", "maths", "Fading", "fading", 2)]
+    state, pretest, due = await replan._learning_inputs(nodes)
+
+    assert set(state) == {"fresh", "fading"}
+    assert pretest == {"fresh"}
+    assert [d.topic_id for d in due] == ["fading"]
+    assert due[0].subject_id == "maths" and due[0].title == "Fading"
+
+
+async def test_learning_inputs_fall_back_to_empty_when_loading_fails(monkeypatch):
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace as NS
+
+    from app.services.planner import service
+
+    class FakeSession:
+        @asynccontextmanager
+        async def begin_nested(self):
+            yield
+
+    class Boom:
+        def __init__(self, *args):
+            pass
+
+        async def process(self):
+            raise RuntimeError("db down")
+
+    monkeypatch.setattr(service, "GetTopicMasteryService", Boom)
+    replan = service.ReplanStudyPlanService(FakeSession(), NS(student_id="s1"), "SS1")
+    result = await replan._learning_inputs([GraphNode("t", "maths", "T", "t", 1)])
+
+    assert result == ({}, set(), [])
