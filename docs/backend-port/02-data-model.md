@@ -231,11 +231,11 @@ Reference data (`courseOfStudy`, `faculty`, `requiredSubjects` JSON, optional al
 
 ### `FlashcardReview`
 
-Per `(studentId, flashcardId)`. Scheduling state: `state`, `easeFactor` default 2.5, `stability` days, `difficulty` 1–10 default 5, `intervalDays`, `repetitions`, `lapses`, `retention` (predicted recall at schedule time), `dueAt`, `lastReviewedAt`.
+Per `(studentId, flashcardId)`. Scheduling state: `state`, `easeFactor` default 2.5, `stability` days, `difficulty` 1–10 default 5, `intervalDays`, `repetitions`, `lapses`, `dueAt`, `lastReviewedAt`.
 
 ### `FlashcardReviewLog`
 
-Append-only review. `rating`, optional `responseTimeMs`, `scheduledDays`, `objectiveCorrect`.
+Append-only review. `rating`, optional `responseTimeMs` (clamped to 0..10 min), `objectiveCorrect`.
 
 ### `FlashcardEnrollment`
 

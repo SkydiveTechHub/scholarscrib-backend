@@ -58,7 +58,7 @@ Difficulty delta:
 | REVIEW | AGAIN | RELEARNING, `lapses += 1` |
 | REVIEW | HARD / GOOD / EASY | stay in REVIEW, grow stability, due in `round(stability)` days |
 
-`dueAt` is an absolute timestamp. `retention` stored on the row is the predicted recall at the moment of scheduling. `repetitions` counts successful reviews, not AGAIN.
+`dueAt` is an absolute timestamp. Recall is never stored; it is computed from `stability` and `lastReviewedAt` when read. `repetitions` counts successful reviews, not AGAIN.
 
 ## Review persistence
 
@@ -67,7 +67,7 @@ Difficulty delta:
 1. The student must own the deck (`createdBy`) or have a `FlashcardEnrollment`. Otherwise 404 (the route does not distinguish “missing” from “not yours”).
 2. Load or create `FlashcardReview` (state NEW, ease 2.5, difficulty from the card).
 3. `reviewCard`.
-4. Upsert the review row. Insert `FlashcardReviewLog` with rating, optional `responseTimeMs`, `scheduledDays`, `objectiveCorrect`.
+4. Upsert the review row. Insert `FlashcardReviewLog` with rating, optional `responseTimeMs`, `objectiveCorrect`.
 5. If the card’s deck has a topic, append `CARD_REVIEWED` with the score map AGAIN 0, HARD 0.5, GOOD 0.85, EASY 1.
 6. After the response, `markPlanFromCardReview`.
 
@@ -75,7 +75,7 @@ Difficulty delta:
 
 `getStudyQueue`: due cards first (earliest `dueAt`), then new cards. `DAILY_NEW_BUDGET = 20`. New cards offered = `max(0, 20 - dueCount)` so a large due pile suppresses new cards that day.
 
-`getDeckSummariesFor` / `getFlashcardStatsFor` / recommendations are what the list and stats routes return. Leeches (`flashcard-analytics.ts`): `lapses ≥ 4`, or at least 8 reviews with success rate under 35%. Overdue: due date older than `max(intervalDays * 2, 7)` days. Low-retention recommendation: predicted retention < 0.75.
+`getDeckSummariesFor` / `getFlashcardStatsFor` / recommendations are what the list and stats routes return. Leeches (`flashcard-analytics.ts`): `lapses ≥ 4`, or at least 8 reviews with success rate under 35%. Overdue: due date older than `max(intervalDays * 2, 7)` days. Fading recommendation: current predicted recall < 0.75.
 
 ## Generating cards from a lesson
 

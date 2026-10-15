@@ -373,16 +373,11 @@ class LeechCardOut(ApiOut):
 
 
 class FlashcardStatsBody(ApiOut):
-    reviewsToday: int
     reviewsThisWeek: int
-    totalReviews: int
     cardsLearned: int
-    learnedToday: int
     measuredRetention: float | None
     predictedRetention: float | None
-    avgIntervalDays: float | None
     streak: int
-    medianResponseTimeMs: int | None
     activity: list[ActivityPointOut]
     decks: list[DeckStatOut]
     difficultyMix: DifficultyMixOut

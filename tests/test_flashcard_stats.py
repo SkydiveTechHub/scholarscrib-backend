@@ -12,9 +12,9 @@ from app.services.srs.analytics import (
 NOW = datetime(2026, 10, 14, 9, 0, tzinfo=UTC)
 
 
-def _log(card="c1", days_ago=0, rating="GOOD", ms=2000, hour_utc=9):
+def _log(card="c1", days_ago=0, rating="GOOD", hour_utc=9):
     moment = (NOW - timedelta(days=days_ago)).replace(hour=hour_utc, minute=0)
-    return LogRow(card, moment, rating, ms)
+    return LogRow(card, moment, rating)
 
 
 def _review(state="REVIEW", **overrides):
@@ -49,12 +49,10 @@ def _stats(cards=(), logs=(), outcomes=None, decks=None):
 
 def test_empty_student_gets_zeroes_and_nulls_not_errors():
     stats = _stats(decks=())
-    assert stats["reviewsToday"] == 0
+    assert stats["reviewsThisWeek"] == 0
     assert stats["streak"] == 0
     assert stats["measuredRetention"] is None
     assert stats["predictedRetention"] is None
-    assert stats["medianResponseTimeMs"] is None
-    assert stats["avgIntervalDays"] is None
     assert stats["decks"] == []
     assert stats["leechCards"] == []
     assert len(stats["activity"]) == 14
@@ -69,14 +67,13 @@ def test_activity_is_zero_filled_oldest_first_and_counts_successes():
     assert activity[-2] == {"date": "2026-10-13", "reviews": 0, "successful": 0}
     assert activity[-3]["reviews"] == 1
     assert activity[0]["date"] == "2026-10-01"
-    assert stats["reviewsToday"] == 2
     assert stats["reviewsThisWeek"] == 3
 
 
 def test_a_late_evening_review_counts_on_the_lagos_day():
     # 23:00 UTC on the 13th is midnight, the 14th, in Lagos.
     stats = _stats(logs=[_log(days_ago=1, hour_utc=23)])
-    assert stats["reviewsToday"] == 1
+    assert stats["activity"][-1]["reviews"] == 1
 
 
 def test_streak_counts_back_from_today_and_survives_a_quiet_today():
@@ -86,20 +83,18 @@ def test_streak_counts_back_from_today_and_survives_a_quiet_today():
     assert _stats(logs=[_log(days_ago=3)])["streak"] == 0
 
 
-def test_measured_retention_and_median_response_time_use_the_last_30_days():
+def test_measured_retention_uses_the_last_30_days():
     logs = [
-        _log(rating="GOOD", ms=1000),
-        _log(rating="EASY", ms=3000),
-        _log(rating="HARD", ms=5000),
-        _log(rating="AGAIN", ms=None),
-        _log(days_ago=60, rating="AGAIN", ms=99999),
+        _log(rating="GOOD"),
+        _log(rating="EASY"),
+        _log(rating="HARD"),
+        _log(rating="AGAIN"),
+        _log(days_ago=60, rating="AGAIN"),
     ]
-    stats = _stats(logs=logs)
-    assert stats["measuredRetention"] == 0.75
-    assert stats["medianResponseTimeMs"] == 3000
+    assert _stats(logs=logs)["measuredRetention"] == 0.75
 
 
-def test_cards_learned_intervals_and_predicted_retention():
+def test_cards_learned_and_predicted_retention():
     cards = [
         _card("a", review=_review()),
         _card("b", review=_review(interval_days=20.0)),
@@ -108,7 +103,6 @@ def test_cards_learned_intervals_and_predicted_retention():
     ]
     stats = _stats(cards=cards)
     assert stats["cardsLearned"] == 2
-    assert stats["avgIntervalDays"] == 15.0
     assert 0 < stats["predictedRetention"] < 1
 
 
@@ -170,11 +164,6 @@ def test_leeches_use_lapses_or_a_poor_success_rate_and_report_whole_percents():
     }
 
 
-def test_total_reviews_comes_from_all_time_outcomes():
-    stats = _stats(outcomes={"a": (7, 5), "b": (3, 3)})
-    assert stats["totalReviews"] == 10
-
-
 async def test_the_service_maps_database_rows_into_the_stats(monkeypatch):
     from types import SimpleNamespace as NS
 
@@ -194,7 +183,7 @@ async def test_the_service_maps_database_rows_into_the_stats(monkeypatch):
         due_at=NOW - timedelta(hours=1),
         last_reviewed_at=NOW - timedelta(days=1),
     )
-    log = NS(flashcard_id="c1", reviewed_at=NOW, rating="GOOD", response_time_ms=1500)
+    log = NS(flashcard_id="c1", reviewed_at=NOW, rating="GOOD")
 
     async def owned_by(_, user_id):
         return [deck]
@@ -224,8 +213,7 @@ async def test_the_service_maps_database_rows_into_the_stats(monkeypatch):
 
     stats = (await service.GetFlashcardStatsService(None, "s1").process())["stats"]
 
-    assert stats["reviewsToday"] == 1
-    assert stats["totalReviews"] == 5
+    assert stats["activity"][-1]["reviews"] == 1
     assert stats["decks"] == [
         {
             "deckId": "d1",
@@ -238,3 +226,12 @@ async def test_the_service_maps_database_rows_into_the_stats(monkeypatch):
         }
     ]
     assert stats["leechCards"][0]["prompt"] == "What is a cell?"
+
+
+def test_a_response_time_is_stored_clamped_and_never_negative():
+    from app.services.srs.service import MAX_RESPONSE_MS, _clean_response_time
+
+    assert _clean_response_time(None) is None
+    assert _clean_response_time(-5) == 0
+    assert _clean_response_time(2500) == 2500
+    assert _clean_response_time(60 * 60 * 1000) == MAX_RESPONSE_MS

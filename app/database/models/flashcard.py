@@ -75,7 +75,6 @@ class FlashcardReview(Base):
     interval_days: Mapped[float] = mapped_column("intervalDays", Float, default=0)
     repetitions: Mapped[int] = mapped_column(Integer, default=0)
     lapses: Mapped[int] = mapped_column(Integer, default=0)
-    retention: Mapped[float] = mapped_column(Float, default=0)
     due_at: Mapped[datetime | None] = mapped_column("dueAt", DateTime(timezone=True))
     last_reviewed_at: Mapped[datetime | None] = mapped_column(
         "lastReviewedAt", DateTime(timezone=True)
@@ -94,7 +93,6 @@ class FlashcardReviewLog(Base):
     )
     rating: Mapped[str] = mapped_column(ReviewRating)
     response_time_ms: Mapped[int | None] = mapped_column("responseTimeMs", Integer)
-    scheduled_days: Mapped[float | None] = mapped_column("scheduledDays", Float)
     objective_correct: Mapped[bool | None] = mapped_column("objectiveCorrect", Boolean)
     reviewed_at: Mapped[datetime] = mapped_column(
         "reviewedAt", DateTime(timezone=True), server_default=func.now()
