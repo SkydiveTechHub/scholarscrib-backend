@@ -8,6 +8,7 @@ from app.api.schemas import ItemStatusIn, PositionsIn, StudyPlanIn
 from app.database.db import AnSession
 from app.services.planner import (
     CreateStudyPlanService,
+    DeleteStudyPlanService,
     GetStudyPlanService,
     SetStudyPlanItemStatusService,
     SetStudyPlanPositionsService,
@@ -57,6 +58,18 @@ async def patch_plan(
     return await UpdateStudyPlanSettingsService(
         session, student.id, student.class_level, body
     ).process()
+
+
+@router.delete(
+    "",
+    dependencies=[Depends(require_feature("studyPlanner"))],
+    response_model=OkOut,
+)
+async def delete_plan(
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    return await DeleteStudyPlanService(session, student.id).process()
 
 
 @router.put(

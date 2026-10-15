@@ -409,6 +409,23 @@ class UpdateStudyPlanSettingsService:
         return {"ok": True}
 
 
+class DeleteStudyPlanService:
+    """Soft delete: the plan stops being active; its items and history are kept."""
+
+    def __init__(self, session: AsyncSession, student_id: str) -> None:
+        self.session = session
+        self.student_id = student_id
+
+    async def process(self) -> dict:
+        plan = await _active(self.session, self.student_id)
+        if plan is None:
+            raise ApiError(404, "No active study plan")
+        # Same lock a replan takes, so a delete cannot race a rebuild.
+        await plans_repository.lock(self.session, StudyPlan.id == plan.id)
+        plan.is_active = False
+        return {"ok": True}
+
+
 class SetStudyPlanPositionsService:
     def __init__(
         self,

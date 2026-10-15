@@ -277,3 +277,44 @@ async def test_position_outside_the_plans_term_is_rejected(monkeypatch, level):
     assert caught.value.status_code == 400
     assert caught.value.payload["error"] == "That topic is outside your plan's term"
     assert writes == []
+
+
+async def test_delete_deactivates_the_active_plan_and_keeps_it(monkeypatch):
+    from types import SimpleNamespace as NS
+
+    from app.services.planner import service
+
+    plan = NS(id="p1", is_active=True)
+    locked = []
+
+    async def active(_, student_id):
+        return plan
+
+    async def lock(_, *conditions):
+        locked.append(conditions)
+
+    monkeypatch.setattr(service.plans_repository, "active", active)
+    monkeypatch.setattr(service.plans_repository, "lock", lock)
+
+    result = await service.DeleteStudyPlanService(None, "s1").process()
+
+    assert result == {"ok": True}
+    assert plan.is_active is False
+    assert len(locked) == 1
+
+
+async def test_delete_without_an_active_plan_is_a_404(monkeypatch):
+    import pytest
+
+    from app.core.errors import ApiError
+    from app.services.planner import service
+
+    async def active(_, student_id):
+        return None
+
+    monkeypatch.setattr(service.plans_repository, "active", active)
+
+    with pytest.raises(ApiError) as raised:
+        await service.DeleteStudyPlanService(None, "s1").process()
+
+    assert raised.value.status_code == 404
