@@ -140,19 +140,6 @@ class FlashcardReviewRepository(BaseRepository[FlashcardReview]):
         )
         return [(row[0], row[1], row[2]) for row in result.all() if row[0]]
 
-    async def low_retention(
-        self,
-        session: AsyncSession,
-        student_id: str,
-        *,
-        threshold: float = 0.75,
-    ) -> list[FlashcardReview]:
-        return await self.list_where(
-            session,
-            FlashcardReview.student_id == student_id,
-            FlashcardReview.retention < threshold,
-        )
-
 
 class FlashcardReviewLogRepository(BaseRepository[FlashcardReviewLog]):
     model = FlashcardReviewLog

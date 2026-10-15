@@ -41,20 +41,19 @@ from app.services.srs.analytics import (
     LogRow,
     ReviewSnapshot,
     build_stats,
+    review_health,
 )
 from app.services.srs.scheduler import (
     DAILY_NEW_BUDGET,
     INITIAL_EASE,
     CardSchedule,
-    is_leech,
     review_card,
     seed_difficulty,
 )
 from app.services.srs.sync import ExistingCard, plan_card_sync
 
-OVERDUE_MIN_DAYS = 7
-LOW_RETENTION = 0.75
 MAX_RECOMMENDATIONS = 4
+MAX_RESPONSE_MS = 10 * 60 * 1000
 MAX_UNBUILT_LESSONS = 1
 _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
@@ -477,7 +476,6 @@ class ReviewFlashcardService:
                 interval_days=0.0,
                 repetitions=0,
                 lapses=0,
-                retention=0.0,
             )
             await reviews_repository.add(self.session, row)
         return row
@@ -490,7 +488,6 @@ class ReviewFlashcardService:
         row.interval_days = schedule.interval_days
         row.repetitions = schedule.repetitions
         row.lapses = schedule.lapses
-        row.retention = schedule.retention
         row.due_at = schedule.due_at
         row.last_reviewed_at = now
 
@@ -502,8 +499,7 @@ class ReviewFlashcardService:
                 student_id=self.user_id,
                 flashcard_id=flashcard_id,
                 rating=self.body.rating,
-                response_time_ms=self.body.responseTimeMs,
-                scheduled_days=schedule.interval_days,
+                response_time_ms=_clean_response_time(self.body.responseTimeMs),
                 objective_correct=self.body.objectiveCorrect,
             ),
         )
@@ -621,12 +617,7 @@ class GetFlashcardStatsService:
                     for card in cards
                 ],
                 logs=[
-                    LogRow(
-                        log.flashcard_id,
-                        log.reviewed_at,
-                        log.rating,
-                        log.response_time_ms,
-                    )
+                    LogRow(log.flashcard_id, log.reviewed_at, log.rating)
                     for log in logs
                 ],
                 outcomes=await review_logs_repository.outcomes(
@@ -634,6 +625,13 @@ class GetFlashcardStatsService:
                 ),
             )
         }
+
+
+def _clean_response_time(value: int | None) -> int | None:
+    """A tab left open on a card is not a response time; never store a negative."""
+    if value is None:
+        return None
+    return min(max(value, 0), MAX_RESPONSE_MS)
 
 
 def _snapshot(review: FlashcardReview | None) -> ReviewSnapshot | None:
@@ -688,16 +686,10 @@ class GetFlashcardRecommendationsService:
             deck_id = deck_of.get(review.flashcard_id)
             if deck_id is None:
                 continue
-            reviews, successes = outcomes.get(review.flashcard_id, (0, 0))
-            if is_leech(review.lapses, reviews, successes):
-                kind = "leech"
-            elif review.due_at and now - review.due_at > timedelta(
-                days=max(review.interval_days * 2, OVERDUE_MIN_DAYS)
-            ):
-                kind = "overdue"
-            elif review.retention < LOW_RETENTION:
-                kind = "fading"
-            else:
+            kind = review_health(
+                _snapshot(review), outcomes.get(review.flashcard_id, (0, 0)), now
+            )
+            if kind is None:
                 continue
             counts = buckets.setdefault(deck_id, {})
             counts[kind] = counts.get(kind, 0) + 1

@@ -6,7 +6,6 @@ Days are Lagos civil days, like streaks and plan days elsewhere. Retention is a
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from statistics import median
 
 from app.core.timeutil import as_utc, lagos_day_key
 from app.services.learning.evidence import retention
@@ -21,6 +20,11 @@ LOG_WINDOW_DAYS = 120
 
 EASY_BELOW = 4
 HARD_FROM = 7
+
+# A card is overdue once it is this many intervals (at least a week) past due, and
+# fading once its predicted recall has dropped below the floor.
+OVERDUE_MIN_DAYS = 7
+LOW_RECALL = 0.75
 
 
 @dataclass
@@ -62,19 +66,35 @@ class LogRow:
     flashcard_id: str
     reviewed_at: datetime
     rating: str
-    response_time_ms: int | None
 
     @property
     def successful(self) -> bool:
         return self.rating != "AGAIN"
 
 
-def _recall(review: ReviewSnapshot, now: datetime) -> float | None:
+def recall(review: ReviewSnapshot, now: datetime) -> float | None:
     """Predicted recall right now; None for a card that has no memory yet."""
     if review.stability <= 0 or review.last_reviewed_at is None:
         return None
     days = max(0.0, (now - as_utc(review.last_reviewed_at)).total_seconds() / 86400)
     return retention(days, review.stability)
+
+
+def review_health(
+    review: ReviewSnapshot, outcome: tuple[int, int], now: datetime
+) -> str | None:
+    """The most serious problem a started card has: leech, overdue, fading or None."""
+    reviews, successes = outcome
+    if is_leech(review.lapses, reviews, successes):
+        return "leech"
+    if review.due_at is not None and now - as_utc(review.due_at) > timedelta(
+        days=max(review.interval_days * 2, OVERDUE_MIN_DAYS)
+    ):
+        return "overdue"
+    current = recall(review, now)
+    if current is not None and current < LOW_RECALL:
+        return "fading"
+    return None
 
 
 def _mean(values: list[float]) -> float | None:
@@ -140,14 +160,8 @@ def build_stats(
 
     recent_cutoff = _day_keys(today, RETENTION_WINDOW_DAYS)[0]
     recent = [log for log in logs if lagos_day_key(log.reviewed_at) >= recent_cutoff]
-    times = [log.response_time_ms for log in recent if log.response_time_ms is not None]
 
     graduated = [c.review for c in cards if c.review and c.review.state == "REVIEW"]
-    learned_today = sum(
-        1
-        for review in graduated
-        if review.last_reviewed_at and lagos_day_key(review.last_reviewed_at) == today
-    )
 
     by_deck: dict[str, list[CardRow]] = {deck.id: [] for deck in decks}
     for card in cards:
@@ -160,7 +174,7 @@ def build_stats(
         recalls = [
             r
             for c in started
-            if c.review is not None and (r := _recall(c.review, now)) is not None
+            if c.review is not None and (r := recall(c.review, now)) is not None
         ]
         deck_rows.append(
             {
@@ -181,9 +195,7 @@ def build_stats(
         )
 
     started_cards = [c for c in cards if c.started and c.review is not None]
-    all_recalls = [
-        r for c in started_cards if (r := _recall(c.review, now)) is not None
-    ]
+    all_recalls = [r for c in started_cards if (r := recall(c.review, now)) is not None]
     mix = {"easy": 0, "medium": 0, "hard": 0}
     for card in cards:
         mix[_difficulty_bucket(card)] += 1
@@ -206,18 +218,13 @@ def build_stats(
     leeches.sort(key=lambda row: (-row["lapses"], row["successRate"]))
 
     return {
-        "reviewsToday": per_day.get(today, [0, 0])[0],
         "reviewsThisWeek": sum(per_day.get(day, [0, 0])[0] for day in week),
-        "totalReviews": sum(reviews for reviews, _ in outcomes.values()),
         "cardsLearned": len(graduated),
-        "learnedToday": learned_today,
         "measuredRetention": (
             sum(1 for log in recent if log.successful) / len(recent) if recent else None
         ),
         "predictedRetention": _mean(all_recalls),
-        "avgIntervalDays": _mean([r.interval_days for r in graduated]),
         "streak": _streak({day for day, counts in per_day.items() if counts[0]}, today),
-        "medianResponseTimeMs": round(median(times)) if times else None,
         "activity": activity,
         "decks": deck_rows,
         "difficultyMix": mix,
