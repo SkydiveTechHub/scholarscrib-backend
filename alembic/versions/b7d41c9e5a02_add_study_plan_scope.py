@@ -6,12 +6,17 @@ Create Date: 2026-10-15 10:00:00.000000
 
 A plan now stores the class and term it is for. Existing plans are backfilled
 with the student's class (SS1 when unset). Before this change plans followed
-the live calendar term, so ACTIVE plans get the term live at migration time
-(AcademicTerm containing CURRENT_DATE, else the built-in calendar, else FIRST);
-INACTIVE plans get the term they were created in (same lookup on createdAt).
+the live calendar term, so ACTIVE plans get the term the app would resolve at
+migration time, in this order: (a) the AcademicTerm containing CURRENT_DATE;
+(b) else the upcoming AcademicTerm (earliest startsOn after today) when it
+starts within 60 days; (c) else the built-in calendar below. INACTIVE plans get
+the term they were created in (AcademicTerm containing createdAt, else a
+month-based approximation of the built-in calendar).
 
-Built-in calendar mapping (between terms the upcoming term is used):
-Jan 1 - Apr 26 -> SECOND, Apr 27 - Jul 31 -> THIRD, Aug 1 - Dec 31 -> FIRST.
+Built-in calendar for ACTIVE plans, by CURRENT_DATE (gaps map to the upcoming
+term):
+Sep 8 - Dec 15 -> FIRST, Dec 16 - Apr 10 -> SECOND, Apr 11 - Jul 24 -> THIRD,
+Jul 25 - Sep 7 -> FIRST.
 """
 
 import sqlalchemy as sa
@@ -42,7 +47,8 @@ def upgrade() -> None:
         )
         """
     )
-    # active plans followed the live calendar: use today's term
+    # active plans followed the live calendar: containing term, else upcoming
+    # configured term within 60 days, else built-in calendar (gaps -> upcoming)
     op.execute(
         """
         UPDATE "StudyPlan" p
@@ -53,13 +59,24 @@ def upgrade() -> None:
                 ORDER BY t."startsOn" DESC
                 LIMIT 1
             ),
+            (
+                SELECT t."term" FROM "AcademicTerm" t
+                WHERE t."startsOn" > CURRENT_DATE
+                  AND t."startsOn" <= CURRENT_DATE + INTERVAL '60 days'
+                ORDER BY t."startsOn" ASC
+                LIMIT 1
+            ),
             CASE
-                WHEN EXTRACT(MONTH FROM CURRENT_DATE) IN (1, 2, 3)
+                WHEN EXTRACT(MONTH FROM CURRENT_DATE) * 100
+                     + EXTRACT(DAY FROM CURRENT_DATE) BETWEEN 908 AND 1215
+                     THEN 'FIRST'::"Term"
+                WHEN EXTRACT(MONTH FROM CURRENT_DATE) * 100
+                     + EXTRACT(DAY FROM CURRENT_DATE) >= 1216
+                     OR EXTRACT(MONTH FROM CURRENT_DATE) * 100
+                     + EXTRACT(DAY FROM CURRENT_DATE) <= 410
                      THEN 'SECOND'::"Term"
-                WHEN EXTRACT(MONTH FROM CURRENT_DATE) = 4
-                     AND EXTRACT(DAY FROM CURRENT_DATE) <= 26
-                     THEN 'SECOND'::"Term"
-                WHEN EXTRACT(MONTH FROM CURRENT_DATE) IN (4, 5, 6, 7)
+                WHEN EXTRACT(MONTH FROM CURRENT_DATE) * 100
+                     + EXTRACT(DAY FROM CURRENT_DATE) BETWEEN 411 AND 724
                      THEN 'THIRD'::"Term"
                 ELSE 'FIRST'::"Term"
             END
