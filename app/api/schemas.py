@@ -214,6 +214,8 @@ class JambIn(BaseModel):
 
 
 class StudyPlanIn(BaseModel):
+    classLevel: ClassLevel
+    term: Term
     subjectIds: list[str] = Field(min_length=1, max_length=20)
     studyDays: list[Weekday] = Field(min_length=1, max_length=7)
     weekdayMinutes: int = Field(ge=0, le=480)

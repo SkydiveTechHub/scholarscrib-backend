@@ -20,6 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database.db import Base
 from app.database.models.columns import id_column, timestamp_column
 from app.database.models.enums import (
+    ClassLevel,
     ExamType,
     PlanCompletionSource,
     PlanItemActivity,
@@ -43,6 +44,8 @@ class StudyPlan(Base):
         "forceExamMode", Boolean, default=False
     )
     study_days: Mapped[list] = mapped_column("studyDays", ARRAY(Integer))
+    scope_class_level: Mapped[str] = mapped_column("scopeClassLevel", ClassLevel)
+    scope_term: Mapped[str] = mapped_column("scopeTerm", Term)
     weekday_minutes: Mapped[int] = mapped_column("weekdayMinutes", Integer)
     weekend_minutes: Mapped[int] = mapped_column("weekendMinutes", Integer)
     planned_through: Mapped[date_type | None] = mapped_column("plannedThrough", Date)

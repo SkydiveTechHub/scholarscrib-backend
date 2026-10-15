@@ -434,6 +434,7 @@ class PlanPageOut(ApiOut):
     classLevel: str | None = None
     termLabel: str | None = None
     termSource: str | None = None
+    currentTerm: str | None = None
     daysToExam: int | None = None
     defaults: dict | None = None
     subjects: list[dict] = []
