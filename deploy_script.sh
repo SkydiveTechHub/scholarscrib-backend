@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Running migrations"
-alembic upgrade head
+alembic upgrade heads
 WEB_PORT=${PORT:-8001}
 
 echo "Starting server"
