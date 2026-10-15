@@ -111,7 +111,11 @@ def test_default_term_is_the_upcoming_term_in_a_holiday():
 
 
 def test_default_term_falls_back_to_the_previous_then_first():
-    ctx = {"kind": "holiday", "previous": TermRange("s", "THIRD", "a", "b"), "next": None}
+    ctx = {
+        "kind": "holiday",
+        "previous": TermRange("s", "THIRD", "a", "b"),
+        "next": None,
+    }
     assert default_term(ctx) == "THIRD"
     assert default_term({"kind": "holiday", "previous": None, "next": None}) == "FIRST"
 ```
@@ -205,8 +209,12 @@ def _topic(topic_id, class_level="SS1", term="FIRST", order=1):
 
 
 def _graph(topics, edges=()):
-    nodes = [GraphNode(t.id, t.subject_id, t.title, t.slug, t.order_index) for t in topics]
-    return build_graph(nodes, [GraphEdge(f"e{i}", s, t) for i, (s, t) in enumerate(edges)])
+    nodes = [
+        GraphNode(t.id, t.subject_id, t.title, t.slug, t.order_index) for t in topics
+    ]
+    return build_graph(
+        nodes, [GraphEdge(f"e{i}", s, t) for i, (s, t) in enumerate(edges)]
+    )
 
 
 def _in_term(term, week, total=12):
@@ -220,8 +228,16 @@ def _in_term(term, week, total=12):
     }
 
 
-def _select(topics, edges=(), *, class_level="SS1", term="FIRST", follow=True,
-            ctx=None, position=None):
+def _select(
+    topics,
+    edges=(),
+    *,
+    class_level="SS1",
+    term="FIRST",
+    follow=True,
+    ctx=None,
+    position=None,
+):
     return select_term_topics(
         subject_id="maths",
         class_level=class_level,
@@ -289,14 +305,19 @@ def test_holiday_revises_the_end_of_the_previous_term_only():
         "next": TermRange("2026/2027", "SECOND", "2027-01-06", "2027-04-10"),
     }
     assert calendar_topic_id(topics, "SS1", "FIRST", True, holiday) == "t3"
-    second = [_topic("s1", term="SECOND", order=1), _topic("s2", term="SECOND", order=2)]
+    second = [
+        _topic("s1", term="SECOND", order=1),
+        _topic("s2", term="SECOND", order=2),
+    ]
     assert calendar_topic_id(second, "SS1", "SECOND", True, holiday) == "s1"
 
 
 def test_a_position_outside_the_scope_is_ignored():
     topics = [_topic("a1", order=1), _topic("a2", order=2), _topic("b1", term="SECOND")]
     selection = _select(topics, position="b1")
-    assert selection.term_topics and all(t.term == "FIRST" for t in selection.term_topics)
+    assert selection.term_topics and all(
+        t.term == "FIRST" for t in selection.term_topics
+    )
     assert selection.class_index == 0
 ```
 
@@ -369,16 +390,18 @@ def _locate(
 Change `select_term_topics`: signature gains `term: str` and `follow_calendar: bool` (after `class_level`), and the head of the body becomes:
 
 ```python
-    term_topics_all = _scope(topics, class_level, term)
-    earlier = [t for t in topics if _before_scope(t, class_level, term)]
-    by_id = {topic.id: topic for topic in [*earlier, *term_topics_all]}
+term_topics_all = _scope(topics, class_level, term)
+earlier = [t for t in topics if _before_scope(t, class_level, term)]
+by_id = {topic.id: topic for topic in [*earlier, *term_topics_all]}
 
-    def unmastered(topic: PlanTopic) -> bool:
-        return not _is_mastered(state, topic.id)
 
-    located = _locate(
-        term_topics_all, term, term_context, position_topic_id, follow_calendar
-    )
+def unmastered(topic: PlanTopic) -> bool:
+    return not _is_mastered(state, topic.id)
+
+
+located = _locate(
+    term_topics_all, term, term_context, position_topic_id, follow_calendar
+)
 ```
 Delete the old `allowed = [...]` list and the old `_locate_class(...)` call. The rest of the function (carry-over, seeds, gap-fill, `behind_by`) is unchanged: `by_id` now holds only earlier-scope and in-scope topics, so `_gaps_for` can never return a later-scope topic and `carry_over` of a later-scope topic is dropped.
 
@@ -408,9 +431,9 @@ In `app/services/planner/term_plan.py`, add two required fields after `class_lev
 and in `plan_window` pass to `select_term_topics`:
 
 ```python
-            class_level=planner.class_level,
-            term=planner.term,
-            follow_calendar=planner.class_level == planner.home_class_level,
+class_level = (planner.class_level,)
+term = (planner.term,)
+follow_calendar = (planner.class_level == planner.home_class_level,)
 ```
 
 - [ ] **Step 4: Update the old tests in `tests/test_engines.py`**
@@ -477,7 +500,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    class_level = postgresql.ENUM("SS1", "SS2", "SS3", name="ClassLevel", create_type=False)
+    class_level = postgresql.ENUM(
+        "SS1", "SS2", "SS3", name="ClassLevel", create_type=False
+    )
     term = postgresql.ENUM("FIRST", "SECOND", "THIRD", name="Term", create_type=False)
     op.add_column("StudyPlan", sa.Column("scopeClassLevel", class_level, nullable=True))
     op.add_column("StudyPlan", sa.Column("scopeTerm", term, nullable=True))
@@ -564,7 +589,11 @@ def test_position_options_offer_only_the_plans_scope_in_curriculum_order():
     options = position_options(topics, "SS1", "FIRST")
 
     assert [o["id"] for o in options] == ["ss1-first-a", "ss1-first-b"]
-    assert options[1] == {"id": "ss1-first-b", "title": "Sets", "scope": "SS1 First term"}
+    assert options[1] == {
+        "id": "ss1-first-b",
+        "title": "Sets",
+        "scope": "SS1 First term",
+    }
 
 
 async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypatch):
@@ -574,9 +603,16 @@ async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypat
 
     def row(topic_id, level_id):
         return NS(
-            id=topic_id, subject_id="maths", title=topic_id, slug=topic_id,
-            order_index=1, estimated_minutes=30, waec_weight=1, jamb_weight=1,
-            prerequisite_topic_id=None, curriculum_level_id=level_id,
+            id=topic_id,
+            subject_id="maths",
+            title=topic_id,
+            slug=topic_id,
+            order_index=1,
+            estimated_minutes=30,
+            waec_weight=1,
+            jamb_weight=1,
+            prerequisite_topic_id=None,
+            curriculum_level_id=level_id,
         )
 
     async def for_subject(_, subject_id):
@@ -590,7 +626,9 @@ async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypat
 
     topics = await service._plan_topics(None, "maths")
 
-    assert [(t.id, t.class_level, t.term) for t in topics] == [("mapped", "SS2", "SECOND")]
+    assert [(t.id, t.class_level, t.term) for t in topics] == [
+        ("mapped", "SS2", "SECOND")
+    ]
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -603,7 +641,9 @@ Expected: FAIL (`position_options() takes 2 positional arguments`; unmapped topi
 In `app/services/planner/service.py` add near the top `import logging` and `logger = logging.getLogger(__name__)` (after the imports), then replace `position_options` and `_plan_topics`:
 
 ```python
-def position_options(topics: list[PlanTopic], class_level: str, term: str) -> list[dict]:
+def position_options(
+    topics: list[PlanTopic], class_level: str, term: str
+) -> list[dict]:
     """Topics a student may pick as "my class is here": the plan's own term only."""
     allowed = [t for t in topics if t.class_level == class_level and t.term == term]
     allowed.sort(key=lambda t: (t.order_index, t.id))
@@ -656,18 +696,16 @@ Remove the now-unused `_TERMS` constant and the `from app.domain import CLASS_LE
 In `SetStudyPlanPositionsService._apply_position`, replace the block that checks `at_or_below_class` (from `if topic.curriculum_level_id:` to the `raise ApiError(400, "That topic is above your class")`) with:
 
 ```python
-        curriculum = (
-            await curriculum_levels_repository.by_id(
-                self.session, topic.curriculum_level_id
-            )
-            if topic.curriculum_level_id
-            else None
-        )
-        if curriculum is None or (curriculum.class_level, curriculum.term) != (
-            plan.scope_class_level,
-            plan.scope_term,
-        ):
-            raise ApiError(400, "That topic is outside your plan's term")
+curriculum = (
+    await curriculum_levels_repository.by_id(self.session, topic.curriculum_level_id)
+    if topic.curriculum_level_id
+    else None
+)
+if curriculum is None or (curriculum.class_level, curriculum.term) != (
+    plan.scope_class_level,
+    plan.scope_term,
+):
+    raise ApiError(400, "That topic is outside your plan's term")
 ```
 
 - [ ] **Step 4: Run to verify**
@@ -712,11 +750,20 @@ async def test_plan_for_another_class_does_not_follow_the_calendar(monkeypatch):
     from app.services.planner.term_context import TermRange, resolve_term_context
 
     plan = NS(
-        id="p1", subject_ids=["maths"], target_exam=None, target_date=None,
-        force_exam_mode=False, study_days=[1], weekday_minutes=30,
-        weekend_minutes=60, planned_through=date(2026, 9, 28), outline=[],
-        overload=None, created_at=datetime(2026, 9, 14, tzinfo=UTC),
-        scope_class_level="SS2", scope_term="SECOND",
+        id="p1",
+        subject_ids=["maths"],
+        target_exam=None,
+        target_date=None,
+        force_exam_mode=False,
+        study_days=[1],
+        weekday_minutes=30,
+        weekend_minutes=60,
+        planned_through=date(2026, 9, 28),
+        outline=[],
+        overload=None,
+        created_at=datetime(2026, 9, 14, tzinfo=UTC),
+        scope_class_level="SS2",
+        scope_term="SECOND",
     )
 
     async def empty(*_):
@@ -766,8 +813,10 @@ async def test_changing_scope_drops_positions_outside_it(monkeypatch):
         return NS(id=topic_id, curriculum_level_id=f"lv-{topic_id}")
 
     async def level_by_id(_, level_id):
-        return NS(class_level="SS2", term="SECOND") if level_id == "lv-in" else NS(
-            class_level="SS1", term="FIRST"
+        return (
+            NS(class_level="SS2", term="SECOND")
+            if level_id == "lv-in"
+            else NS(class_level="SS1", term="FIRST")
         )
 
     async def remove(_, row):
@@ -925,8 +974,12 @@ async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkey
 
         async def process(self):
             return {
-                "fresh": TopicState("fresh", mastery=90, observations=20, retention=0.95),
-                "fading": TopicState("fading", mastery=60, observations=10, retention=0.3),
+                "fresh": TopicState(
+                    "fresh", mastery=90, observations=20, retention=0.95
+                ),
+                "fading": TopicState(
+                    "fading", mastery=60, observations=10, retention=0.3
+                ),
             }
 
     async def passed(_, student_id, topic_ids):
@@ -937,8 +990,10 @@ async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkey
 
     plan = NS(student_id="s1")
     replan = service.ReplanStudyPlanService(FakeSession(), plan, "SS1")
-    nodes = [GraphNode("fresh", "maths", "Fresh", "fresh", 1),
-             GraphNode("fading", "maths", "Fading", "fading", 2)]
+    nodes = [
+        GraphNode("fresh", "maths", "Fresh", "fresh", 1),
+        GraphNode("fading", "maths", "Fading", "fading", 2),
+    ]
     state, pretest, due = await replan._learning_inputs(nodes)
 
     assert set(state) == {"fresh", "fading"}

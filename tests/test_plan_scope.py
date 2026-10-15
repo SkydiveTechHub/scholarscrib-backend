@@ -81,7 +81,13 @@ def _in_term(term, week, total=12):
 
 
 def _select(
-    topics, edges=(), *, class_level="SS1", term="FIRST", follow=True, ctx=None,
+    topics,
+    edges=(),
+    *,
+    class_level="SS1",
+    term="FIRST",
+    follow=True,
+    ctx=None,
     position=None,
 ):
     return select_term_topics(
@@ -212,9 +218,7 @@ async def test_only_scope_or_earlier_topics_may_be_revised(monkeypatch):
         _topic("later-class", "SS2", "FIRST"),
     ]
     plan = NS(student_id="s1", scope_class_level="SS1", scope_term="FIRST")
-    ids = service._scope_topic_ids(
-        [PlannerSubject("maths", "Maths", topics)], plan
-    )
+    ids = service._scope_topic_ids([PlannerSubject("maths", "Maths", topics)], plan)
     assert ids == {"here", "earlier"}
     nodes = [GraphNode(t.id, "maths", t.title, t.slug, 1) for t in topics]
     replan = service.ReplanStudyPlanService(FakeSession(), plan, "SS1")
@@ -256,8 +260,10 @@ async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkey
 
     plan = NS(student_id="s1")
     replan = service.ReplanStudyPlanService(FakeSession(), plan, "SS1")
-    nodes = [GraphNode("fresh", "maths", "Fresh", "fresh", 1),
-             GraphNode("fading", "maths", "Fading", "fading", 2)]
+    nodes = [
+        GraphNode("fresh", "maths", "Fresh", "fresh", 1),
+        GraphNode("fading", "maths", "Fading", "fading", 2),
+    ]
     state, pretest, due = await replan._learning_inputs(nodes, {"fresh", "fading"})
 
     assert set(state) == {"fresh", "fading"}

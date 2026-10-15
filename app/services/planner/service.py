@@ -387,17 +387,21 @@ class UpdateStudyPlanSettingsService:
         session: AsyncSession,
         student_id: str,
         class_level: str | None,
+        plan_id: str,
         body: StudyPlanIn,
     ) -> None:
         self.session = session
         self.student_id = student_id
         self.class_level = class_level
+        self.plan_id = plan_id
         self.body = body
 
     async def process(self) -> dict:
-        plan = await _active(self.session, self.student_id)
+        plan = await plans_repository.by_id(self.session, self.plan_id)
         if plan is None:
-            raise ApiError(404, "No active study plan")
+            raise ApiError(404, "Study plan not found")
+        if plan.student_id != self.student_id:
+            raise ApiError(404, "Study plan not found")
         _check(self.body)
         await _ensure_subjects(self.session, self.body.subjectIds)
         plan.subject_ids = self.body.subjectIds
@@ -419,18 +423,20 @@ class UpdateStudyPlanSettingsService:
 class DeleteStudyPlanService:
     """Soft delete: the plan stops being active; its items and history are kept."""
 
-    def __init__(self, session: AsyncSession, student_id: str) -> None:
+    def __init__(self, session: AsyncSession, student_id: str, plan_id: str) -> None:
         self.session = session
         self.student_id = student_id
+        self.plan_id = plan_id
 
     async def process(self) -> dict:
-        plan = await _active(self.session, self.student_id)
+        plan = await plans_repository.by_id(self.session, self.plan_id)
         if plan is None:
-            raise ApiError(404, "No active study plan")
-        # Same lock a replan takes, so a delete cannot race a rebuild.
+            raise ApiError(404, "Study plan not found")
+        if plan.student_id != self.student_id:
+            raise ApiError(404, "Study plan not found")
         await plans_repository.lock(self.session, StudyPlan.id == plan.id)
         plan.is_active = False
-        return {"ok": True}
+        return {"planId": plan.id}
 
 
 class SetStudyPlanPositionsService:

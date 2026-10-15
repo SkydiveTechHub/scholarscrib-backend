@@ -48,9 +48,16 @@ async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypat
 
     def row(topic_id, level_id):
         return NS(
-            id=topic_id, subject_id="maths", title=topic_id, slug=topic_id,
-            order_index=1, estimated_minutes=30, waec_weight=1, jamb_weight=1,
-            prerequisite_topic_id=None, curriculum_level_id=level_id,
+            id=topic_id,
+            subject_id="maths",
+            title=topic_id,
+            slug=topic_id,
+            order_index=1,
+            estimated_minutes=30,
+            waec_weight=1,
+            jamb_weight=1,
+            prerequisite_topic_id=None,
+            curriculum_level_id=level_id,
         )
 
     async def for_subject(_, subject_id):
@@ -166,11 +173,20 @@ async def test_plan_for_another_class_does_not_follow_the_calendar(monkeypatch):
     from app.services.planner.term_context import TermRange, resolve_term_context
 
     plan = NS(
-        id="p1", subject_ids=["maths"], target_exam=None, target_date=None,
-        force_exam_mode=False, study_days=[1], weekday_minutes=30,
-        weekend_minutes=60, planned_through=date(2026, 9, 28), outline=[],
-        overload=None, created_at=datetime(2026, 9, 14, tzinfo=UTC),
-        scope_class_level="SS2", scope_term="SECOND",
+        id="p1",
+        subject_ids=["maths"],
+        target_exam=None,
+        target_date=None,
+        force_exam_mode=False,
+        study_days=[1],
+        weekday_minutes=30,
+        weekend_minutes=60,
+        planned_through=date(2026, 9, 28),
+        outline=[],
+        overload=None,
+        created_at=datetime(2026, 9, 14, tzinfo=UTC),
+        scope_class_level="SS2",
+        scope_term="SECOND",
     )
 
     async def empty(*_):
@@ -196,7 +212,9 @@ async def test_plan_for_another_class_does_not_follow_the_calendar(monkeypatch):
     ctx = resolve_term_context(
         "2026-09-14", [TermRange("2026/2027", "FIRST", "2026-09-07", "2026-11-29")]
     )
-    payload = await service.GetStudyPlanService(None, "s1", "SS1")._serialize(plan, ctx)
+    payload = await service.GetStudyPlanService(None, "s1", "SS1", "p1")._serialize(
+        plan, ctx
+    )
 
     assert payload["scope"] == {"classLevel": "SS2", "term": "SECOND"}
     assert payload["followsCalendar"] is False
@@ -218,8 +236,10 @@ async def test_changing_scope_drops_positions_outside_it(monkeypatch):
         return NS(id=topic_id, curriculum_level_id=f"lv-{topic_id}")
 
     async def level_by_id(_, level_id):
-        return NS(class_level="SS2", term="SECOND") if level_id == "lv-in" else NS(
-            class_level="SS1", term="FIRST"
+        return (
+            NS(class_level="SS2", term="SECOND")
+            if level_id == "lv-in"
+            else NS(class_level="SS1", term="FIRST")
         )
 
     async def remove(_, row):
@@ -231,7 +251,7 @@ async def test_changing_scope_drops_positions_outside_it(monkeypatch):
     monkeypatch.setattr(service.curriculum_levels_repository, "by_id", level_by_id)
 
     plan = NS(id="p1", scope_class_level="SS2", scope_term="SECOND")
-    await service._drop_positions_outside_scope(None, plan)
+    await service._drop_positions_outside_scope(None, "p1", plan)
 
     assert removed == [outside]
 
@@ -268,7 +288,7 @@ async def test_position_outside_the_plans_term_is_rejected(monkeypatch, level):
     monkeypatch.setattr(service.curriculum_levels_repository, "by_id", level_by_id)
 
     plan = NS(id="p1", scope_class_level="SS1", scope_term="FIRST")
-    svc = service.SetStudyPlanPositionsService(None, "s1", "SS1", [])
+    svc = service.SetStudyPlanPositionsService(None, "s1", "SS1", "p1", [])
     with pytest.raises(ApiError) as caught:
         await svc._apply_position(
             plan, {"maths"}, PositionIn(subjectId="maths", topicId="t9")
@@ -296,7 +316,7 @@ async def test_delete_deactivates_the_active_plan_and_keeps_it(monkeypatch):
     monkeypatch.setattr(service.plans_repository, "active", active)
     monkeypatch.setattr(service.plans_repository, "lock", lock)
 
-    result = await service.DeleteStudyPlanService(None, "s1").process()
+    result = await service.DeleteStudyPlanService(None, "s1", "p1").process()
 
     assert result == {"ok": True}
     assert plan.is_active is False
@@ -315,7 +335,7 @@ async def test_delete_without_an_active_plan_is_a_404(monkeypatch):
     monkeypatch.setattr(service.plans_repository, "active", active)
 
     with pytest.raises(ApiError) as raised:
-        await service.DeleteStudyPlanService(None, "s1").process()
+        await service.DeleteStudyPlanService(None, "s1", "p1").process()
 
     assert raised.value.status_code == 404
 
@@ -327,11 +347,20 @@ async def _follows_in_holiday(monkeypatch, scope_term):
     from app.services.planner.term_context import TermRange, resolve_term_context
 
     plan = NS(
-        id="p1", subject_ids=["maths"], target_exam=None, target_date=None,
-        force_exam_mode=False, study_days=[1], weekday_minutes=30,
-        weekend_minutes=60, planned_through=date(2026, 12, 20), outline=[],
-        overload=None, created_at=datetime(2026, 9, 14, tzinfo=UTC),
-        scope_class_level="SS1", scope_term=scope_term,
+        id="p1",
+        subject_ids=["maths"],
+        target_exam=None,
+        target_date=None,
+        force_exam_mode=False,
+        study_days=[1],
+        weekday_minutes=30,
+        weekend_minutes=60,
+        planned_through=date(2026, 12, 20),
+        outline=[],
+        overload=None,
+        created_at=datetime(2026, 9, 14, tzinfo=UTC),
+        scope_class_level="SS1",
+        scope_term=scope_term,
     )
 
     async def empty(*_):

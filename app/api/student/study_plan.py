@@ -46,30 +46,32 @@ async def create_plan(
 
 
 @router.patch(
-    "",
+    "/{plan_id}",
     dependencies=[Depends(require_feature("studyPlanner"))],
     response_model=OkOut,
 )
 async def patch_plan(
+    plan_id: str,
     body: StudyPlanIn,
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     return await UpdateStudyPlanSettingsService(
-        session, student.id, student.class_level, body
+        session, student.id, student.class_level, plan_id, body
     ).process()
 
 
 @router.delete(
-    "",
+    "/{plan_id}",
     dependencies=[Depends(require_feature("studyPlanner"))],
     response_model=OkOut,
 )
 async def delete_plan(
     session: AnSession,
+    plan_id: str,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
-    return await DeleteStudyPlanService(session, student.id).process()
+    return await DeleteStudyPlanService(session, student.id, plan_id).process()
 
 
 @router.put(
