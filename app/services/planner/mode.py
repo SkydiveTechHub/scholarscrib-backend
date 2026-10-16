@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from app.domain import CLASS_LEVELS
+from app.domain import CLASS_LEVELS, TERMS
 from app.services.planner.days import DayKey, add_days, days_between
 
 RUNWAY_FRACTION = 0.2
@@ -85,3 +85,8 @@ def plan_settings_problem(check: PlanSettingsCheck) -> str | None:
 
 def at_or_below_class(topic_level: str, class_level: str) -> bool:
     return CLASS_LEVELS.index(topic_level) <= CLASS_LEVELS.index(class_level)
+
+
+def scope_ordinal(class_level: str, term: str) -> int:
+    """Position in the nine-slot syllabus, SS1 First term being 0."""
+    return CLASS_LEVELS.index(class_level) * len(TERMS) + TERMS.index(term)

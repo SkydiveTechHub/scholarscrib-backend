@@ -156,7 +156,16 @@ In `app/(dashboard)/classroom/[subjectSlug]/page.tsx`, render `ClassTermBrowser`
 
 **Manual:** create an SS2 plan as an SS1 profile, accept and decline the prompt, then check the plan and the classroom.
 
-## 10. Rollout
+## 10. Plan deletion (added 2026-10-15)
+
+Students could replace a plan but never remove one. Add a **soft delete**:
+
+- `DELETE /api/study-plan` sets the active plan's `isActive = false` under the same row lock a replan takes. Items, positions and history stay in the database. The route uses the `studyPlanner` entitlement.
+- No active plan returns 404 "No active study plan".
+- UI: a "Delete plan" button in the "Change plan" panel opens a confirmation modal ("Keep my plan" / "Delete plan"). After success the page shows the empty state, and the student can create a new plan.
+- Out of scope: hard delete and restoring a deleted plan.
+
+## 11. Rollout
 
 1. Apply the Alembic migration.
 2. Deploy backend, then frontend.

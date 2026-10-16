@@ -4,7 +4,7 @@ from app.services.learning.evidence import GATE
 from app.services.learning.graph import KnowledgeGraph, incoming_edges
 from app.services.learning.mastery import TopicStateMap, is_mastered
 from app.services.planner.days import DayKey
-from app.services.planner.mode import at_or_below_class
+from app.services.planner.mode import at_or_below_class, scope_ordinal
 
 
 @dataclass
@@ -71,59 +71,47 @@ def _scope(topics: list[PlanTopic], class_level: str, term: str) -> list[PlanTop
     )
 
 
-def _locate_by_calendar(allowed: list[PlanTopic], class_level: str, ctx: dict) -> dict:
-    if ctx["kind"] == "in_term":
-        term_topics = _scope(allowed, class_level, ctx["current"].term)
-        if not term_topics:
-            return {"termTopics": term_topics, "classIndex": -1, "preview": []}
-        class_index = min(
-            len(term_topics) - 1,
-            int(((ctx["weekOfTerm"] - 1) / ctx["totalWeeks"]) * len(term_topics)),
-        )
-        return {
-            "termTopics": term_topics,
-            "classIndex": class_index,
-            "preview": term_topics[class_index + 1 : class_index + 2],
-        }
-    previous = ctx.get("previous")
-    nxt = ctx.get("next")
-    term_topics = _scope(allowed, class_level, previous.term) if previous else []
-    preview = []
-    if nxt and nxt.term != "FIRST":
-        preview = _scope(allowed, class_level, nxt.term)[:2]
+def _before_scope(topic: PlanTopic, class_level: str, term: str) -> bool:
+    return scope_ordinal(topic.class_level, topic.term) < scope_ordinal(
+        class_level, term
+    )
+
+
+def _locate(
+    term_topics: list[PlanTopic],
+    term: str,
+    ctx: dict,
+    position_topic_id: str | None,
+    follow_calendar: bool,
+) -> dict:
+    """Where the class is inside this scope's topics."""
+    if not term_topics:
+        return {"termTopics": [], "classIndex": -1, "preview": []}
+    count = len(term_topics)
+    index = next(
+        (i for i, topic in enumerate(term_topics) if topic.id == position_topic_id),
+        -1,
+    )
+    if index < 0:
+        if follow_calendar and ctx["kind"] == "in_term" and ctx["current"].term == term:
+            index = min(
+                count - 1,
+                int(((ctx["weekOfTerm"] - 1) / ctx["totalWeeks"]) * count),
+            )
+        elif (
+            follow_calendar
+            and ctx["kind"] == "holiday"
+            and ctx.get("previous")
+            and ctx["previous"].term == term
+        ):
+            index = count - 1
+        else:
+            index = 0
     return {
         "termTopics": term_topics,
-        "classIndex": len(term_topics) - 1,
-        "preview": preview,
+        "classIndex": index,
+        "preview": term_topics[index + 1 : index + 2],
     }
-
-
-def _locate_class(
-    allowed: list[PlanTopic], class_level: str, ctx: dict, position_topic_id: str | None
-) -> dict:
-    position = (
-        next((topic for topic in allowed if topic.id == position_topic_id), None)
-        if position_topic_id
-        else None
-    )
-    if position:
-        term_topics = _scope(allowed, position.class_level, position.term)
-        class_index = next(
-            (
-                index
-                for index, topic in enumerate(term_topics)
-                if topic.id == position.id
-            ),
-            -1,
-        )
-        return {
-            "termTopics": term_topics,
-            "classIndex": class_index,
-            "preview": term_topics[class_index + 1 : class_index + 2]
-            if class_index >= 0
-            else [],
-        }
-    return _locate_by_calendar(allowed, class_level, ctx)
 
 
 def _gaps_for(
@@ -158,6 +146,8 @@ def select_term_topics(
     *,
     subject_id: str,
     class_level: str,
+    term: str,
+    follow_calendar: bool,
     term_context: dict,
     topics: list[PlanTopic],
     graph: KnowledgeGraph,
@@ -167,15 +157,16 @@ def select_term_topics(
     carry_over: list[CarryOver],
     carry_over_only: bool = False,
 ) -> SubjectSelection:
-    allowed = [
-        topic for topic in topics if at_or_below_class(topic.class_level, class_level)
-    ]
-    by_id = {topic.id: topic for topic in allowed}
+    term_topics_all = _scope(topics, class_level, term)
+    earlier = [t for t in topics if _before_scope(t, class_level, term)]
+    by_id = {topic.id: topic for topic in [*earlier, *term_topics_all]}
 
     def unmastered(topic: PlanTopic) -> bool:
         return not _is_mastered(state, topic.id)
 
-    located = _locate_class(allowed, class_level, term_context, position_topic_id)
+    located = _locate(
+        term_topics_all, term, term_context, position_topic_id, follow_calendar
+    )
     term_topics: list[PlanTopic] = located["termTopics"]
     class_index = located["classIndex"]
     preview: list[PlanTopic] = located["preview"]
@@ -251,12 +242,14 @@ def select_exam_topics(
 
 
 def calendar_topic_id(
-    topics: list[PlanTopic], class_level: str, ctx: dict
+    topics: list[PlanTopic],
+    class_level: str,
+    term: str,
+    follow_calendar: bool,
+    ctx: dict,
 ) -> str | None:
-    allowed = [
-        topic for topic in topics if at_or_below_class(topic.class_level, class_level)
-    ]
-    located = _locate_by_calendar(allowed, class_level, ctx)
+    term_topics = _scope(topics, class_level, term)
+    located = _locate(term_topics, term, ctx, None, follow_calendar)
     if located["classIndex"] < 0:
         return None
     return located["termTopics"][located["classIndex"]].id

@@ -239,6 +239,8 @@ def test_plan_window_stays_inside_the_class():
             plan_start="2026-09-14",
             mode="TERM",
             class_level="SS1",
+            term="FIRST",
+            home_class_level="SS1",
             target_date=None,
             term_context=context,
             availability=Availability([1, 2, 3, 4, 6], 30, 60),
@@ -271,6 +273,8 @@ def test_term_topic_selection_mid_term():
     selection = select_term_topics(
         subject_id="maths",
         class_level="SS1",
+        term="FIRST",
+        follow_calendar=True,
         term_context=context,
         topics=topics,
         graph=build_graph([], []),
@@ -281,7 +285,7 @@ def test_term_topic_selection_mid_term():
     )
     reasons = [f"{item.reason}:{item.topic.id}" for item in selection.candidates]
     assert reasons[0] == "CURRENT:t3"
-    assert calendar_topic_id(topics, "SS1", context) == "t3"
+    assert calendar_topic_id(topics, "SS1", "FIRST", True, context) == "t3"
     ranked = select_exam_topics(
         [
             _topic("a", waec_weight=1, jamb_weight=1),

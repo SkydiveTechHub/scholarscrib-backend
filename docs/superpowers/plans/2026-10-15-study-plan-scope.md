@@ -33,6 +33,7 @@
 5. Mastery loading throws: replan still succeeds with empty mastery (Task 6).
 6. Profile class update fails from the prompt: the plan is not saved and an error shows (Task 8).
 7. Profile class is null: defaults fall back to SS1 and no prompt appears (Tasks 5, 7).
+8. Delete with no active plan, or twice in a row: a clean 404, no crash (Task 10).
 
 ---
 
@@ -110,7 +111,11 @@ def test_default_term_is_the_upcoming_term_in_a_holiday():
 
 
 def test_default_term_falls_back_to_the_previous_then_first():
-    ctx = {"kind": "holiday", "previous": TermRange("s", "THIRD", "a", "b"), "next": None}
+    ctx = {
+        "kind": "holiday",
+        "previous": TermRange("s", "THIRD", "a", "b"),
+        "next": None,
+    }
     assert default_term(ctx) == "THIRD"
     assert default_term({"kind": "holiday", "previous": None, "next": None}) == "FIRST"
 ```
@@ -204,8 +209,12 @@ def _topic(topic_id, class_level="SS1", term="FIRST", order=1):
 
 
 def _graph(topics, edges=()):
-    nodes = [GraphNode(t.id, t.subject_id, t.title, t.slug, t.order_index) for t in topics]
-    return build_graph(nodes, [GraphEdge(f"e{i}", s, t) for i, (s, t) in enumerate(edges)])
+    nodes = [
+        GraphNode(t.id, t.subject_id, t.title, t.slug, t.order_index) for t in topics
+    ]
+    return build_graph(
+        nodes, [GraphEdge(f"e{i}", s, t) for i, (s, t) in enumerate(edges)]
+    )
 
 
 def _in_term(term, week, total=12):
@@ -219,8 +228,16 @@ def _in_term(term, week, total=12):
     }
 
 
-def _select(topics, edges=(), *, class_level="SS1", term="FIRST", follow=True,
-            ctx=None, position=None):
+def _select(
+    topics,
+    edges=(),
+    *,
+    class_level="SS1",
+    term="FIRST",
+    follow=True,
+    ctx=None,
+    position=None,
+):
     return select_term_topics(
         subject_id="maths",
         class_level=class_level,
@@ -288,14 +305,19 @@ def test_holiday_revises_the_end_of_the_previous_term_only():
         "next": TermRange("2026/2027", "SECOND", "2027-01-06", "2027-04-10"),
     }
     assert calendar_topic_id(topics, "SS1", "FIRST", True, holiday) == "t3"
-    second = [_topic("s1", term="SECOND", order=1), _topic("s2", term="SECOND", order=2)]
+    second = [
+        _topic("s1", term="SECOND", order=1),
+        _topic("s2", term="SECOND", order=2),
+    ]
     assert calendar_topic_id(second, "SS1", "SECOND", True, holiday) == "s1"
 
 
 def test_a_position_outside_the_scope_is_ignored():
     topics = [_topic("a1", order=1), _topic("a2", order=2), _topic("b1", term="SECOND")]
     selection = _select(topics, position="b1")
-    assert selection.term_topics and all(t.term == "FIRST" for t in selection.term_topics)
+    assert selection.term_topics and all(
+        t.term == "FIRST" for t in selection.term_topics
+    )
     assert selection.class_index == 0
 ```
 
@@ -368,16 +390,18 @@ def _locate(
 Change `select_term_topics`: signature gains `term: str` and `follow_calendar: bool` (after `class_level`), and the head of the body becomes:
 
 ```python
-    term_topics_all = _scope(topics, class_level, term)
-    earlier = [t for t in topics if _before_scope(t, class_level, term)]
-    by_id = {topic.id: topic for topic in [*earlier, *term_topics_all]}
+term_topics_all = _scope(topics, class_level, term)
+earlier = [t for t in topics if _before_scope(t, class_level, term)]
+by_id = {topic.id: topic for topic in [*earlier, *term_topics_all]}
 
-    def unmastered(topic: PlanTopic) -> bool:
-        return not _is_mastered(state, topic.id)
 
-    located = _locate(
-        term_topics_all, term, term_context, position_topic_id, follow_calendar
-    )
+def unmastered(topic: PlanTopic) -> bool:
+    return not _is_mastered(state, topic.id)
+
+
+located = _locate(
+    term_topics_all, term, term_context, position_topic_id, follow_calendar
+)
 ```
 Delete the old `allowed = [...]` list and the old `_locate_class(...)` call. The rest of the function (carry-over, seeds, gap-fill, `behind_by`) is unchanged: `by_id` now holds only earlier-scope and in-scope topics, so `_gaps_for` can never return a later-scope topic and `carry_over` of a later-scope topic is dropped.
 
@@ -407,9 +431,9 @@ In `app/services/planner/term_plan.py`, add two required fields after `class_lev
 and in `plan_window` pass to `select_term_topics`:
 
 ```python
-            class_level=planner.class_level,
-            term=planner.term,
-            follow_calendar=planner.class_level == planner.home_class_level,
+class_level = (planner.class_level,)
+term = (planner.term,)
+follow_calendar = (planner.class_level == planner.home_class_level,)
 ```
 
 - [ ] **Step 4: Update the old tests in `tests/test_engines.py`**
@@ -476,7 +500,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    class_level = postgresql.ENUM("SS1", "SS2", "SS3", name="ClassLevel", create_type=False)
+    class_level = postgresql.ENUM(
+        "SS1", "SS2", "SS3", name="ClassLevel", create_type=False
+    )
     term = postgresql.ENUM("FIRST", "SECOND", "THIRD", name="Term", create_type=False)
     op.add_column("StudyPlan", sa.Column("scopeClassLevel", class_level, nullable=True))
     op.add_column("StudyPlan", sa.Column("scopeTerm", term, nullable=True))
@@ -563,7 +589,11 @@ def test_position_options_offer_only_the_plans_scope_in_curriculum_order():
     options = position_options(topics, "SS1", "FIRST")
 
     assert [o["id"] for o in options] == ["ss1-first-a", "ss1-first-b"]
-    assert options[1] == {"id": "ss1-first-b", "title": "Sets", "scope": "SS1 First term"}
+    assert options[1] == {
+        "id": "ss1-first-b",
+        "title": "Sets",
+        "scope": "SS1 First term",
+    }
 
 
 async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypatch):
@@ -573,9 +603,16 @@ async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypat
 
     def row(topic_id, level_id):
         return NS(
-            id=topic_id, subject_id="maths", title=topic_id, slug=topic_id,
-            order_index=1, estimated_minutes=30, waec_weight=1, jamb_weight=1,
-            prerequisite_topic_id=None, curriculum_level_id=level_id,
+            id=topic_id,
+            subject_id="maths",
+            title=topic_id,
+            slug=topic_id,
+            order_index=1,
+            estimated_minutes=30,
+            waec_weight=1,
+            jamb_weight=1,
+            prerequisite_topic_id=None,
+            curriculum_level_id=level_id,
         )
 
     async def for_subject(_, subject_id):
@@ -589,7 +626,9 @@ async def test_plan_topics_leave_out_topics_without_a_curriculum_level(monkeypat
 
     topics = await service._plan_topics(None, "maths")
 
-    assert [(t.id, t.class_level, t.term) for t in topics] == [("mapped", "SS2", "SECOND")]
+    assert [(t.id, t.class_level, t.term) for t in topics] == [
+        ("mapped", "SS2", "SECOND")
+    ]
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -602,7 +641,9 @@ Expected: FAIL (`position_options() takes 2 positional arguments`; unmapped topi
 In `app/services/planner/service.py` add near the top `import logging` and `logger = logging.getLogger(__name__)` (after the imports), then replace `position_options` and `_plan_topics`:
 
 ```python
-def position_options(topics: list[PlanTopic], class_level: str, term: str) -> list[dict]:
+def position_options(
+    topics: list[PlanTopic], class_level: str, term: str
+) -> list[dict]:
     """Topics a student may pick as "my class is here": the plan's own term only."""
     allowed = [t for t in topics if t.class_level == class_level and t.term == term]
     allowed.sort(key=lambda t: (t.order_index, t.id))
@@ -655,18 +696,16 @@ Remove the now-unused `_TERMS` constant and the `from app.domain import CLASS_LE
 In `SetStudyPlanPositionsService._apply_position`, replace the block that checks `at_or_below_class` (from `if topic.curriculum_level_id:` to the `raise ApiError(400, "That topic is above your class")`) with:
 
 ```python
-        curriculum = (
-            await curriculum_levels_repository.by_id(
-                self.session, topic.curriculum_level_id
-            )
-            if topic.curriculum_level_id
-            else None
-        )
-        if curriculum is None or (curriculum.class_level, curriculum.term) != (
-            plan.scope_class_level,
-            plan.scope_term,
-        ):
-            raise ApiError(400, "That topic is outside your plan's term")
+curriculum = (
+    await curriculum_levels_repository.by_id(self.session, topic.curriculum_level_id)
+    if topic.curriculum_level_id
+    else None
+)
+if curriculum is None or (curriculum.class_level, curriculum.term) != (
+    plan.scope_class_level,
+    plan.scope_term,
+):
+    raise ApiError(400, "That topic is outside your plan's term")
 ```
 
 - [ ] **Step 4: Run to verify**
@@ -711,11 +750,20 @@ async def test_plan_for_another_class_does_not_follow_the_calendar(monkeypatch):
     from app.services.planner.term_context import TermRange, resolve_term_context
 
     plan = NS(
-        id="p1", subject_ids=["maths"], target_exam=None, target_date=None,
-        force_exam_mode=False, study_days=[1], weekday_minutes=30,
-        weekend_minutes=60, planned_through=date(2026, 9, 28), outline=[],
-        overload=None, created_at=datetime(2026, 9, 14, tzinfo=UTC),
-        scope_class_level="SS2", scope_term="SECOND",
+        id="p1",
+        subject_ids=["maths"],
+        target_exam=None,
+        target_date=None,
+        force_exam_mode=False,
+        study_days=[1],
+        weekday_minutes=30,
+        weekend_minutes=60,
+        planned_through=date(2026, 9, 28),
+        outline=[],
+        overload=None,
+        created_at=datetime(2026, 9, 14, tzinfo=UTC),
+        scope_class_level="SS2",
+        scope_term="SECOND",
     )
 
     async def empty(*_):
@@ -765,8 +813,10 @@ async def test_changing_scope_drops_positions_outside_it(monkeypatch):
         return NS(id=topic_id, curriculum_level_id=f"lv-{topic_id}")
 
     async def level_by_id(_, level_id):
-        return NS(class_level="SS2", term="SECOND") if level_id == "lv-in" else NS(
-            class_level="SS1", term="FIRST"
+        return (
+            NS(class_level="SS2", term="SECOND")
+            if level_id == "lv-in"
+            else NS(class_level="SS1", term="FIRST")
         )
 
     async def remove(_, row):
@@ -924,8 +974,12 @@ async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkey
 
         async def process(self):
             return {
-                "fresh": TopicState("fresh", mastery=90, observations=20, retention=0.95),
-                "fading": TopicState("fading", mastery=60, observations=10, retention=0.3),
+                "fresh": TopicState(
+                    "fresh", mastery=90, observations=20, retention=0.95
+                ),
+                "fading": TopicState(
+                    "fading", mastery=60, observations=10, retention=0.3
+                ),
             }
 
     async def passed(_, student_id, topic_ids):
@@ -936,8 +990,10 @@ async def test_learning_inputs_carry_mastery_pretest_and_decayed_revision(monkey
 
     plan = NS(student_id="s1")
     replan = service.ReplanStudyPlanService(FakeSession(), plan, "SS1")
-    nodes = [GraphNode("fresh", "maths", "Fresh", "fresh", 1),
-             GraphNode("fading", "maths", "Fading", "fading", 2)]
+    nodes = [
+        GraphNode("fresh", "maths", "Fresh", "fresh", 1),
+        GraphNode("fading", "maths", "Fading", "fading", 2),
+    ]
     state, pretest, due = await replan._learning_inputs(nodes)
 
     assert set(state) == {"fresh", "fading"}
@@ -1427,12 +1483,263 @@ Run: `npx tsc --noEmit` and `npm test`. Repeat the manual reproduction from Step
 
 ---
 
+### Task 10: Delete (deactivate) a plan, backend
+
+**Files:**
+- Modify: `app/services/planner/service.py`
+- Modify: `app/services/planner/__init__.py`
+- Modify: `app/api/student/study_plan.py`
+- Modify: `tests/test_study_plan_payload.py`
+
+**Interfaces:**
+- Produces: `DeleteStudyPlanService(session, student_id).process() -> {"ok": True}`; route `DELETE /api/study-plan` (same `studyPlanner` entitlement as the other routes). Soft delete: sets `is_active = False`, rows and items stay.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `tests/test_study_plan_payload.py`:
+
+```python
+async def test_delete_deactivates_the_active_plan_and_keeps_it(monkeypatch):
+    from types import SimpleNamespace as NS
+
+    from app.services.planner import service
+
+    plan = NS(id="p1", is_active=True)
+    locked = []
+
+    async def active(_, student_id):
+        return plan
+
+    async def lock(_, *conditions):
+        locked.append(conditions)
+
+    monkeypatch.setattr(service.plans_repository, "active", active)
+    monkeypatch.setattr(service.plans_repository, "lock", lock)
+
+    result = await service.DeleteStudyPlanService(None, "s1").process()
+
+    assert result == {"ok": True}
+    assert plan.is_active is False
+    assert len(locked) == 1
+
+
+async def test_delete_without_an_active_plan_is_a_404(monkeypatch):
+    import pytest
+
+    from app.core.errors import ApiError
+    from app.services.planner import service
+
+    async def active(_, student_id):
+        return None
+
+    monkeypatch.setattr(service.plans_repository, "active", active)
+
+    with pytest.raises(ApiError) as raised:
+        await service.DeleteStudyPlanService(None, "s1").process()
+
+    assert raised.value.status_code == 404
+```
+(If `ApiError` exposes the status under a different attribute name, check `app/core/errors.py` and adjust the last assertion.)
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `uv run pytest tests/test_study_plan_payload.py -v`
+Expected: FAIL (`AttributeError: ... has no attribute 'DeleteStudyPlanService'`).
+
+- [ ] **Step 3: Implement**
+
+In `app/services/planner/service.py`, after `UpdateStudyPlanSettingsService`:
+
+```python
+class DeleteStudyPlanService:
+    """Soft delete: the plan stops being active; its items and history are kept."""
+
+    def __init__(self, session: AsyncSession, student_id: str) -> None:
+        self.session = session
+        self.student_id = student_id
+
+    async def process(self) -> dict:
+        plan = await _active(self.session, self.student_id)
+        if plan is None:
+            raise ApiError(404, "No active study plan")
+        # Same lock a replan takes, so a delete cannot race a rebuild.
+        await plans_repository.lock(self.session, StudyPlan.id == plan.id)
+        plan.is_active = False
+        return {"ok": True}
+```
+
+In `app/services/planner/__init__.py` import `DeleteStudyPlanService` and add `"DeleteStudyPlanService",` to `__all__`.
+
+In `app/api/student/study_plan.py` import `DeleteStudyPlanService` from `app.services.planner` and add after `patch_plan`:
+
+```python
+@router.delete(
+    "",
+    dependencies=[Depends(require_feature("studyPlanner"))],
+    response_model=OkOut,
+)
+async def delete_plan(
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    return await DeleteStudyPlanService(session, student.id).process()
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `uv run pytest tests/test_study_plan_payload.py -v`
+Expected: all pass.
+
+- [ ] **Step 5: Verify**
+
+Run: `uv run pytest -q` and `uv run ruff check app tests`. Check nothing else reads inactive plans' items by mistake: `grep -rn "StudyPlanItem" app --include=*.py` and confirm every reader goes through the active plan (`pages.py` and `push.py` filter on `is_active`).
+
+---
+
+### Task 11: Delete a plan, frontend
+
+**Files:**
+- Modify: `src/hooks/api/use-study-plan.ts`
+- Create: `src/components/study-plan/delete-plan-modal.tsx`
+- Modify: `src/components/study-plan/plan-setup-form.tsx`
+- Modify: `src/components/study-plan/study-plan-view.tsx`
+
+**Interfaces:**
+- Consumes: `endpoints.studyPlan.root`, `Modal`.
+- Produces: `useDeleteStudyPlan()` mutation (no arguments); `PlanSetupForm` prop `onDelete?: () => Promise<string | null>`.
+
+- [ ] **Step 1: Hook**
+
+In `src/hooks/api/use-study-plan.ts` add:
+
+```ts
+export function useDeleteStudyPlan() {
+  const invalidate = useInvalidateStudyPlan();
+  return useMutation({
+    mutationFn: () =>
+      request<unknown>({ method: "DELETE", url: endpoints.studyPlan.root }),
+    onSuccess: invalidate,
+  });
+}
+```
+
+- [ ] **Step 2: Confirmation modal**
+
+Create `src/components/study-plan/delete-plan-modal.tsx`:
+
+```tsx
+"use client";
+
+import { Modal } from "@/components/ui/modal";
+import { buttonClass } from "@/components/ui/button";
+
+export function DeletePlanModal({
+  open,
+  busy,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  busy: boolean;
+  error: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      open={open}
+      title="Delete your study plan?"
+      description="Your schedule goes away and you can build a new plan any time. Sessions you already completed stay in your progress."
+      busy={busy}
+      onClose={onClose}
+      footer={
+        <div className="flex flex-wrap justify-end gap-3">
+          <button type="button" disabled={busy} onClick={onClose} className={buttonClass("secondary", "md")}>
+            Keep my plan
+          </button>
+          <button type="button" disabled={busy} onClick={onConfirm} className={buttonClass("primary", "md")}>
+            {busy ? "Deleting..." : "Delete plan"}
+          </button>
+        </div>
+      }
+    >
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </Modal>
+  );
+}
+```
+
+- [ ] **Step 3: Form button**
+
+In `plan-setup-form.tsx` add the prop `onDelete?: () => Promise<string | null>` to the component props, import `DeletePlanModal`, and add state:
+
+```ts
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function confirmDelete() {
+    if (!onDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+    const problem = await onDelete();
+    setDeleting(false);
+    if (problem) setDeleteError(problem);
+  }
+```
+In the button row (after the Cancel button) add:
+
+```tsx
+        {plan && onDelete && (
+          <button type="button" onClick={() => setConfirmingDelete(true)}
+            className={cn(buttonClass("secondary", "lg"), "ml-auto text-danger")}>
+            Delete plan
+          </button>
+        )}
+```
+and render, next to the class mismatch modal:
+
+```tsx
+      {onDelete && (
+        <DeletePlanModal
+          open={confirmingDelete}
+          busy={deleting}
+          error={deleteError}
+          onConfirm={confirmDelete}
+          onClose={() => { setConfirmingDelete(false); setDeleteError(""); }}
+        />
+      )}
+```
+On success the page refreshes and the form unmounts (`editing` becomes false in the view), so no extra reset is needed.
+
+- [ ] **Step 4: View wiring**
+
+In `study-plan-view.tsx` import `useDeleteStudyPlan`, create `const removePlan = useDeleteStudyPlan();`, add
+
+```ts
+  async function deletePlan() {
+    const problem = await run(() => removePlan.mutateAsync());
+    if (!problem) setEditing(false);
+    return problem;
+  }
+```
+and pass `onDelete={plan ? deletePlan : undefined}` to `<PlanSetupForm ... />`.
+
+- [ ] **Step 5: Verify**
+
+Run `npx tsc --noEmit`, `npx eslint src/components/study-plan src/hooks/api/use-study-plan.ts`, then `npm test`.
+Manual: with a plan, Change plan → Delete plan → "Keep my plan" leaves it; "Delete plan" returns to the "No study plan yet" empty state; creating a new plan works afterwards. With the backend route stopped, confirm the modal shows the error and the plan is still there.
+
+---
+
 ## Self-Review
 
 **Spec coverage**
 - §4 data model → Task 3. §5.1 scope helper → Task 1. §5.2 selection (scope, gap-fill, holiday, preview) → Task 2. §5.3 unmapped topics → Task 4. §5.4 mastery → Task 6. §6 API (scope fields, SS3-by-plan-class, positions in scope, payload, plan mode from scope) → Tasks 3, 4, 5. §7.1–7.3 → Tasks 7, 8. §7.4 classroom → Task 9. §8 error handling: empty scope (Task 2 test), unmapped (Task 4), migration (Task 3), prompt failure (Task 8 manual). §9 tests → covered per task; "Migration backfill" is verified by `alembic heads` only (no database test harness exists); flagged for the user to run on a staging copy before production.
 - Deviation from the spec: §5.2 says skipped same/later-scope prerequisites are "logged once". The plan skips them silently (`by_id` never contains them), to avoid threading extra state through `_gaps_for`. Unmapped topics are still logged (Task 4).
 - Spec §7.2's three outcomes are in Task 8's modal and manual checks.
+- Spec §10 (plan deletion, soft delete) → Tasks 10 and 11.
 - Not in the spec but required by it: `plan.followsCalendar` and `currentTerm` (header rule in §7.3 and defaults in §7.1), `_drop_positions_outside_scope` (Review Focus 4).
 
 **Placeholders:** none. Revision-due reason text is a concrete string chosen here ("Fading from memory, time to refresh it"); it becomes the note on the revision item.

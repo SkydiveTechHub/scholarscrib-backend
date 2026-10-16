@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 
 from sqlalchemy.engine import CursorResult
@@ -18,35 +19,39 @@ from app.database.repositories.curriculum import (
     topic_edges_repository,
     topics_repository,
 )
+from app.database.repositories.learning import metrics_repository
 from app.database.repositories.planner import (
     academic_terms_repository,
     plan_items_repository,
     plan_positions_repository,
     plans_repository,
 )
-from app.domain import CLASS_LEVELS
 from app.services.learning.graph import GraphEdge, GraphNode, build_graph
+from app.services.learning.mastery import graph_colour
+from app.services.learning.mastery_store import GetTopicMasteryService
 from app.services.planner.days import add_days
+from app.services.planner.layout import RevisionDue
 from app.services.planner.mode import (
     CARRY_OVER_DAYS,
     DEFAULT_MINUTES,
     MANUAL_LOOKBACK_DAYS,
     PlanSettingsCheck,
-    at_or_below_class,
     compute_runway_start,
     plan_settings_problem,
     resolve_plan_mode,
+    scope_ordinal,
 )
 from app.services.planner.slots import Availability
 from app.services.planner.term_context import (
     TermRange,
+    default_term,
     resolve_term_context,
     term_header_label,
 )
 from app.services.planner.term_plan import PlannerInput, PlannerSubject, plan_window
 from app.services.planner.topics import CarryOver, PlanTopic, calendar_topic_id
 
-_TERMS = ("FIRST", "SECOND", "THIRD")
+logger = logging.getLogger(__name__)
 
 
 def _day(value) -> str:
@@ -71,17 +76,12 @@ async def _active(session: AsyncSession, student_id: str) -> StudyPlan | None:
     return await plans_repository.active(session, student_id)
 
 
-def position_options(topics: list[PlanTopic], class_level: str) -> list[dict]:
-    """Topics a student may pick as "my class is here": up to their own class."""
-    allowed = [t for t in topics if at_or_below_class(t.class_level, class_level)]
-    allowed.sort(
-        key=lambda t: (
-            CLASS_LEVELS.index(t.class_level),
-            _TERMS.index(t.term),
-            t.order_index,
-            t.id,
-        )
-    )
+def position_options(
+    topics: list[PlanTopic], class_level: str, term: str
+) -> list[dict]:
+    """Topics a student may pick as "my class is here": the plan's own term only."""
+    allowed = [t for t in topics if t.class_level == class_level and t.term == term]
+    allowed.sort(key=lambda t: (t.order_index, t.id))
     return [
         {
             "id": t.id,
@@ -93,16 +93,23 @@ def position_options(topics: list[PlanTopic], class_level: str) -> list[dict]:
 
 
 async def _plan_topics(session: AsyncSession, subject_id: str) -> list[PlanTopic]:
+    """Topics with a curriculum level. Unmapped topics are left out of every plan."""
     rows = await topics_repository.for_subject(session, subject_id)
     topics = []
     for topic in rows:
-        level, term = "SS1", "FIRST"
-        if topic.curriculum_level_id:
-            curriculum = await curriculum_levels_repository.by_id(
-                session, topic.curriculum_level_id
+        curriculum = (
+            await curriculum_levels_repository.by_id(session, topic.curriculum_level_id)
+            if topic.curriculum_level_id
+            else None
+        )
+        if curriculum is None:
+            logger.warning(
+                "Topic %s (subject %s) has no curriculum level; "
+                "left out of study plans",
+                topic.id,
+                subject_id,
             )
-            if curriculum:
-                level, term = curriculum.class_level, curriculum.term
+            continue
         topics.append(
             PlanTopic(
                 id=topic.id,
@@ -114,8 +121,8 @@ async def _plan_topics(session: AsyncSession, subject_id: str) -> list[PlanTopic
                 waec_weight=topic.waec_weight,
                 jamb_weight=topic.jamb_weight,
                 prerequisite_topic_id=topic.prerequisite_topic_id,
-                class_level=level,
-                term=term,
+                class_level=curriculum.class_level,
+                term=curriculum.term,
             )
         )
     return topics
@@ -130,11 +137,11 @@ async def _term_context(session: AsyncSession, today: str) -> dict:
     return resolve_term_context(today, configured)
 
 
-def _check(class_level: str | None, body: StudyPlanIn) -> None:
+def _check(body: StudyPlanIn) -> None:
     target = body.targetDate.isoformat() if body.targetDate else None
     problem = plan_settings_problem(
         PlanSettingsCheck(
-            class_level=class_level,
+            class_level=body.classLevel,
             target_date=target,
             force_exam_mode=body.forceExamMode,
             study_days=body.studyDays,
@@ -156,6 +163,26 @@ async def _ensure_subjects(session: AsyncSession, subject_ids: list[str]) -> Non
             raise ApiError(404, "Subject not found")
 
 
+async def _drop_positions_outside_scope(session: AsyncSession, plan: StudyPlan) -> None:
+    """A position belongs to one class and term; changing scope invalidates it."""
+    for row in await plan_positions_repository.for_plan(session, plan.id):
+        topic = (
+            await topics_repository.by_id(session, row.topic_id)
+            if row.topic_id
+            else None
+        )
+        curriculum = (
+            await curriculum_levels_repository.by_id(session, topic.curriculum_level_id)
+            if topic and topic.curriculum_level_id
+            else None
+        )
+        if curriculum is None or (curriculum.class_level, curriculum.term) != (
+            plan.scope_class_level,
+            plan.scope_term,
+        ):
+            await plan_positions_repository.remove(session, row)
+
+
 class GetStudyPlanService:
     def __init__(
         self,
@@ -169,13 +196,12 @@ class GetStudyPlanService:
 
     async def process(self) -> dict:
         today = lagos_day_key()
+        profile_class = self.class_level or "SS1"
         plan = await _active(self.session, self.student_id)
         if plan is not None and (
             plan.last_replanned_at is None or _day(plan.last_replanned_at) < today
         ):
-            await ReplanStudyPlanService(
-                self.session, plan, self.class_level or "SS1"
-            ).process()
+            await ReplanStudyPlanService(self.session, plan, profile_class).process()
         ctx = await _term_context(self.session, today)
         subject_rows = await subjects_repository.active_ordered(self.session)
         return {
@@ -183,8 +209,9 @@ class GetStudyPlanService:
             "classLevel": self.class_level,
             "termLabel": term_header_label(ctx),
             "termSource": ctx["source"],
+            "currentTerm": default_term(ctx),
             "daysToExam": self._days_to_exam(plan, today),
-            "defaults": DEFAULT_MINUTES.get(self.class_level or "SS1"),
+            "defaults": DEFAULT_MINUTES.get(profile_class),
             "subjects": [
                 {
                     "id": subject.id,
@@ -201,7 +228,7 @@ class GetStudyPlanService:
         if plan is None or plan.target_date is None:
             return None
         mode = resolve_plan_mode(
-            self.class_level, _day(plan.target_date), plan.force_exam_mode
+            plan.scope_class_level, _day(plan.target_date), plan.force_exam_mode
         )
         if mode == "TERM":
             return None
@@ -231,7 +258,9 @@ class GetStudyPlanService:
             for row in await plan_positions_repository.for_plan(self.session, plan.id)
             if row.subject_id in active_ids and row.topic_id
         }
-        class_level = self.class_level or "SS1"
+        class_level = plan.scope_class_level
+        term = plan.scope_term
+        follow_calendar = class_level == (self.class_level or "SS1")
         target = _day(plan.target_date) if plan.target_date else None
         mode = resolve_plan_mode(class_level, target, plan.force_exam_mode)
         plan_start = _day(plan.created_at) if plan.created_at else lagos_day_key()
@@ -245,8 +274,10 @@ class GetStudyPlanService:
         options: dict[str, list[dict]] = {}
         for subject_id in subject_ids:
             topics = await _plan_topics(self.session, subject_id)
-            calendar_positions[subject_id] = calendar_topic_id(topics, class_level, ctx)
-            options[subject_id] = position_options(topics, class_level)
+            calendar_positions[subject_id] = calendar_topic_id(
+                topics, class_level, term, follow_calendar, ctx
+            )
+            options[subject_id] = position_options(topics, class_level, term)
         return {
             "id": plan.id,
             "mode": mode,
@@ -297,6 +328,16 @@ class GetStudyPlanService:
             "positions": positions,
             "calendarPositions": calendar_positions,
             "positionOptions": options,
+            "scope": {"classLevel": class_level, "term": term},
+            "followsCalendar": follow_calendar
+            and (
+                (ctx["kind"] == "in_term" and ctx["current"].term == term)
+                or (
+                    ctx["kind"] == "holiday"
+                    and bool(ctx.get("previous"))
+                    and ctx["previous"].term == term
+                )
+            ),
         }
 
 
@@ -314,7 +355,7 @@ class CreateStudyPlanService:
         self.body = body
 
     async def process(self) -> dict:
-        _check(self.class_level, self.body)
+        _check(self.body)
         await _ensure_subjects(self.session, self.body.subjectIds)
         previous = await plans_repository.list_active(self.session, self.student_id)
         for row in previous:
@@ -329,6 +370,8 @@ class CreateStudyPlanService:
             study_days=self.body.studyDays,
             weekday_minutes=self.body.weekdayMinutes,
             weekend_minutes=self.body.weekendMinutes,
+            scope_class_level=self.body.classLevel,
+            scope_term=self.body.term,
             is_active=True,
         )
         await plans_repository.add(self.session, plan, flush=True)
@@ -344,18 +387,22 @@ class UpdateStudyPlanSettingsService:
         session: AsyncSession,
         student_id: str,
         class_level: str | None,
+        plan_id: str,
         body: StudyPlanIn,
     ) -> None:
         self.session = session
         self.student_id = student_id
         self.class_level = class_level
+        self.plan_id = plan_id
         self.body = body
 
     async def process(self) -> dict:
-        plan = await _active(self.session, self.student_id)
+        plan = await plans_repository.by_id(self.session, self.plan_id)
         if plan is None:
-            raise ApiError(404, "No active study plan")
-        _check(self.class_level, self.body)
+            raise ApiError(404, "Study plan not found")
+        if plan.student_id != self.student_id:
+            raise ApiError(404, "Study plan not found")
+        _check(self.body)
         await _ensure_subjects(self.session, self.body.subjectIds)
         plan.subject_ids = self.body.subjectIds
         plan.target_exam = self.body.targetExam
@@ -364,10 +411,32 @@ class UpdateStudyPlanSettingsService:
         plan.study_days = self.body.studyDays
         plan.weekday_minutes = self.body.weekdayMinutes
         plan.weekend_minutes = self.body.weekendMinutes
+        plan.scope_class_level = self.body.classLevel
+        plan.scope_term = self.body.term
+        await _drop_positions_outside_scope(self.session, plan)
         await ReplanStudyPlanService(
             self.session, plan, self.class_level or "SS1"
         ).process()
         return {"ok": True}
+
+
+class DeleteStudyPlanService:
+    """Soft delete: the plan stops being active; its items and history are kept."""
+
+    def __init__(self, session: AsyncSession, student_id: str, plan_id: str) -> None:
+        self.session = session
+        self.student_id = student_id
+        self.plan_id = plan_id
+
+    async def process(self) -> dict:
+        plan = await plans_repository.by_id(self.session, self.plan_id)
+        if plan is None:
+            raise ApiError(404, "Study plan not found")
+        if plan.student_id != self.student_id:
+            raise ApiError(404, "Study plan not found")
+        await plans_repository.lock(self.session, StudyPlan.id == plan.id)
+        plan.is_active = False
+        return {"planId": plan.id}
 
 
 class SetStudyPlanPositionsService:
@@ -410,15 +479,18 @@ class SetStudyPlanPositionsService:
         topic = await topics_repository.by_id(self.session, item.topicId)
         if topic is None or topic.subject_id != item.subjectId:
             raise ApiError(400, "Topic is not on that subject")
-        if topic.curriculum_level_id:
-            curriculum = await curriculum_levels_repository.by_id(
+        curriculum = (
+            await curriculum_levels_repository.by_id(
                 self.session, topic.curriculum_level_id
             )
-            if curriculum and self.class_level:
-                from app.services.planner.mode import at_or_below_class
-
-                if not at_or_below_class(curriculum.class_level, self.class_level):
-                    raise ApiError(400, "That topic is above your class")
+            if topic.curriculum_level_id
+            else None
+        )
+        if curriculum is None or (curriculum.class_level, curriculum.term) != (
+            plan.scope_class_level,
+            plan.scope_term,
+        ):
+            raise ApiError(400, "That topic is outside your plan's term")
         if existing:
             existing.topic_id = topic.id
         else:
@@ -511,6 +583,17 @@ class MarkStudyPlanItemService:
                 return
 
 
+def _scope_topic_ids(subjects: list[PlannerSubject], plan: StudyPlan) -> set[str]:
+    """Ids of topics in the plan's scope or an earlier one, never a later one."""
+    limit = scope_ordinal(plan.scope_class_level, plan.scope_term)
+    return {
+        topic.id
+        for subject in subjects
+        for topic in subject.topics
+        if scope_ordinal(topic.class_level, topic.term) <= limit
+    }
+
+
 class ReplanStudyPlanService:
     def __init__(
         self, session: AsyncSession, plan: StudyPlan, class_level: str
@@ -525,11 +608,15 @@ class ReplanStudyPlanService:
         carry = await self._miss_and_clear(today)
         planner_subjects, nodes = await self._build_subjects()
         edges = await self._edges(nodes)
+        state, pretest_passed, revision_due = await self._learning_inputs(
+            nodes, _scope_topic_ids(planner_subjects, self.plan)
+        )
         position_rows = await plan_positions_repository.for_plan(
             self.session, self.plan.id
         )
         target = _day(self.plan.target_date) if self.plan.target_date else None
-        mode = resolve_plan_mode(self.class_level, target, self.plan.force_exam_mode)
+        scope_class = self.plan.scope_class_level
+        mode = resolve_plan_mode(scope_class, target, self.plan.force_exam_mode)
         ctx = await _term_context(self.session, today)
         output = plan_window(
             PlannerInput(
@@ -538,7 +625,9 @@ class ReplanStudyPlanService:
                 if self.plan.created_at
                 else today,
                 mode=mode,
-                class_level=self.class_level,
+                class_level=scope_class,
+                term=self.plan.scope_term,
+                home_class_level=self.class_level,
                 target_date=target,
                 term_context=ctx,
                 availability=Availability(
@@ -548,12 +637,54 @@ class ReplanStudyPlanService:
                 ),
                 subjects=planner_subjects,
                 graph=build_graph(nodes, edges),
-                state={},
+                state=state,
+                pretest_passed=pretest_passed,
+                revision_due=revision_due,
                 positions={row.subject_id: row.topic_id for row in position_rows},
                 carry_over=carry,
             )
         )
         await self._persist_output(output)
+
+    async def _learning_inputs(
+        self, nodes: list[GraphNode], in_scope: set[str]
+    ) -> tuple[dict, set[str], list[RevisionDue]]:
+        """Mastery, pretests and fading topics; a failure must not fail a replan.
+
+        Only topics in `in_scope` (the plan's scope or earlier) may be revised.
+        """
+        topic_ids = [node.id for node in nodes]
+        if not topic_ids:
+            return {}, set(), []
+        try:
+            async with self.session.begin_nested():
+                state = await GetTopicMasteryService(
+                    self.session, self.plan.student_id, topic_ids
+                ).process()
+                passed = set(
+                    await metrics_repository.passed_topic_ids(
+                        self.session, self.plan.student_id, topic_ids
+                    )
+                )
+        except Exception:
+            logger.exception(
+                "Could not load learning state for plan of student %s",
+                self.plan.student_id,
+            )
+            return {}, set(), []
+        due = [
+            RevisionDue(
+                topic_id=node.id,
+                subject_id=node.subject_id,
+                title=node.title,
+                reason="Fading from memory, time to refresh it",
+            )
+            for node in nodes
+            if node.id in in_scope
+            and node.id in state
+            and graph_colour(state[node.id]) == "DECAYED"
+        ]
+        return state, passed, due
 
     async def _miss_and_clear(self, today: str) -> list[CarryOver]:
         pending = await plan_items_repository.pending_for_plan(
