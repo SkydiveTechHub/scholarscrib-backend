@@ -621,10 +621,12 @@ class SignMaterialUploadService:
             if self.material_type == "PDF"
             else "prepwell/materials/image"
         )
-        formats = "pdf" if self.material_type == "PDF" else "jpg,jpeg,png,webp"
+        formats = (
+            ["pdf"] if self.material_type == "PDF" else ["jpg", "jpeg", "png", "webp"]
+        )
         timestamp = int(time.time())
         payload = (
-            f"allowed_formats={formats}&folder={folder}"
+            f"allowed_formats={','.join(formats)}&folder={folder}"
             f"&timestamp={timestamp}{settings.cloudinary_api_secret}"
         )
         signature = hashlib.sha1(payload.encode()).hexdigest()
