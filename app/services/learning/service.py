@@ -34,6 +34,7 @@ from app.database.repositories.question import questions_repository
 from app.domain import can
 from app.services.assessments.grading import coarse_grade
 from app.services.auth.rules import current_streak
+from app.services.learning.achievement_progress import progress_for, target_for
 from app.services.learning.checkpoint import sanitise_checkpoint
 from app.services.learning.evidence import PRETEST_PASS
 
@@ -208,8 +209,19 @@ class GetAchievementsService:
             self.session, self.student_id
         )
         earned = {row.achievement_id: row.earned_at for row in earned_rows}
-        return {
-            "achievements": [
+        measure = AchievementMeasure(self.session, self.student_id)
+        rows = []
+        for item in catalogue:
+            target = target_for(item.criteria_type, item.criteria_value)
+            if item.id in earned:
+                progress = target
+            else:
+                progress = progress_for(
+                    item.criteria_type,
+                    await measure.current(item.criteria_type),
+                    item.criteria_value,
+                )
+            rows.append(
                 {
                     "id": item.id,
                     "title": item.title,
@@ -220,17 +232,18 @@ class GetAchievementsService:
                     "earnedAt": (
                         earned[item.id].isoformat() if item.id in earned else None
                     ),
+                    "progress": progress,
+                    "target": target,
                 }
-                for item in catalogue
-            ],
-            "earned": len(earned),
-        }
+            )
+        return {"achievements": rows, "earned": len(earned)}
 
 
 class AwardAchievementsService:
     def __init__(self, session: AsyncSession, student_id: str) -> None:
         self.session = session
         self.student_id = student_id
+        self.measure = AchievementMeasure(session, student_id)
 
     async def process(self) -> dict:
         catalogue = await achievements_repository.all(self.session) or []
@@ -261,47 +274,62 @@ class AwardAchievementsService:
         }
 
     async def _passes(self, criteria: str, value: int) -> bool:
+        raw = await self.measure.current(criteria)
+        return progress_for(criteria, raw, value) >= target_for(criteria, value)
+
+
+class AchievementMeasure:
+    """The student's current figure for each achievement criterion."""
+
+    def __init__(self, session: AsyncSession, student_id: str) -> None:
+        self.session = session
+        self.student_id = student_id
+        self._cache: dict[str, int] = {}
+
+    async def current(self, criteria: str) -> int:
+        if criteria not in self._cache:
+            self._cache[criteria] = await self._measure(criteria)
+        return self._cache[criteria]
+
+    async def _measure(self, criteria: str) -> int:
         if criteria == "questions_answered":
-            count = await responses_repository.answered_count(
+            return await responses_repository.answered_count(
                 self.session, self.student_id
             )
-            return count >= value
         if criteria == "perfect_score":
-            found = await attempts_repository.perfect_scores(
+            return await attempts_repository.perfect_scores(
                 self.session, self.student_id
             )
-            return found > 0
         if criteria == "lessons_completed":
-            count = await progress_repository.completed_count(
+            return await progress_repository.completed_count(
                 self.session, self.student_id
             )
-            return count >= value
         if criteria == "mock_score_70":
-            found = await attempts_repository.mock_scores_at_least(
+            return await attempts_repository.mock_scores_at_least(
                 self.session, self.student_id, 70
             )
-            return found > 0
         if criteria == "streak_days":
             rows = await attempts_repository.completed_at(self.session, self.student_id)
             days = {lagos_day_key(moment) for moment in rows if moment}
-            return current_streak(days, lagos_day_key()) >= value
+            return current_streak(days, lagos_day_key())
         if criteria == "subject_mastery":
-            return await self._subject_mastery(value)
-        return False
+            return await self._strong_subjects()
+        return 0
 
-    async def _subject_mastery(self, value: int) -> bool:
+    async def _strong_subjects(self) -> int:
         from app.services.learning.mastery_store import GetTopicMasteryService
 
         states = await GetTopicMasteryService(self.session, self.student_id).process()
         if not states:
-            return False
+            return 0
         topic_rows = await topics_repository.for_ids(self.session, list(states))
-        strong_subjects = {
-            topic.subject_id
-            for topic in topic_rows
-            if states[topic.id].level == "STRONG"
-        }
-        return len(strong_subjects) >= value
+        return len(
+            {
+                topic.subject_id
+                for topic in topic_rows
+                if states[topic.id].level == "STRONG"
+            }
+        )
 
 
 class RecordPretestPassService:
