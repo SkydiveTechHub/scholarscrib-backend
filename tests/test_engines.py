@@ -260,6 +260,51 @@ def test_plan_window_stays_inside_the_class():
     assert term_header_label(context).startswith("1st term")
 
 
+def _term_plan(lessons_done=None):
+    first = TermRange("2026/2027", "FIRST", "2026-09-07", "2026-11-29")
+    return plan_window(
+        PlannerInput(
+            today="2026-09-14",
+            plan_start="2026-09-14",
+            mode="TERM",
+            class_level="SS1",
+            term="FIRST",
+            home_class_level="SS1",
+            target_date=None,
+            term_context=resolve_term_context("2026-09-14", [first]),
+            availability=Availability([1, 2, 3, 4, 6], 30, 60),
+            subjects=[
+                PlannerSubject("maths", "Mathematics", [_topic("a1", order_index=1)])
+            ],
+            graph=build_graph([], []),
+            state={},
+            lessons_done=lessons_done or {},
+        )
+    )
+
+
+def _lessons_of(output, topic_id):
+    return [
+        item
+        for item in output["items"]
+        if item.topic_id == topic_id and item.activity_type == "LESSON"
+    ]
+
+
+def test_replan_credits_lessons_already_completed():
+    # A 45-minute topic is two 30-minute lessons.
+    assert len(_lessons_of(_term_plan(), "a1")) == 2
+    assert len(_lessons_of(_term_plan({"a1": 1}), "a1")) == 1
+    assert _lessons_of(_term_plan({"a1": 2}), "a1") == []
+    # Practice for a fully taught topic is still planned.
+    practice = [
+        item
+        for item in _term_plan({"a1": 2})["items"]
+        if item.topic_id == "a1" and item.activity_type == "PRACTICE"
+    ]
+    assert practice
+
+
 def test_term_topic_selection_mid_term():
     topics = [_topic(f"t{n}", order_index=n) for n in range(1, 7)]
     context = {

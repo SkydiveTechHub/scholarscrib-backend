@@ -26,7 +26,9 @@ router = APIRouter(prefix="/study-plan", tags=["Student / Study plan"])
 async def get_plan(
     session: AnSession, student: Annotated[StudentPrincipal, Depends(require_student)]
 ):
-    return await GetStudyPlanService(session, student.id, student.class_level).process()
+    return await GetStudyPlanService(
+        session, student.id, student.class_level, student.track
+    ).process()
 
 
 @router.post(
@@ -41,7 +43,7 @@ async def create_plan(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     return await CreateStudyPlanService(
-        session, student.id, student.class_level, body
+        session, student.id, student.class_level, body, student.track
     ).process()
 
 
@@ -57,7 +59,7 @@ async def patch_plan(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     return await UpdateStudyPlanSettingsService(
-        session, student.id, student.class_level, plan_id, body
+        session, student.id, student.class_level, plan_id, body, student.track
     ).process()
 
 
