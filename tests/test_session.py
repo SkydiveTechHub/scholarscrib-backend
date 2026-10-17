@@ -19,6 +19,7 @@ from app.services.learning.session import (
     exam_weight,
     item_is_done,
     mark_done,
+    reconcile_plan,
     retrieval_priority,
     summarise,
 )
@@ -619,6 +620,78 @@ async def test_save_failure_still_returns_session(store):
         FakeSession(), "stu", "2026-10-12", compose=compose, plan_status={}, now=NOW
     )
     assert result["total"] == 1
+
+
+def plan_session_item(plan_item_id, topic_id="b", activity="LESSON"):
+    return {
+        **engine_item("LEARN"),
+        "id": f"plan:{plan_item_id}",
+        "source": "PLAN",
+        "topicId": topic_id,
+        "planItemId": plan_item_id,
+        "activityType": activity,
+    }
+
+
+def live_plan_item(plan_item_id, topic_id="b", activity="LESSON", status="PENDING"):
+    return {
+        "id": plan_item_id,
+        "subjectId": "s1",
+        "topicId": topic_id,
+        "activityType": activity,
+        "durationMinutes": 30,
+        "status": status,
+    }
+
+
+def test_reconcile_repoints_a_replanned_item_to_its_new_id():
+    items = [plan_session_item("old")]
+    assert reconcile_plan(items, [live_plan_item("new", status="COMPLETED")]) is True
+    assert items[0]["planItemId"] == "new"
+    assert items[0]["id"] == "plan:new"
+    assert item_is_done(items[0], [], {"new": "COMPLETED"}) is True
+
+
+def test_reconcile_pairs_duplicate_topic_items_one_to_one():
+    items = [plan_session_item("old1"), plan_session_item("old2")]
+    live = [live_plan_item("n1"), live_plan_item("n2")]
+    reconcile_plan(items, live)
+    assert [item["planItemId"] for item in items] == ["n1", "n2"]
+
+
+def test_reconcile_drops_a_plan_item_that_left_the_plan():
+    gone = plan_session_item("old", topic_id="zzz")
+    kept = plan_session_item("p2")
+    engine = engine_item("PRACTICE")
+    items = [gone, kept, engine]
+    assert reconcile_plan(items, [live_plan_item("p2")]) is True
+    assert items == [kept, engine]
+
+
+def test_reconcile_keeps_finished_items_and_is_a_noop_when_in_sync():
+    done = {**plan_session_item("old", topic_id="zzz"), "doneAt": NOW.isoformat()}
+    items = [done]
+    assert reconcile_plan(items, []) is False
+    assert items == [done]
+    synced = [plan_session_item("p1")]
+    assert reconcile_plan(synced, [live_plan_item("p1")]) is False
+
+
+async def test_stale_plan_item_is_ticked_and_saved(store):
+    store.row = SimpleNamespace(items=[plan_session_item("old")])
+    live = [live_plan_item("new", status="COMPLETED")]
+    result = await session_store.todays_session(
+        FakeSession(),
+        "stu",
+        "2026-10-12",
+        compose=never_compose,
+        plan_status={"new": "COMPLETED"},
+        plan_items=live,
+        now=NOW,
+    )
+    assert result["done"] == 1
+    assert store.row.items[0]["planItemId"] == "new"
+    assert store.row.items[0]["doneAt"] == NOW.isoformat()
 
 
 def test_dashboard_out_serves_session_not_old_rails():

@@ -418,6 +418,53 @@ def item_is_done(
     return False
 
 
+def reconcile_plan(items: list[dict], plan_items: Sequence[dict]) -> bool:
+    """Re-sync stored PLAN items with today's live plan items; True if changed.
+
+    A replan deletes pending plan items and re-creates them with new ids, so a
+    stored `planItemId` can point at nothing. Such an item is re-pointed at an
+    unclaimed live item for the same topic and activity (or subject, for items
+    with no topic), and dropped when none is left. Finished items stay as they
+    are.
+    """
+    live_ids = {plan_item["id"] for plan_item in plan_items}
+    claimed = {
+        item["planItemId"]
+        for item in items
+        if item["source"] == "PLAN" and item["planItemId"] in live_ids
+    }
+    changed = False
+    kept: list[dict] = []
+    for item in items:
+        if (
+            item["source"] != "PLAN"
+            or item["planItemId"] in live_ids
+            or item.get("doneAt")
+        ):
+            kept.append(item)
+            continue
+        match = next(
+            (
+                plan_item
+                for plan_item in plan_items
+                if plan_item["id"] not in claimed
+                and plan_item["activityType"] == item.get("activityType")
+                and plan_item.get("topicId") == item["topicId"]
+                and (item["topicId"] or plan_item.get("subjectId") == item["subjectId"])
+            ),
+            None,
+        )
+        changed = True
+        if match is None:
+            continue
+        claimed.add(match["id"])
+        item["planItemId"] = match["id"]
+        item["id"] = f"plan:{match['id']}"
+        kept.append(item)
+    items[:] = kept
+    return changed
+
+
 def mark_done(
     items: list[dict],
     events: Sequence[DayEvent],

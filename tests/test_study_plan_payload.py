@@ -3,7 +3,8 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from app.services.planner.service import position_options
+from app.services.planner import service
+from app.services.planner.service import position_options, selectable_subjects
 from app.services.planner.topics import PlanTopic
 
 
@@ -404,3 +405,60 @@ async def test_holiday_does_not_follow_the_calendar_for_another_term(monkeypatch
     payload = await _follows_in_holiday(monkeypatch, "SECOND")
     assert payload["calendarPositions"] == {"maths": "c"}
     assert payload["followsCalendar"] is False
+
+
+def _subject(subject_id, category):
+    return NS(id=subject_id, track_category=category)
+
+
+def test_selectable_subjects_follow_the_students_track():
+    rows = [
+        _subject("eng", "CORE"),
+        _subject("phy", "SCIENCE"),
+        _subject("lit", "ARTS"),
+        _subject("acc", "COMMERCIAL"),
+    ]
+    assert [s.id for s in selectable_subjects(rows, "SCIENCE", [])] == ["eng", "phy"]
+    assert [s.id for s in selectable_subjects(rows, "ARTS", [])] == ["eng", "lit"]
+
+
+def test_selectable_subjects_show_everything_without_a_track():
+    rows = [_subject("eng", "CORE"), _subject("phy", "SCIENCE")]
+    assert selectable_subjects(rows, None, []) == rows
+
+
+def test_selectable_subjects_keep_ones_already_in_the_plan():
+    rows = [
+        _subject("eng", "CORE"),
+        _subject("phy", "SCIENCE"),
+        _subject("lit", "ARTS"),
+    ]
+    kept = selectable_subjects(rows, "SCIENCE", ["lit"])
+    assert [s.id for s in kept] == ["eng", "phy", "lit"]
+
+
+@pytest.fixture
+def subject_table(monkeypatch):
+    table = {
+        "eng": NS(id="eng", track_category="CORE", is_active=True),
+        "phy": NS(id="phy", track_category="SCIENCE", is_active=True),
+        "lit": NS(id="lit", track_category="ARTS", is_active=True),
+    }
+
+    async def by_id(_session, subject_id):
+        return table.get(subject_id)
+
+    monkeypatch.setattr(service.subjects_repository, "by_id", by_id)
+    return table
+
+
+async def test_save_rejects_a_subject_outside_the_track(subject_table):
+    with pytest.raises(service.ApiError) as raised:
+        await service._ensure_subjects(None, ["eng", "lit"], "SCIENCE", [])
+    assert raised.value.status_code == 400
+
+
+async def test_save_accepts_track_core_and_existing_plan_subjects(subject_table):
+    await service._ensure_subjects(None, ["eng", "phy"], "SCIENCE", [])
+    await service._ensure_subjects(None, ["lit"], "SCIENCE", ["lit"])
+    await service._ensure_subjects(None, ["lit"], None, [])

@@ -40,6 +40,7 @@ class PlannerInput:
     revision_due: list[RevisionDue] = field(default_factory=list)
     carry_over: list = field(default_factory=list)
     fixed: list[FixedItem] = field(default_factory=list)
+    lessons_done: dict[str, int] = field(default_factory=dict)
 
 
 def plan_window(planner: PlannerInput) -> dict:
@@ -94,6 +95,7 @@ def plan_window(planner: PlannerInput) -> dict:
         pretest_passed=planner.pretest_passed,
         revision_due=planner.revision_due,
         fixed=planner.fixed,
+        lessons_done=planner.lessons_done,
     )
     if exam_bound:
         until = planner.target_date

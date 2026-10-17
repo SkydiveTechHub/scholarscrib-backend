@@ -142,6 +142,7 @@ class GetDashboardService:
                     all_topics, states, dependents, today_items, now
                 ),
                 plan_status={item["id"]: item["status"] for item in today_items},
+                plan_items=today_items,
                 now=now,
             )
             # A subject deactivated after today's session was stored leaves it.

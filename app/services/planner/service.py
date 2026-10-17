@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from datetime import date, datetime
 
 from sqlalchemy.engine import CursorResult
@@ -156,11 +157,27 @@ def _check(body: StudyPlanIn) -> None:
         raise ApiError(400, "An exam target needs both an exam and a date")
 
 
-async def _ensure_subjects(session: AsyncSession, subject_ids: list[str]) -> None:
+async def _ensure_subjects(
+    session: AsyncSession,
+    subject_ids: list[str],
+    track: str | None = None,
+    existing_ids: Sequence[str] = (),
+) -> None:
+    """Subjects must exist, be active and fit the student's track.
+
+    CORE is shared by every track, subjects already in the plan stay allowed so
+    an old plan can still be edited, and no track means no track check.
+    """
     for subject_id in subject_ids:
         subject = await subjects_repository.by_id(session, subject_id)
         if subject is None or not subject.is_active:
             raise ApiError(404, "Subject not found")
+        if (
+            track
+            and subject.track_category not in {"CORE", track}
+            and subject_id not in existing_ids
+        ):
+            raise ApiError(400, "That subject is not part of your track")
 
 
 async def _drop_positions_outside_scope(session: AsyncSession, plan: StudyPlan) -> None:
@@ -183,16 +200,34 @@ async def _drop_positions_outside_scope(session: AsyncSession, plan: StudyPlan) 
             await plan_positions_repository.remove(session, row)
 
 
+def selectable_subjects(rows, track: str | None, plan_subject_ids) -> list:
+    """Subjects offered when planning: the student's track plus CORE.
+
+    Subjects already in the plan stay listed so they can be seen and removed.
+    No track means no filter.
+    """
+    if not track:
+        return list(rows)
+    keep = set(plan_subject_ids or [])
+    return [
+        subject
+        for subject in rows
+        if subject.track_category in {"CORE", track} or subject.id in keep
+    ]
+
+
 class GetStudyPlanService:
     def __init__(
         self,
         session: AsyncSession,
         student_id: str,
         class_level: str | None,
+        track: str | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
         self.class_level = class_level
+        self.track = track
 
     async def process(self) -> dict:
         today = lagos_day_key()
@@ -203,7 +238,11 @@ class GetStudyPlanService:
         ):
             await ReplanStudyPlanService(self.session, plan, profile_class).process()
         ctx = await _term_context(self.session, today)
-        subject_rows = await subjects_repository.active_ordered(self.session)
+        subject_rows = selectable_subjects(
+            await subjects_repository.active_ordered(self.session),
+            self.track,
+            plan.subject_ids if plan is not None else [],
+        )
         return {
             "today": today,
             "classLevel": self.class_level,
@@ -348,16 +387,23 @@ class CreateStudyPlanService:
         student_id: str,
         class_level: str | None,
         body: StudyPlanIn,
+        track: str | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
         self.class_level = class_level
         self.body = body
+        self.track = track
 
     async def process(self) -> dict:
         _check(self.body)
-        await _ensure_subjects(self.session, self.body.subjectIds)
         previous = await plans_repository.list_active(self.session, self.student_id)
+        await _ensure_subjects(
+            self.session,
+            self.body.subjectIds,
+            self.track,
+            [subject_id for row in previous for subject_id in row.subject_ids or []],
+        )
         for row in previous:
             row.is_active = False
         plan = StudyPlan(
@@ -389,12 +435,14 @@ class UpdateStudyPlanSettingsService:
         class_level: str | None,
         plan_id: str,
         body: StudyPlanIn,
+        track: str | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
         self.class_level = class_level
         self.plan_id = plan_id
         self.body = body
+        self.track = track
 
     async def process(self) -> dict:
         plan = await plans_repository.by_id(self.session, self.plan_id)
@@ -403,7 +451,9 @@ class UpdateStudyPlanSettingsService:
         if plan.student_id != self.student_id:
             raise ApiError(404, "Study plan not found")
         _check(self.body)
-        await _ensure_subjects(self.session, self.body.subjectIds)
+        await _ensure_subjects(
+            self.session, self.body.subjectIds, self.track, plan.subject_ids or []
+        )
         plan.subject_ids = self.body.subjectIds
         plan.target_exam = self.body.targetExam
         plan.target_date = _as_date(self.body.targetDate)
@@ -642,6 +692,7 @@ class ReplanStudyPlanService:
                 revision_due=revision_due,
                 positions={row.subject_id: row.topic_id for row in position_rows},
                 carry_over=carry,
+                lessons_done=await self._lessons_done(),
             )
         )
         await self._persist_output(output)
@@ -685,6 +736,18 @@ class ReplanStudyPlanService:
             and graph_colour(state[node.id]) == "DECAYED"
         ]
         return state, passed, due
+
+    async def _lessons_done(self) -> dict[str, int]:
+        """Completed lessons per topic, so a replan does not teach them again."""
+        done: dict[str, int] = {}
+        for item in await plan_items_repository.for_plan(self.session, self.plan.id):
+            if (
+                item.status == "COMPLETED"
+                and item.activity_type == "LESSON"
+                and item.topic_id
+            ):
+                done[item.topic_id] = done.get(item.topic_id, 0) + 1
+        return done
 
     async def _miss_and_clear(self, today: str) -> list[CarryOver]:
         pending = await plan_items_repository.pending_for_plan(

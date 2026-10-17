@@ -137,8 +137,10 @@ def layout_window(
     pretest_passed: set[str],
     revision_due: list[RevisionDue],
     fixed: list[FixedItem],
+    lessons_done: dict[str, int] | None = None,
 ) -> tuple[list[WindowItemDraft], Overload | None]:
     days = _free_days(slots, fixed)
+    done = lessons_done or {}
     items: list[WindowItemDraft] = []
     day_subjects: dict[DayKey, set[str]] = {}
 
@@ -180,10 +182,15 @@ def layout_window(
         if topic_id in queues:
             return
         mastery = state[topic_id].mastery if topic_id in state else 0
+        # Lessons the student already finished in this plan are not taught again.
         lessons = (
             0
             if exam or topic_id in pretest_passed
-            else max(1, math.ceil(candidate.topic.estimated_minutes / SESSION_MINUTES))
+            else max(
+                0,
+                max(1, math.ceil(candidate.topic.estimated_minutes / SESSION_MINUTES))
+                - done.get(topic_id, 0),
+            )
         )
         practice = 1 if exam else (2 if mastery < WEAK_MASTERY else 1)
         queues[topic_id] = _Queue(
