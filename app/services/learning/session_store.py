@@ -7,7 +7,7 @@ load tries again.
 """
 
 import copy
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +19,7 @@ from app.database.repositories.learning import (
     daily_sessions_repository,
     learning_events_repository,
 )
-from app.services.learning.session import DayEvent, mark_done, summarise
+from app.services.learning.session import DayEvent, mark_done, reconcile_plan, summarise
 
 
 async def todays_session(
@@ -29,11 +29,18 @@ async def todays_session(
     *,
     compose: Callable[[], Awaitable[list[dict]]],
     plan_status: Mapping[str, str],
+    plan_items: Sequence[dict] | None = None,
     now: datetime,
 ) -> dict:
     row = await daily_sessions_repository.for_day(session, student_id, day)
     items = copy.deepcopy(row.items) if row is not None else await compose()
+    # A replan gives plan items new ids; follow them so they can still tick.
+    repointed = (
+        row is not None and plan_items is not None and reconcile_plan(items, plan_items)
+    )
     if not items:
+        if repointed:
+            await _save(session, student_id, day, row, items)
         return summarise([])
     events = [
         DayEvent(event.topic_id, event.kind)
@@ -42,7 +49,7 @@ async def todays_session(
         )
     ]
     changed = mark_done(items, events, plan_status, now)
-    if row is None or changed:
+    if row is None or changed or repointed:
         await _save(session, student_id, day, row, items)
     return summarise(items)
 
