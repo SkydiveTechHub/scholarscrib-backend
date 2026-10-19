@@ -631,7 +631,7 @@ async def exchange_google_code(code: str, redirect_uri: str) -> dict:
                 "code": code,
                 "client_id": settings.auth_google_id,
                 "client_secret": settings.auth_google_secret,
-                "redirect_uri": redirect_uri,
+                "redirect_uri": redirect_uri.rstrip("/"),
                 "grant_type": "authorization_code",
             },
         )
