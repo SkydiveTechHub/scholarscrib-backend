@@ -126,7 +126,7 @@ async def google_start(
 async def google_callback(
     code: str, request: Request, session: AnSession
 ) -> RedirectResponse:
-    profile = await exchange_google_code(code, str(request.url_for("google_callback")))
+    profile = await exchange_google_code(code, settings.frontend_url)
     result = await GoogleSignInService(
         session, profile, request.headers.get("user-agent", "Browser")
     ).process()
