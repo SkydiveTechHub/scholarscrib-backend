@@ -23,7 +23,8 @@ from pathlib import Path
 
 from app.core.ids import cuid
 from app.database.db import get_session
-from app.database.models import CurriculumLevel, Subject, Topic
+from app.database.models import Achievement, CurriculumLevel, Subject, Topic
+from app.database.repositories.learning import achievements_repository
 from app.database.repositories.curriculum import (
     curriculum_levels_repository,
     subjects_repository,
@@ -50,6 +51,23 @@ SUBJECT_NAME_ALIASES = {
     "Physical and Health Education": "HED",
     "Basic Electricity (Electronics)": "BEL",
 }
+
+# (title, description, criteriaType, criteriaValue); criteria are defined in
+# app/services/learning/achievement_progress.py.
+ACHIEVEMENTS = [
+    ("First Steps", "Answer your first 10 questions.", "questions_answered", 10),
+    ("Century Club", "Answer 100 questions.", "questions_answered", 100),
+    ("Question Machine", "Answer 500 questions.", "questions_answered", 500),
+    ("Perfectionist", "Score 100% on a practice or exam attempt.", "perfect_score", 1),
+    ("On a Roll", "Study 3 days in a row.", "streak_days", 3),
+    ("Week Warrior", "Study 7 days in a row.", "streak_days", 7),
+    ("Unstoppable", "Study 30 days in a row.", "streak_days", 30),
+    ("Eager Learner", "Complete 5 lessons.", "lessons_completed", 5),
+    ("Bookworm", "Complete 25 lessons.", "lessons_completed", 25),
+    ("Subject Master", "Reach strong mastery in 1 subject.", "subject_mastery", 1),
+    ("All-Rounder", "Reach strong mastery in 3 subjects.", "subject_mastery", 3),
+    ("Mock Ace", "Score 70% or more in a mock exam or CBT practice.", "mock_score_70", 1),
+]
 
 DEFAULT_ESTIMATED_MINUTES = 45
 DEFAULT_WAEC_WEIGHT = 0.0
@@ -192,11 +210,34 @@ async def seed_curriculum(
     print(f"  {subject.name}: {created} created, {updated} updated")
 
 
+async def seed_achievements(session) -> None:
+    existing = {row.title: row for row in await achievements_repository.all(session)}
+    created = updated = 0
+    for title, description, criteria_type, criteria_value in ACHIEVEMENTS:
+        values = {
+            "description": description,
+            "criteria_type": criteria_type,
+            "criteria_value": criteria_value,
+        }
+        row = existing.get(title)
+        if row is None:
+            await achievements_repository.add(
+                session,
+                Achievement(id=cuid(), title=title, **values),
+                flush=True,
+            )
+            created += 1
+        elif apply_changes(row, values):
+            updated += 1
+    print(f"  achievements: {created} created, {updated} updated")
+
+
 async def main() -> None:
     subjects, curriculum, metadata = load_seed()
     name_to_code = {row["name"]: row["code"] for row in subjects}
-    print("Seeding subjects and curriculum")
+    print("Seeding subjects, curriculum and achievements")
     async with get_session() as session:
+        await seed_achievements(session)
         await seed_subjects(session, subjects)
         for name, terms in curriculum.items():
             code = resolve_code(name, name_to_code)

@@ -458,7 +458,9 @@ class ProgressOut(ApiOut):
 
 
 class LibraryOut(ApiOut):
-    resources: list[dict]
+    # `subjects` is the shelf (no subjectId); `resources` is one subject's list.
+    subjects: list[dict] | None = None
+    resources: list[dict] | None = None
 
 
 class AchievementsOut(ApiOut):

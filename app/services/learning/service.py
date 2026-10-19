@@ -37,6 +37,7 @@ from app.services.auth.rules import current_streak
 from app.services.learning.achievement_progress import progress_for, target_for
 from app.services.learning.checkpoint import sanitise_checkpoint
 from app.services.learning.evidence import PRETEST_PASS
+from app.services.learning.library_shelf import library_shelf
 
 STATUS_RANK = {"NOT_STARTED": 0, "IN_PROGRESS": 1, "COMPLETED": 2}
 
@@ -172,13 +173,14 @@ class GetLibraryService:
         self.subject_id = subject_id
 
     async def process(self) -> dict:
+        if not self.subject_id:
+            subjects = await subjects_repository.active_ordered(self.session)
+            counts = await subject_resources_repository.counts_by_subject(self.session)
+            return {"subjects": library_shelf(subjects, counts, self.track)}
         premium = can(self.tier, "premiumLibrary")
-        if self.subject_id:
-            rows = await subject_resources_repository.for_subject(
-                self.session, self.subject_id
-            )
-        else:
-            rows = await subject_resources_repository.visible(self.session, self.track)
+        rows = await subject_resources_repository.for_subject(
+            self.session, self.subject_id
+        )
         resources = []
         for row in rows:
             locked = not row.is_free and not premium
