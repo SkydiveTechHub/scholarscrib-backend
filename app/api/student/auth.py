@@ -103,11 +103,10 @@ async def session_view(student: Annotated[StudentPrincipal, Depends(require_stud
 async def google_start(request: Request) -> RedirectResponse:
     if not settings.google_enabled:
         raise ApiError(503, "Google sign-in is not configured")
-    redirect_uri = str(request.url_for("google_callback"))
     query = urlencode(
         {
             "client_id": settings.auth_google_id,
-            "redirect_uri": redirect_uri,
+            "redirect_uri": settings.frontend_url,
             "response_type": "code",
             "scope": "openid email profile",
         }

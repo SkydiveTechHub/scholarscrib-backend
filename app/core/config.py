@@ -58,6 +58,7 @@ class Settings(BaseSettings):
 
     resend_api_key: str | None = None
     email_from: str = "noreply@scholarscrib.com"
+    frontend_url: str = "https://scholarscrib.vercel.app"
 
     @model_validator(mode="after")
     def secrets_must_differ(self) -> "Settings":
