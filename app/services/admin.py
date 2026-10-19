@@ -627,10 +627,12 @@ class SignMaterialUploadService:
         timestamp = int(time.time())
         payload = (
             f"allowed_formats={','.join(formats)}&folder={folder}"
-            f"&timestamp={timestamp}{settings.cloudinary_api_secret}"
+            f"&timestamp={timestamp}&type=authenticated"
+            f"{settings.cloudinary_api_secret}"
         )
         signature = hashlib.sha1(payload.encode()).hexdigest()
         return {
+            "deliveryType": "authenticated",
             "cloudName": settings.cloudinary_cloud_name,
             "apiKey": settings.cloudinary_api_key,
             "timestamp": timestamp,

@@ -680,6 +680,7 @@ class SignUploadOut(ApiOut):
     timestamp: int
     signature: str
     folder: str
+    deliveryType: str | None = None
     allowedFormats: list[str] | None = None
 
 

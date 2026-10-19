@@ -34,6 +34,7 @@ from app.database.repositories.question import questions_repository
 from app.domain import can
 from app.services.assessments.grading import coarse_grade
 from app.services.auth.rules import current_streak
+from app.services.cloudinary_delivery import file_link, is_authenticated_url
 from app.services.learning.achievement_progress import progress_for, target_for
 from app.services.learning.checkpoint import sanitise_checkpoint
 from app.services.learning.evidence import PRETEST_PASS
@@ -184,6 +185,9 @@ class GetLibraryService:
         resources = []
         for row in rows:
             locked = not row.is_free and not premium
+            url, expires_at = row.url, None
+            if is_authenticated_url(row.url):
+                url, expires_at = file_link(row.id)
             resources.append(
                 {
                     "id": row.id,
@@ -191,7 +195,8 @@ class GetLibraryService:
                     "title": row.title,
                     "description": row.description,
                     "resourceType": row.resource_type,
-                    "url": "" if locked else row.url,
+                    "url": "" if locked else url,
+                    "expiresAt": None if locked else expires_at,
                     "locked": locked,
                     "isFree": row.is_free,
                     "author": row.author,

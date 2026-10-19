@@ -41,6 +41,8 @@ def get_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        # pdf.js reads these cross-origin to decide whether it can range-load.
+        expose_headers=["Accept-Ranges", "Content-Range", "Content-Length"],
     )
 
     @api.exception_handler(ApiError)
