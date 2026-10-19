@@ -1,7 +1,7 @@
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import RedirectResponse
 
 from app.api.deps import StudentPrincipal, optional_student, require_student
@@ -100,17 +100,25 @@ async def session_view(student: Annotated[StudentPrincipal, Depends(require_stud
 
 
 @router.get("/google")
-async def google_start(request: Request) -> RedirectResponse:
+async def google_start(
+    request: Request,
+    state: Annotated[
+        str | None, Query(min_length=16, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+    ] = None,
+) -> RedirectResponse:
     if not settings.google_enabled:
         raise ApiError(503, "Google sign-in is not configured")
-    query = urlencode(
-        {
-            "client_id": settings.auth_google_id,
-            "redirect_uri": settings.frontend_url,
-            "response_type": "code",
-            "scope": "openid email profile",
-        }
-    )
+    params = {
+        "client_id": settings.auth_google_id,
+        "redirect_uri": settings.frontend_url,
+        "response_type": "code",
+        "scope": "openid email profile",
+    }
+    # Opaque to the BE: the FE keeps the matching value and rejects a callback
+    # whose state differs (login CSRF). Google echoes it back untouched.
+    if state:
+        params["state"] = state
+    query = urlencode(params)
     return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{query}")
 
 

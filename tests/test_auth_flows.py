@@ -407,6 +407,22 @@ def test_student_and_admin_endpoints(monkeypatch):
     assert res.status_code == 200
     assert res.json()["accessToken"] == "jwt-tok"
 
+    # 5b. Google start forwards a valid `state` and rejects a malformed one
+    monkeypatch.setattr(
+        "app.api.student.auth.settings.auth_google_id", "real-id", raising=False
+    )
+    monkeypatch.setattr(
+        "app.api.student.auth.settings.auth_google_secret", "real-secret", raising=False
+    )
+    state = "a" * 32
+    res = client.get(f"/api/auth/google?state={state}", follow_redirects=False)
+    assert res.status_code in (302, 307)
+    assert f"state={state}" in res.headers["location"]
+    res = client.get("/api/auth/google", follow_redirects=False)
+    assert "state=" not in res.headers["location"]
+    res = client.get("/api/auth/google?state=bad%20state", follow_redirects=False)
+    assert res.status_code == 400
+
     # 6. Admin forgot password endpoint
     monkeypatch.setattr(
         "app.api.admin.auth.AdminForgotPasswordService.process",
