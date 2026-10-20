@@ -24,6 +24,7 @@ from app.database.repositories.provider import (
 from app.database.repositories.question import questions_repository
 from app.services.catalogue import bust_catalogue, public_question
 from app.services.provider.base import (
+    PROVIDER_PAPER_MAX_PAGES,
     DiscoveryResource,
     DrawResult,
     PaperFetchMode,
@@ -42,12 +43,12 @@ from app.services.provider.cache import (
     sample_item_identity,
 )
 from app.services.provider.factory import ProviderFactory
+from app.services.provider.ingest import ProviderPaperIngest
 from app.services.provider.mapping import map_item, map_topic, provider_topic_filters
 from app.services.provider.rules import (
     COOLDOWN_MINUTES,
     LEASE_WINDOW_MS,
     MAPPER_VERSION,
-    MAX_DRAWS,
     cache_key,
     fingerprint,
     next_circuit,
@@ -302,6 +303,142 @@ class EnsureProviderQuestionsService:
         return True
 
 
+class AdvanceProviderBankPageService:
+    """Advance the bank by one provider page from the saved paper checkpoint."""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        subject_slug: str,
+        exam_type: str,
+        exam_year: int,
+        provider: QuestionProvider | None = None,
+        *,
+        provider_subject: str | None = None,
+    ) -> None:
+        self.session = session
+        self.subject_slug = subject_slug
+        self.exam_type = exam_type
+        self.exam_year = exam_year
+        self.provider = provider or ProviderFactory.create()
+        self.provider_subject = provider_subject
+
+    async def process(self) -> dict:
+        subject = await subjects_repository.by_slug(self.session, self.subject_slug)
+        key = cache_key(self.subject_slug, self.exam_type, self.exam_year)
+        row = await fetches_repository.by_cache_key(
+            self.session, self.provider.name, key
+        )
+        if subject is None:
+            return await self._unknown_subject(row, key)
+        if row and row.status in {"SATURATED", "FAILED"}:
+            return {
+                "status": row.status,
+                "cacheKey": key,
+                "nextCursor": row.next_cursor,
+            }
+        now = utcnow()
+        if row and row.status == "PENDING" and row.started_at:
+            age_ms = (now - row.started_at).total_seconds() * 1000
+            if age_ms < LEASE_WINDOW_MS:
+                return {
+                    "status": "PENDING",
+                    "leased": True,
+                    "cacheKey": key,
+                    "nextCursor": row.next_cursor,
+                }
+        row = await self._lease(row, subject, key, now)
+        await self.session.flush()
+        state = await load_provider_state(self.session, self.provider.name)
+        if state.circuit == "BLOCKED" or (
+            state.circuit == "EXHAUSTED"
+            and state.cooldown_until
+            and state.cooldown_until > utcnow()
+        ):
+            row.started_at = None
+            return {
+                "status": row.status,
+                "cacheKey": key,
+                "skipped": "circuit",
+                "nextCursor": row.next_cursor,
+            }
+        if not self.provider.configured:
+            row.started_at = None
+            return {
+                "status": row.status,
+                "cacheKey": key,
+                "skipped": "unconfigured",
+                "nextCursor": row.next_cursor,
+            }
+        cursor = row.next_cursor
+        try:
+            stored, _next, credits = await ProviderPaperIngest(
+                self.session,
+                self.provider,
+                provider_subject=self.provider_subject or subject.slug,
+                subject=subject,
+                exam_type=self.exam_type,
+                exam_year=self.exam_year,
+            ).page_result(cursor)
+        except ApiError:
+            return {
+                "status": row.status,
+                "cacheKey": key,
+                "skipped": "provider-error",
+                "nextCursor": row.next_cursor,
+            }
+        if credits is not None:
+            state.credits_remaining = credits
+        # Release the lease so the next request (or saturate loop) can advance.
+        row.started_at = None
+        return {
+            "status": row.status,
+            "cacheKey": key,
+            "promoted": row.promoted_count,
+            "stored": len(stored),
+            "nextCursor": row.next_cursor,
+        }
+
+    async def _unknown_subject(self, row: ProviderFetch | None, key: str) -> dict:
+        if row is None:
+            row = ProviderFetch(
+                id=cuid(),
+                provider=self.provider.name,
+                cache_key=key,
+                status="FAILED",
+                exam_type=self.exam_type,
+                exam_year=self.exam_year,
+            )
+            await fetches_repository.add(self.session, row)
+        else:
+            row.status = "FAILED"
+        return {"status": "FAILED", "reason": "unknown-subject", "cacheKey": key}
+
+    async def _lease(
+        self,
+        row: ProviderFetch | None,
+        subject: Subject,
+        key: str,
+        now,
+    ) -> ProviderFetch:
+        if row is None:
+            row = ProviderFetch(
+                id=cuid(),
+                provider=self.provider.name,
+                cache_key=key,
+                status="PENDING",
+                started_at=now,
+                subject_id=subject.id,
+                exam_type=self.exam_type,
+                exam_year=self.exam_year,
+            )
+            await fetches_repository.add(self.session, row)
+        else:
+            row.started_at = now
+            row.subject_id = subject.id
+        return row
+
+
 class SaturateProviderService:
     def __init__(
         self,
@@ -311,7 +448,7 @@ class SaturateProviderService:
         exam_year: int,
         provider: QuestionProvider | None = None,
         *,
-        redis: AsyncRedisClient,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         self.session = session
         self.subject_slug = subject_slug
@@ -321,22 +458,18 @@ class SaturateProviderService:
         self.redis = redis
 
     async def process(self) -> dict:
-        last = {}
-        for _ in range(MAX_DRAWS):
-            last = await EnsureProviderQuestionsService(
+        last: dict = {}
+        for _ in range(PROVIDER_PAPER_MAX_PAGES):
+            last = await AdvanceProviderBankPageService(
                 self.session,
                 self.subject_slug,
                 self.exam_type,
                 self.exam_year,
                 provider=self.provider,
-                redis=self.redis,
-                enrich_sample=(
-                    self.provider.paper_fetch_mode == PaperFetchMode.SAMPLED
-                ),
             ).process()
-            if last.get("status") in {"SATURATED", "FAILED"} or (
-                self.provider.paper_fetch_mode == PaperFetchMode.COMPLETE
-            ):
+            if last.get("status") in {"SATURATED", "FAILED"}:
+                break
+            if last.get("leased") or last.get("skipped"):
                 break
         return last
 
@@ -364,6 +497,8 @@ class ResetFailedFetchService:
         if row and row.status == "FAILED":
             row.status = "PENDING"
             row.started_at = None
+            row.next_cursor = None
+            row.checkpoint_at = None
             return True
         return False
 
