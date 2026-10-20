@@ -291,11 +291,11 @@ Unique `endpoint`. Same browser re-subscribing updates the row and may move `use
 
 ### `NotificationPreference`
 
-PK `userId`. Missing row means all toggles on: `studyReminders`, `streakReminders`, `announcements`. Announcements toggle affects push only; the in-app banner still shows.
+PK `userId`. Missing row means all toggles on: `studyReminders`, `streakReminders`, `announcements`. `studyReminders` / `streakReminders` gate both push and in-app inbox for those kinds. Announcements toggle affects **push only**; the in-app banner and inbox announcement rows still show.
 
 ### `Announcement`
 
-Created by an admin. `audience` JSON filter. `expiresAt` = now + `expiresInDays` (1–30, default 7). Counts: `recipientCount`, `sentCount`, `failedCount`. Status starts `QUEUED`. Zero recipients becomes `SENT` immediately.
+Created by an admin. `audience` JSON filter. `expiresAt` = now + `expiresInDays` (1–30, default 7). Counts: `recipientCount`, `sentCount`, `failedCount` (push deliveries). Status starts `QUEUED`. Zero push recipients becomes `SENT` immediately. Create also fans out `InAppNotification` rows to every audience student.
 
 ### `AnnouncementDelivery`
 
@@ -303,8 +303,12 @@ Unique `(announcementId, subscriptionId)`. `subscriptionId` is **not** a foreign
 
 ### `AnnouncementDismissal`
 
-PK `(announcementId, userId)`.
+PK `(announcementId, userId)`. Hides the dashboard banner only; does not change inbox read state.
+
+### `InAppNotification`
+
+Per-user inbox. Unique `(userId, sourceKey)`. `type` is `ANNOUNCEMENT` | `MORNING` | `STREAK`. `sourceKey` dedups (e.g. `announcement:{id}`, `morning:{dayKey}`, `streak:{dayKey}`). `readAt` null means unread. Written on announcement create and by morning/streak cron (even without a push subscription).
 
 ### `ReminderLog`
 
-PK `(userId, kind, dayKey)`. `kind` is `morning` or `streak`. `dayKey` is the Lagos date. A row means “processed today”, whether or not a push was sent. Insert is `ON CONFLICT DO NOTHING`, which is the claim.
+PK `(userId, kind, dayKey)`. `kind` is `morning` or `streak`. `dayKey` is the Lagos date. A row means “processed today”, whether or not a push or inbox row was written. Insert is `ON CONFLICT DO NOTHING`, which is the claim.

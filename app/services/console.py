@@ -72,6 +72,7 @@ from app.database.repositories.notification import (
     announcement_deliveries_repository,
     announcement_dismissals_repository,
     announcements_repository,
+    in_app_notifications_repository,
     push_subscriptions_repository,
 )
 from app.database.repositories.planner import (
@@ -1084,6 +1085,7 @@ class CreateAnnouncementService:
     async def process(self) -> dict:
         title, text, url, audience, days = self._parse()
         announcement = await self._create(title, text, url, audience, days)
+        await self._queue_inbox(announcement, audience)
         await self._queue_deliveries(announcement, audience)
         await RecordAuditService(
             self.session,
@@ -1129,6 +1131,28 @@ class CreateAnnouncementService:
         )
         await announcements_repository.add(self.session, announcement, flush=True)
         return announcement
+
+    async def _queue_inbox(self, announcement: Announcement, audience: dict) -> None:
+        """Fan-out in-app inbox rows to every audience student (ignores push pref)."""
+        users = await users_repository.for_audience(self.session, audience)
+        source_key = f"announcement:{announcement.id}"
+        chunk: list[dict] = []
+        for user in users:
+            chunk.append(
+                {
+                    "user_id": user.id,
+                    "type": "ANNOUNCEMENT",
+                    "title": announcement.title,
+                    "body": announcement.body,
+                    "url": announcement.url or "/dashboard",
+                    "source_key": source_key,
+                }
+            )
+            if len(chunk) >= 500:
+                await in_app_notifications_repository.upsert_many(self.session, chunk)
+                chunk = []
+        if chunk:
+            await in_app_notifications_repository.upsert_many(self.session, chunk)
 
     async def _queue_deliveries(
         self, announcement: Announcement, audience: dict

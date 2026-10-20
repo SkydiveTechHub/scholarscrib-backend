@@ -518,6 +518,8 @@ class GetPastPaperHistoryService:
         )
         by_year: dict[int, list[dict]] = {}
         for attempt, year in rows:
+            if attempt.completed_at is None:
+                continue
             by_year.setdefault(year, []).append(
                 {
                     "attemptId": attempt.id,

@@ -203,12 +203,13 @@ Audience (`src/lib/push-audience.ts`): optional `examTargets`, `classLevels`, `t
 Side effects, in order:
 
 1. Insert `Announcement` status `QUEUED`.
-2. Insert one `AnnouncementDelivery` per matching push subscription whose user has announcements enabled (missing preference = enabled).
-3. If zero recipients, set status `SENT` immediately.
-4. Audit `announcement.send`.
-5. If recipients > 0 and push is configured, `after(drainAnnouncements)`.
+2. Fan out one `InAppNotification` per audience student (ignores announcements preference; `sourceKey = announcement:{id}`).
+3. Insert one `AnnouncementDelivery` per matching push subscription whose user has announcements enabled (missing preference = enabled).
+4. If zero push recipients, set status `SENT` immediately.
+5. Audit `announcement.send`.
+6. If push recipients > 0 and push is configured, background drain.
 
-201 `{ id, recipientCount }`.
+201 `{ id, recipientCount }` (`recipientCount` is the push-subscription count).
 
 The UI asks for a typed confirmation at ≥ 500 devices. The API does not enforce that threshold.
 

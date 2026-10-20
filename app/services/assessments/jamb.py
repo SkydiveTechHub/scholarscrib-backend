@@ -126,9 +126,8 @@ async def _fetch_jamb_year_counts(
     for row in rows if isinstance(rows, list) else []:
         if not isinstance(row, dict) or not isinstance(row.get("year"), int):
             continue
-        breakdown = (
-            row.get("breakdown") if isinstance(row.get("breakdown"), dict) else {}
-        )
+        raw = row.get("breakdown")
+        breakdown = raw if isinstance(raw, dict) else {}
         count = breakdown.get(PROVIDER_JAMB)
         if isinstance(count, int) and count > 0:
             counts[row["year"]] = count
@@ -512,6 +511,8 @@ class GetJambHistoryService:
         by_year: dict[int, list[dict]] = {}
         for attempt, assessment in sittings:
             if sets.get(assessment.id) != wanted or assessment.exam_year is None:
+                continue
+            if attempt.completed_at is None:
                 continue
             by_year.setdefault(assessment.exam_year, []).append(
                 {

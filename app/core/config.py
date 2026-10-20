@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     upstash_redis_rest_token: str | None
     redis_url: str | None
 
-    vapid_public_key: str | None
+    vapid_public_key: str | None = None
     vapid_private_key: str | None
     vapid_subject: str | None
     cron_secret: str | None

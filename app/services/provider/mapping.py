@@ -338,7 +338,8 @@ def map_item(
         exam_year = expected_year
     elif exam_year != expected_year:
         reasons.append(f"drawn for {expected_year} but the item says {exam_year}")
-    metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+    raw_metadata = item.get("metadata")
+    metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
     estimate = metadata.get("estimatedTime")
     number = item.get("questionNumber")
     return MappedItem(

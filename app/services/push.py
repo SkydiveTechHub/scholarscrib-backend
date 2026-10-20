@@ -7,6 +7,7 @@ environment still claims rows and records a retry instead of marking them sent.
 import json
 import time
 from datetime import timedelta
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +27,7 @@ from app.database.repositories.flashcard import reviews_repository
 from app.database.repositories.notification import (
     announcement_deliveries_repository,
     announcements_repository,
+    in_app_notifications_repository,
     push_subscriptions_repository,
     reminder_logs_repository,
 )
@@ -36,7 +38,7 @@ BUDGET_SECONDS = 40
 PAGE_SIZE = 200
 
 
-def send_notification(subscription: PushSubscription, payload: dict) -> str:
+def send_notification(subscription: PushSubscription, payload: dict[str, Any]) -> str:
     """Return sent, gone, invalid, or retry."""
     try:
         from pywebpush import WebPushException, webpush
@@ -78,7 +80,7 @@ class DrainPushService:
         self.session = session
         self.deadline = deadline
 
-    async def process(self) -> dict:
+    async def process(self) -> dict[str, int]:
         await self._expire_announcements()
         claimed = sent = failed = gone = retrying = 0
         stale = utcnow() - timedelta(minutes=5)
@@ -113,6 +115,11 @@ class DrainPushService:
             Announcement.status.in_(("QUEUED", "SENDING")),
         )
         for row in expired:
+            pending = await announcement_deliveries_repository.pending_for(
+                self.session, row.id
+            )
+            for delivery in pending:
+                delivery.status = "CANCELLED"
             row.status = "SENT"
             row.completed_at = now
 
@@ -192,13 +199,15 @@ class SendRemindersService:
         self.kind = kind
         self.deadline = deadline
 
-    async def process(self) -> dict:
+    async def process(self) -> dict[str, object]:
         today = lagos_day_key()
         candidates = await reminder_logs_repository.unnotified_students(
             self.session, self.kind, today, limit=PAGE_SIZE
         )
-        processed = notified = sent = skipped = 0
+        processed = notified = sent = inbox = skipped = 0
         done = True
+        notif_type = "MORNING" if self.kind == "morning" else "STREAK"
+        source_key = f"{self.kind}:{today}"
         for user in candidates:
             if time.monotonic() >= self.deadline:
                 done = False
@@ -209,14 +218,24 @@ class SendRemindersService:
             if not inserted:
                 continue
             processed += 1
+            message = await self._message(user.id, today)
+            if message is None:
+                skipped += 1
+                continue
+            _ = await in_app_notifications_repository.upsert_one(
+                self.session,
+                user_id=user.id,
+                type=notif_type,
+                title=message["title"],
+                body=message["body"],
+                url=message.get("url") or "/dashboard",
+                source_key=source_key,
+            )
+            inbox += 1
+            notified += 1
             subscriptions = await push_subscriptions_repository.for_user(
                 self.session, user.id
             )
-            message = await self._message(user.id, today)
-            if message is None or not subscriptions:
-                skipped += 1
-                continue
-            notified += 1
             for subscription in subscriptions:
                 outcome = send_notification(subscription, message)
                 if outcome == "sent":
@@ -230,17 +249,18 @@ class SendRemindersService:
         return {
             "processed": processed,
             "notified": notified,
+            "inbox": inbox,
             "sent": sent,
             "skipped": skipped,
             "done": done,
         }
 
-    async def _message(self, user_id: str, today: str) -> dict | None:
+    async def _message(self, user_id: str, today: str) -> dict[str, str] | None:
         if self.kind == "morning":
             return await self._morning_message(user_id, today)
         return await self._streak_message(user_id, today)
 
-    async def _morning_message(self, user_id: str, today: str) -> dict | None:
+    async def _morning_message(self, user_id: str, today: str) -> dict[str, str] | None:
         plan = await plans_repository.first(
             self.session,
             StudyPlan.student_id == user_id,
@@ -276,7 +296,7 @@ class SendRemindersService:
             "tag": f"morning-{today}",
         }
 
-    async def _streak_message(self, user_id: str, today: str) -> dict | None:
+    async def _streak_message(self, user_id: str, today: str) -> dict[str, str] | None:
         rows = await attempts_repository.list_where(
             self.session,
             AssessmentAttempt.student_id == user_id,

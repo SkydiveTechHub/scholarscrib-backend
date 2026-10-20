@@ -11,6 +11,7 @@ from app.api.student.flashcards import router as flashcards_router
 from app.api.student.learning_path import router as learning_path_router
 from app.api.student.lessons import router as lessons_router
 from app.api.student.library import router as library_router
+from app.api.student.notifications import router as notifications_router
 from app.api.student.performance import router as performance_router
 from app.api.student.push import router as push_router
 from app.api.student.questions import router as questions_router
@@ -31,6 +32,7 @@ router.include_router(library_router)
 router.include_router(achievements_router)
 router.include_router(learning_path_router)
 router.include_router(announcements_router)
+router.include_router(notifications_router)
 router.include_router(dashboard_router)
 router.include_router(performance_router)
 router.include_router(classroom_router)

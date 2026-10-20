@@ -511,6 +511,25 @@ class AnnouncementsOut(ApiOut):
     announcements: list[dict]
 
 
+class NotificationItemOut(ApiOut):
+    id: str
+    type: str
+    title: str
+    body: str
+    url: str | None = None
+    readAt: str | None = None
+    createdAt: str | None = None
+
+
+class NotificationsOut(ApiOut):
+    notifications: list[NotificationItemOut]
+    nextCursor: str | None = None
+
+
+class UnreadCountOut(ApiOut):
+    count: int
+
+
 class DashboardOut(ApiOut):
     firstName: str | None = None
     streak: int
@@ -780,6 +799,7 @@ class CronDrainOut(ApiOut):
 class CronReminderOut(ApiOut):
     processed: int
     notified: int
+    inbox: int = 0
     sent: int
     skipped: int
     done: bool

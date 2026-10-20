@@ -19,21 +19,24 @@ def _guard(request: Request) -> int | None:
     return cron_decision(request.method, settings.cron_secret, bearer)
 
 
-def _stopped(decision: int | None):
+def _auth_stopped(decision: int | None):
+    """Cron auth only. 204 when secret unset (fail-soft)."""
     if decision == 405:
         raise ApiError(405, "Method not allowed")
     if decision == 401:
         raise ApiError(401, "Unauthorized")
-    if decision == 204 or not settings.push_enabled:
+    if decision == 204:
         return Response(status_code=204)
     return None
 
 
 @router.post("/drain", response_model=CronDrainOut)
 async def drain(request: Request, session: AnSession):
-    stopped = _stopped(_guard(request))
+    stopped = _auth_stopped(_guard(request))
     if stopped is not None:
         return stopped
+    if not settings.push_enabled:
+        return Response(status_code=204)
     return await DrainPushService(session, time.monotonic() + BUDGET_SECONDS).process()
 
 
@@ -48,7 +51,8 @@ async def streak(request: Request, session: AnSession):
 
 
 async def _reminder(request: Request, session: AnSession, kind: str):
-    stopped = _stopped(_guard(request))
+    # Inbox writes run even when VAPID/push is off; still require cron auth.
+    stopped = _auth_stopped(_guard(request))
     if stopped is not None:
         return stopped
     return await SendRemindersService(

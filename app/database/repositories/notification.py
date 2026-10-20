@@ -1,16 +1,19 @@
 """Repositories for push, announcements, and reminder logs."""
 
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ids import cuid
+from app.core.timeutil import utcnow
 from app.database.models import (
     Announcement,
     AnnouncementDelivery,
     AnnouncementDismissal,
+    InAppNotification,
     NotificationPreference,
     PushSubscription,
     ReminderLog,
@@ -88,7 +91,7 @@ class PushSubscriptionRepository(BaseRepository[PushSubscription]):
         await self.remove(session, row)
 
     async def for_audience(
-        self, session: AsyncSession, audience: dict
+        self, session: AsyncSession, audience: dict[str, Any]
     ) -> list[PushSubscription]:
         statement = (
             select(PushSubscription)
@@ -129,6 +132,7 @@ class AnnouncementRepository(BaseRepository[Announcement]):
             session,
             Announcement.status != "CANCELLED",
             Announcement.expires_at > now,
+            order_by=(Announcement.created_at.desc(),),
         )
 
 
@@ -211,6 +215,10 @@ class ReminderLogRepository(BaseRepository[ReminderLog]):
         *,
         limit: int,
     ) -> list[User]:
+        """Active students with the kind preference on, not yet claimed today.
+
+        Does not require a push subscription — in-app inbox is written regardless.
+        """
         flag = (
             NotificationPreference.study_reminders
             if kind == "morning"
@@ -236,9 +244,137 @@ class ReminderLogRepository(BaseRepository[ReminderLog]):
         return list((await session.scalars(statement)).all())
 
 
+class InAppNotificationRepository(BaseRepository[InAppNotification]):
+    model = InAppNotification
+
+    async def upsert_many(
+        self,
+        session: AsyncSession,
+        rows: list[dict[str, Any]],
+    ) -> int:
+        """Insert notifications; skip duplicates on (userId, sourceKey)."""
+        if not rows:
+            return 0
+        values = [
+            {
+                "id": cuid(),
+                "user_id": row["user_id"],
+                "type": row["type"],
+                "title": row["title"],
+                "body": row["body"],
+                "url": row.get("url"),
+                "source_key": row["source_key"],
+            }
+            for row in rows
+        ]
+        stmt = (
+            insert(InAppNotification)
+            .values(values)
+            .on_conflict_do_nothing(constraint="InAppNotification_userId_sourceKey_key")
+            .returning(InAppNotification.id)
+        )
+        result = await self.rows(session, stmt)
+        return len(result.all())
+
+    async def upsert_one(
+        self,
+        session: AsyncSession,
+        *,
+        user_id: str,
+        type: str,
+        title: str,
+        body: str,
+        url: str | None,
+        source_key: str,
+    ) -> bool:
+        """True if a new row was inserted."""
+        inserted = await self.upsert_many(
+            session,
+            [
+                {
+                    "user_id": user_id,
+                    "type": type,
+                    "title": title,
+                    "body": body,
+                    "url": url,
+                    "source_key": source_key,
+                }
+            ],
+        )
+        return inserted > 0
+
+    async def list_for_user(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        *,
+        limit: int,
+        cursor_created_at: datetime | None = None,
+        cursor_id: str | None = None,
+    ) -> list[InAppNotification]:
+        statement = select(InAppNotification).where(
+            InAppNotification.user_id == user_id
+        )
+        if cursor_created_at is not None and cursor_id is not None:
+            statement = statement.where(
+                or_(
+                    InAppNotification.created_at < cursor_created_at,
+                    and_(
+                        InAppNotification.created_at == cursor_created_at,
+                        InAppNotification.id < cursor_id,
+                    ),
+                )
+            )
+        statement = statement.order_by(
+            InAppNotification.created_at.desc(),
+            InAppNotification.id.desc(),
+        ).limit(limit)
+        return await self.many(session, statement)
+
+    async def unread_count(self, session: AsyncSession, user_id: str) -> int:
+        statement = (
+            select(func.count())
+            .select_from(InAppNotification)
+            .where(
+                InAppNotification.user_id == user_id,
+                InAppNotification.read_at.is_(None),
+            )
+        )
+        result = await session.scalar(statement)
+        return int(result or 0)
+
+    async def mark_read(
+        self, session: AsyncSession, user_id: str, notification_id: str
+    ) -> bool:
+        row = await self.first(
+            session,
+            InAppNotification.id == notification_id,
+            InAppNotification.user_id == user_id,
+        )
+        if row is None:
+            return False
+        if row.read_at is None:
+            row.read_at = utcnow()
+        return True
+
+    async def mark_all_read(self, session: AsyncSession, user_id: str) -> int:
+        stmt = (
+            update(InAppNotification)
+            .where(
+                InAppNotification.user_id == user_id,
+                InAppNotification.read_at.is_(None),
+            )
+            .values(read_at=utcnow())
+            .returning(InAppNotification.id)
+        )
+        result = await session.execute(stmt)
+        return len(result.all())
+
+
 preferences_repository = NotificationPreferenceRepository()
 push_subscriptions_repository = PushSubscriptionRepository()
 announcements_repository = AnnouncementRepository()
 announcement_deliveries_repository = AnnouncementDeliveryRepository()
 announcement_dismissals_repository = AnnouncementDismissalRepository()
 reminder_logs_repository = ReminderLogRepository()
+in_app_notifications_repository = InAppNotificationRepository()

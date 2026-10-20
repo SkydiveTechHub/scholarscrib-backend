@@ -237,8 +237,8 @@ class CheckoutIn(BaseModel):
 
 
 class PushKeysIn(BaseModel):
-    p256dh: str | None = None
-    auth: str | None = None
+    p256dh: str = Field(min_length=1)
+    auth: str = Field(min_length=1)
 
 
 class PushIn(BaseModel):

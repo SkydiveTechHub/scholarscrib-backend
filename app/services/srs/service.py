@@ -686,8 +686,11 @@ class GetFlashcardRecommendationsService:
             deck_id = deck_of.get(review.flashcard_id)
             if deck_id is None:
                 continue
+            snapshot = _snapshot(review)
+            if snapshot is None:
+                continue
             kind = review_health(
-                _snapshot(review), outcomes.get(review.flashcard_id, (0, 0)), now
+                snapshot, outcomes.get(review.flashcard_id, (0, 0)), now
             )
             if kind is None:
                 continue
