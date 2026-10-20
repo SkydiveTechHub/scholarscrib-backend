@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime
 
 from sqlalchemy import delete, func, or_, select
@@ -161,11 +162,18 @@ class AuthSessionRepository(BaseRepository[AuthSession]):
 class VerificationTokenRepository(BaseRepository[VerificationToken]):
     model = VerificationToken
 
+    @staticmethod
+    def _digest(token: str) -> str:
+        """Tokens are stored hashed so a database read can't redeem them."""
+        return hashlib.sha256(token.encode()).hexdigest()
+
     async def create_token(
         self, session: AsyncSession, identifier: str, token: str, expires: datetime
     ) -> VerificationToken:
         await self.delete_by_identifier(session, identifier)
-        record = VerificationToken(identifier=identifier, token=token, expires=expires)
+        record = VerificationToken(
+            identifier=identifier, token=self._digest(token), expires=expires
+        )
         await self.add(session, record, flush=True)
         return record
 
@@ -175,7 +183,7 @@ class VerificationTokenRepository(BaseRepository[VerificationToken]):
         return await self.first(
             session,
             VerificationToken.identifier == identifier,
-            VerificationToken.token == token,
+            VerificationToken.token == self._digest(token),
             VerificationToken.expires > utcnow(),
         )
 

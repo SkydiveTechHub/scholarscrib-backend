@@ -702,15 +702,23 @@ class StudentForgotPasswordService:
 
 class StudentResetPasswordService:
     def __init__(
-        self, session: AsyncSession, email: str, token: str, new_password: str
+        self,
+        session: AsyncSession,
+        email: str,
+        token: str,
+        new_password: str,
+        ip: str = "",
     ) -> None:
         self.session = session
         self.email = email
         self.token = token
         self.new_password = new_password
+        self.ip = ip
 
     async def process(self) -> dict:
         normalised = self.email.strip().lower()
+        hit(f"reset-pass-ip:{self.ip}", 20, 3600)
+        hit(f"reset-pass-email:{normalised}", 20, 3600)
         if len(self.new_password) < 6:
             raise ApiError(400, "Password must be at least 6 characters")
 

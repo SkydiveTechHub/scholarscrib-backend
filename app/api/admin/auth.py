@@ -99,7 +99,9 @@ async def admin_forgot_password(
 
 
 @router.post("/reset-password", response_model=MessageOut)
-async def admin_reset_password(body: AdminResetPasswordIn, session: AnSession):
+async def admin_reset_password(
+    body: AdminResetPasswordIn, request: Request, session: AnSession
+):
     return await AdminResetPasswordService(
-        session, body.identifier, body.token, body.newPassword
+        session, body.identifier, body.token, body.newPassword, _ip(request)
     ).process()

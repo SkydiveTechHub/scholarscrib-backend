@@ -767,15 +767,23 @@ class AdminForgotPasswordService:
 
 class AdminResetPasswordService:
     def __init__(
-        self, session: AsyncSession, identifier: str, token: str, new_password: str
+        self,
+        session: AsyncSession,
+        identifier: str,
+        token: str,
+        new_password: str,
+        ip: str = "",
     ) -> None:
         self.session = session
         self.identifier = identifier
         self.token = token
         self.new_password = new_password
+        self.ip = ip
 
     async def process(self) -> dict:
         ident = self.identifier.strip().lower()
+        hit(f"admin-reset-ip:{self.ip}", 20, 3600)
+        hit(f"admin-reset-id:{ident}", 20, 3600)
         if len(self.new_password) < 6:
             raise ApiError(400, "Password must be at least 6 characters")
 
