@@ -195,7 +195,14 @@ def build_stats(
         )
 
     started_cards = [c for c in cards if c.started and c.review is not None]
-    all_recalls = [r for c in started_cards if (r := recall(c.review, now)) is not None]
+    all_recalls: list[float] = []
+    for card in started_cards:
+        review = card.review
+        if review is None:
+            continue
+        recalled = recall(review, now)
+        if recalled is not None:
+            all_recalls.append(recalled)
     mix = {"easy": 0, "medium": 0, "hard": 0}
     for card in cards:
         mix[_difficulty_bucket(card)] += 1
@@ -203,14 +210,17 @@ def build_stats(
     deck_titles = {deck.id: deck.title for deck in decks}
     leeches = []
     for card in started_cards:
+        review = card.review
+        if review is None:
+            continue
         reviews, successes = outcomes.get(card.id, (0, 0))
-        if is_leech(card.review.lapses, reviews, successes):
+        if is_leech(review.lapses, reviews, successes):
             leeches.append(
                 {
                     "cardId": card.id,
                     "prompt": card.front,
                     "deckTitle": deck_titles.get(card.deck_id, ""),
-                    "lapses": card.review.lapses,
+                    "lapses": review.lapses,
                     "reviews": reviews,
                     "successRate": round(successes / reviews * 100) if reviews else 0,
                 }

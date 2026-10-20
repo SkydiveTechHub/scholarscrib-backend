@@ -599,7 +599,7 @@ def _parse_hotspot(raw: str, index: int) -> dict:
     head, *rest = re.split(r"\s+—\s+|\s+--\s+", raw)
     coords = re.search(r"@\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)", head)
     label = re.sub(r"@\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?", "", head).strip()
-    spot = {
+    spot: dict[str, str | float] = {
         "id": f"{slugify(label or 'hotspot')}-{index + 1}",
         "label": label or "Part",
         "text": " — ".join(rest).strip(),

@@ -24,12 +24,12 @@ from pathlib import Path
 from app.core.ids import cuid
 from app.database.db import get_session
 from app.database.models import Achievement, CurriculumLevel, Subject, Topic
-from app.database.repositories.learning import achievements_repository
 from app.database.repositories.curriculum import (
     curriculum_levels_repository,
     subjects_repository,
     topics_repository,
 )
+from app.database.repositories.learning import achievements_repository
 
 HERE = Path(__file__).resolve().parent
 
@@ -66,7 +66,12 @@ ACHIEVEMENTS = [
     ("Bookworm", "Complete 25 lessons.", "lessons_completed", 25),
     ("Subject Master", "Reach strong mastery in 1 subject.", "subject_mastery", 1),
     ("All-Rounder", "Reach strong mastery in 3 subjects.", "subject_mastery", 3),
-    ("Mock Ace", "Score 70% or more in a mock exam or CBT practice.", "mock_score_70", 1),
+    (
+        "Mock Ace",
+        "Score 70% or more in a mock exam or CBT practice.",
+        "mock_score_70",
+        1,
+    ),
 ]
 
 DEFAULT_ESTIMATED_MINUTES = 45

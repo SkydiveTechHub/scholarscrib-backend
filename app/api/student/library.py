@@ -75,7 +75,9 @@ async def library_file(
             await client.aclose()
 
     response_headers = {
-        name: upstream.headers[name] for name in _PASSTHROUGH if name in upstream.headers
+        name: upstream.headers[name]
+        for name in _PASSTHROUGH
+        if name in upstream.headers
     }
     response_headers["Content-Disposition"] = "inline"
     response_headers["Cache-Control"] = "private, no-store"

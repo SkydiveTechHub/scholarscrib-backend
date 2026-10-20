@@ -198,16 +198,17 @@ def _pick_retrieval(
     if best is None:
         return None
     _key, topic, state, value, source, faded, cards = best
+    last_effort_at = state.last_effort_at
+    if last_effort_at is None:
+        return None
     wanted = (
         min(RETRIEVE_MAX_MINUTES, math.ceil(1 + cards * 0.5))
         if cards > 0
         else RETRIEVE_NO_CARDS_MINUTES
     )
     minutes = min(wanted, remaining)
-    ago = _ago(
-        (as_utc(inputs.now) - as_utc(state.last_effort_at)).total_seconds() / 86400
-    )
-    if faded and source == "CARDS":
+    ago = _ago((as_utc(inputs.now) - as_utc(last_effort_at)).total_seconds() / 86400)
+    if faded and source == "CARDS" and value is not None:
         reason = f"Retention about {round(value * 100)}% — last studied {ago}"
     elif faded:
         reason = f"Probably fading — last studied {ago}"

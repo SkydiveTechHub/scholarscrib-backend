@@ -275,9 +275,29 @@ Metrics, computed at most once per call, only for criteria the student has not e
 
 Inserts use `createMany` with skip-duplicates.
 
+### `GET /api/announcements`
+
+Auth. Active, non-cancelled, unexpired announcements whose audience matches the student and that the student has not dismissed. Newest first (`createdAt` DESC). Does **not** consult the `announcements` preference (banner always eligible). 200 `{ "announcements": [ { id, title, body, url, expiresAt } ] }`.
+
 ### `POST /api/announcements/{id}/dismiss`
 
-Auth. Upserts `AnnouncementDismissal` if the announcement exists. 200 `{ "ok": true }`. 404 if it does not.
+Auth. Upserts `AnnouncementDismissal` if the announcement exists. 200 `{ "ok": true }`. 404 if it does not. Does not mark the matching inbox row read (and vice versa).
+
+### `GET /api/notifications`
+
+Auth. Paginated in-app inbox (announcements + morning/streak reminders). Query: `limit` (1–50, default 30), optional `cursor` (from prior `nextCursor`). Newest first. 200 `{ "notifications": [ { id, type, title, body, url, readAt, createdAt } ], "nextCursor" }` where `type` is `ANNOUNCEMENT` | `MORNING` | `STREAK`.
+
+### `GET /api/notifications/unread-count`
+
+Auth. 200 `{ "count": <n> }` for the bell badge.
+
+### `POST /api/notifications/{id}/read`
+
+Auth. Sets `readAt` when the row belongs to the caller. 200 `{ "ok": true }`. 404 otherwise.
+
+### `POST /api/notifications/read-all`
+
+Auth. Marks every unread inbox row for the caller as read. 200 `{ "ok": true }`.
 
 ---
 
@@ -314,12 +334,12 @@ Auth. Body `{ "endpoint" }`. Deletes only if the row belongs to this user. 200 `
 
 ## Cron
 
-Detail in [11-push-and-cron.md](./11-push-and-cron.md). All three are `POST`, bearer-authenticated, and return **204** when push is not configured.
+Detail in [11-push-and-cron.md](./11-push-and-cron.md). All three are `POST` and bearer-authenticated. Drain returns **204** when push is not configured. Morning/streak still run (inbox writes) when VAPID is missing; they return **204** only when `CRON_SECRET` is unset.
 
 | Path | Purpose | 200 body |
 |---|---|---|
 | `/api/cron/push/drain` | send queued announcement deliveries | `{ claimed, sent, failed, gone, retrying }` |
-| `/api/cron/push/morning` | study-plan and due-card digest | `{ processed, notified, sent, skipped, done }` |
-| `/api/cron/push/streak` | evening streak reminder | same shape as morning |
+| `/api/cron/push/morning` | study-plan and due-card digest + inbox | `{ processed, notified, inbox, sent, skipped, done }` |
+| `/api/cron/push/streak` | evening streak reminder + inbox | same shape as morning |
 
 Intended schedule (comments on the routes, not enforced in code): drain every minute; morning every 5 minutes from 07:00–07:55 Lagos; streak every 5 minutes from 19:00–19:55 Lagos. `maxDuration` on the Next routes is 60s; the in-handler budget is 40s.

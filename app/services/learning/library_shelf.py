@@ -14,6 +14,5 @@ def library_shelf(
             "resourceCount": counts.get(subject.id, 0),
         }
         for subject in subjects
-        if subject.is_active
-        and (wanted is None or subject.track_category in wanted)
+        if subject.is_active and (wanted is None or subject.track_category in wanted)
     ]

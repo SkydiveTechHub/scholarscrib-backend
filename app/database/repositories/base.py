@@ -97,11 +97,11 @@ class BaseRepository[T: Base]:
 
     model: type[T]
 
-    async def all(self, session: AsyncSession) -> list[T] | None:
+    async def all(self, session: AsyncSession) -> list[T]:
         result = (await session.execute(select(self.model))).scalars().all()
         return list(result)
 
-    async def all2(self) -> list[T] | None:
+    async def all2(self) -> list[T]:
         # TODO switching repositories to use this pattern instead.
         # after confirming it works.
         # to avoid rewrites, put the with statement in one place so every

@@ -104,7 +104,12 @@ class _Sanitiser(HTMLParser):
         return True
 
     # -- parser callbacks --------------------------------------------------
-    def handle_starttag(self, tag, attrs, self_closing=False):
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+        self_closing: bool = False,
+    ) -> None:
         if self.hostile_depth:
             if tag == self.hostile_name:
                 self.hostile_depth += 1

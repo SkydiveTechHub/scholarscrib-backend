@@ -1,6 +1,7 @@
 """SQLAlchemy models for this domain."""
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -58,7 +59,7 @@ class Announcement(Base):
     title: Mapped[str] = mapped_column(String)
     body: Mapped[str] = mapped_column(Text)
     url: Mapped[str | None] = mapped_column(String)
-    audience: Mapped[dict] = mapped_column(JSONB, default=dict)
+    audience: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     status: Mapped[str] = mapped_column(AnnouncementStatus, default="QUEUED")
     expires_at: Mapped[datetime] = mapped_column("expiresAt", DateTime(timezone=True))
     recipient_count: Mapped[int] = mapped_column("recipientCount", Integer, default=0)
@@ -107,3 +108,24 @@ class ReminderLog(Base):
     )
     kind: Mapped[str] = mapped_column(String, primary_key=True)
     day_key: Mapped[str] = mapped_column("dayKey", String, primary_key=True)
+
+
+class InAppNotification(Base):
+    __tablename__ = "InAppNotification"
+    __table_args__ = (
+        UniqueConstraint(
+            "userId", "sourceKey", name="InAppNotification_userId_sourceKey_key"
+        ),
+    )
+
+    id: Mapped[str] = id_column()
+    user_id: Mapped[str] = mapped_column(
+        "userId", ForeignKey("User.id", ondelete="CASCADE")
+    )
+    type: Mapped[str] = mapped_column(String)
+    title: Mapped[str] = mapped_column(String)
+    body: Mapped[str] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(String)
+    source_key: Mapped[str] = mapped_column("sourceKey", String)
+    read_at: Mapped[datetime | None] = mapped_column("readAt", DateTime(timezone=True))
+    created_at: Mapped[datetime] = timestamp_column("createdAt")

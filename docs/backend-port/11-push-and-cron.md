@@ -6,9 +6,9 @@ Client subscribe helper `src/lib/push-client.ts` uses `NEXT_PUBLIC_VAPID_PUBLIC_
 
 ## When push is off
 
-Push is on only when the VAPID public key, VAPID private key, VAPID subject, and `CRON_SECRET` are all present (`push-config.ts`). Subject must start with `mailto:` or `https:`. If push is off, the three cron routes return **204** with no body after the cron guard passes (or 204 from the guard itself when the secret is unset).
+Push is on only when the VAPID public key, VAPID private key, VAPID subject, and `CRON_SECRET` are all present. Subject must start with `mailto:` or `https:`. If push is off, **drain** returns **204** after the cron guard. Morning/streak still run so they can write `InAppNotification` rows (push sends no-op when there are no subscriptions or VAPID is missing). All three return **204** from the guard itself when the secret is unset.
 
-Rotating VAPID keys invalidates every stored subscription. There is no migration.
+Rotating VAPID keys invalidates every stored subscription.
 
 ## Cron authentication
 
@@ -60,27 +60,29 @@ Suggested schedule (documented on the route files, enforced by the scheduler, no
 
 `POST /api/push/subscription` upserts on `endpoint`. If another user owns that endpoint, the row moves to the caller (shared device). `deviceId` is copied from the JWT. `DELETE` removes the endpoint only when `userId` matches.
 
-Preferences default to all true when the row is missing. The announcements toggle gates **push** audience selection. In-app banners ignore it; dismissal is `POST /api/announcements/{id}/dismiss`.
+Preferences default to all true when the row is missing. The announcements toggle gates **push** audience selection. In-app banners and inbox announcement rows ignore it; dismissal is `POST /api/announcements/{id}/dismiss`.
+
+## In-app inbox
+
+Table `InAppNotification`. Creating an announcement fans out one row per audience student (`sourceKey = announcement:{id}`). Morning/streak cron upserts a row when a message is built (`sourceKey = morning|{streak}:{dayKey}`), whether or not the student has a push subscription. Student APIs: `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/{id}/read`, `POST /api/notifications/read-all`. Banner dismiss and inbox read are independent.
 
 ## Morning and streak runners
 
-`runReminders(kind, { now, deadline })` in `push-reminder-runner.ts`.
-
 Claim: `INSERT INTO ReminderLog (userId, kind, dayKey) … ON CONFLICT DO NOTHING RETURNING`. A conflict means this student was already processed for this kind today (sent or deliberately skipped). There is no same-day retry.
 
-Page size 200 students per invocation. Send concurrency 20.
+Page size 200 students per invocation. Candidates need the preference flag only — not a push subscription.
 
-**Morning** (`kind = "morning"`): students with `studyReminders` enabled (or no preference row). Body is a digest of today’s `PENDING` plan items plus due flashcard count. If both are empty, record the log as skipped and do not send. Tag `morning-{lagosDayKey}`.
+**Morning** (`kind = "morning"`): students with `studyReminders` enabled (or no preference row). Body is a digest of today’s `PENDING` plan items plus due flashcards. If both are empty, record the log as skipped and do not write inbox or push. Tag `morning-{lagosDayKey}`.
 
-**Streak** (`kind = "streak"`): `streakReminders` enabled. `streakToRemind` (`src/lib/push-reminders.ts`):
+**Streak** (`kind = "streak"`): `streakReminders` enabled.
 
 - If the student already has a completed attempt **today**, return null (no reminder).
-- Otherwise `currentStreak(days, previousDayKey(today))`. That counts the consecutive Lagos days ending **yesterday**.
+- Otherwise `currentStreak(days, previousDayKey(today))`. That counts consecutive Lagos days ending **yesterday**.
 - Send only when that number is ≥ 2. The body says “Keep your {n}-day streak”.
 
-`currentStreak` itself (`src/lib/streak.ts`) is 0 when the end day you pass it is missing from the set. Achievements call it with **today**, so a streak badge requires study today. The evening reminder deliberately passes yesterday so it can still mention a streak that has not yet been extended. Tag `streak-{lagosDayKey}`.
+When a message exists: upsert inbox, then send Web Push to each subscription (if any). Tag `streak-{lagosDayKey}`.
 
-Response: `{ processed, notified, sent, skipped, done }`. `done` is false when the deadline hit before the candidate list was exhausted.
+Response: `{ processed, notified, inbox, sent, skipped, done }`. `done` is false when the deadline hit before the candidate list was exhausted.
 
 ## Announcement drain
 
