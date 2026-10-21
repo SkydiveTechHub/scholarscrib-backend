@@ -84,9 +84,12 @@ def test_entitlements_and_session_revocation():
     assert can("FREEMIUM", "premiumLibrary") is False
     assert can("STANDARD", "advancedAnalytics") is False
     assert can("PREMIUM", "advancedAnalytics") is True
+    assert can("FREEMIUM", "aiTutor") is False
+    assert can("PREMIUM", "aiTutor") is True
     # Ending the beta restores the original tiers without touching this table.
     assert PAID_ENTITLEMENTS["flashcards"] == "STANDARD"
     assert PAID_ENTITLEMENTS["studyPlanner"] == "STANDARD"
+    assert PAID_ENTITLEMENTS["aiTutor"] == "PREMIUM"
     moment = datetime(2026, 1, 1, tzinfo=UTC)
     assert is_session_revoked(False, None, 10) is True
     assert is_session_revoked(True, None, 10) is False

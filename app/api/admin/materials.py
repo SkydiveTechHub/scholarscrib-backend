@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from app.api.deps import require_admin
 from app.api.responses import MaterialOut, MaterialSubjectsOut, OkOut, SignUploadOut
@@ -15,6 +15,7 @@ from app.services.console import (
     ListMaterialsService,
     UpdateMaterialService,
 )
+from app.services.rag.ingest import schedule_index
 
 router = APIRouter(prefix="/materials", tags=["Admin / Materials"])
 
@@ -49,8 +50,13 @@ async def create_material(
     body: MaterialCreateIn,
     session: AnSession,
     admin: Annotated[Admin, Depends(require_admin)],
+    background: BackgroundTasks,
 ):
-    return await CreateMaterialService(session, admin.id, body).process()
+    result = await CreateMaterialService(session, admin.id, body).process()
+    material_id = result.get("id")
+    if material_id:
+        schedule_index(background, "material", material_id)
+    return result
 
 
 @router.patch("/{material_id}", response_model=MaterialOut)
@@ -59,8 +65,11 @@ async def update_material(
     body: MaterialPatchIn,
     session: AnSession,
     admin: Annotated[Admin, Depends(require_admin)],
+    background: BackgroundTasks,
 ):
-    return await UpdateMaterialService(session, admin.id, material_id, body).process()
+    result = await UpdateMaterialService(session, admin.id, material_id, body).process()
+    schedule_index(background, "material", material_id)
+    return result
 
 
 @router.delete("/{material_id}", response_model=OkOut)
@@ -68,5 +77,8 @@ async def delete_material(
     material_id: str,
     session: AnSession,
     admin: Annotated[Admin, Depends(require_admin)],
+    background: BackgroundTasks,
 ):
-    return await DeleteMaterialService(session, admin.id, material_id).process()
+    result = await DeleteMaterialService(session, admin.id, material_id).process()
+    schedule_index(background, "material_delete", material_id)
+    return result

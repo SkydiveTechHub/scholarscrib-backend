@@ -88,7 +88,7 @@ def best_recent(records: list[dict]) -> int:
     recent = [
         float(r["percentage"])
         for r in records[-BEST_OF:]
-        if isinstance(r.get("percentage"), (int, float))
+        if isinstance(r.get("percentage"), int | float)
     ]
     return round(max(recent)) if recent else 0
 
@@ -386,6 +386,8 @@ class GetPracticeResultService:
                 "options": item["options"],
                 "correctAnswer": item["correctAnswer"],
                 "explanation": item["explanation"],
+                "selectedAnswer": item.get("selectedAnswer"),
+                "topicId": item.get("topicId") or topic.id,
             }
             for item in attempt["results"]
             if not item["isCorrect"]
@@ -394,6 +396,8 @@ class GetPracticeResultService:
         return {
             "result": {
                 "attemptId": record["attemptId"],
+                "subjectId": subject.id,
+                "topicId": topic.id,
                 "topicTitle": topic.title,
                 "percentage": record["percentage"],
                 "grade": attempt["grade"],

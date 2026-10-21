@@ -8,6 +8,12 @@ from app.database.models.assessment import (
     QuestionResponse,
 )
 from app.database.models.billing import PaystackEvent, Subscription
+from app.database.models.chat import (
+    ChatFeedback,
+    ChatMessage,
+    ChatThread,
+    RagIndexJob,
+)
 from app.database.models.curriculum import (
     CurriculumLevel,
     Lesson,
@@ -79,6 +85,9 @@ __all__ = [
     "AssessmentAttempt",
     "AssessmentQuestion",
     "AuthSession",
+    "ChatFeedback",
+    "ChatMessage",
+    "ChatThread",
     "CurriculumLevel",
     "DailySession",
     "Flashcard",
@@ -101,6 +110,7 @@ __all__ = [
     "PushSubscription",
     "Question",
     "QuestionResponse",
+    "RagIndexJob",
     "ReminderLog",
     "School",
     "StudentAchievement",

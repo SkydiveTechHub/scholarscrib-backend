@@ -14,6 +14,7 @@ from app.api.admin.lessons import router as lessons_router
 from app.api.admin.materials import router as materials_router
 from app.api.admin.provider import router as provider_router
 from app.api.admin.questions import router as questions_router
+from app.api.admin.rag import router as rag_router
 from app.api.admin.stats import analytics_router, overview_router
 from app.api.admin.stats import router as stats_router
 from app.api.admin.students import router as students_router
@@ -38,3 +39,4 @@ router.include_router(audit_router)
 router.include_router(stats_router)
 router.include_router(overview_router)
 router.include_router(analytics_router)
+router.include_router(rag_router)

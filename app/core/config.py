@@ -60,6 +60,36 @@ class Settings(BaseSettings):
     email_from: str = "noreply@scholarscrib.com"
     frontend_url: str = "https://scholarscrib.vercel.app"
 
+    # AI tutor / RAG (provider-agnostic; switch via provider:model strings)
+    ai_tutor_enabled: bool = False
+    llm_model: str = "openai:gpt-4.1-mini"
+    llm_grader_model: str | None = None
+    embedding_model: str = "openai:text-embedding-3-small"
+    reranker_model: str | None = None
+    zilliz_uri: str | None = None
+    zilliz_token: str | None = None
+    milvus_collection: str = "scholarscrib_rag"
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+    google_api_key: str | None = None
+    cohere_api_key: str | None = None
+    langsmith_tracing: bool = False
+    langsmith_api_key: str | None = None
+    langsmith_project: str = "scholarscrib-tutor"
+    ai_tutor_daily_message_limit: int = 50
+    rag_retrieve_k: int = 8
+    rag_rerank_k: int = 4
+    rag_max_rewrite_loops: int = 2
+    rag_summarize_after_messages: int = 12
+    rag_keep_recent_messages: int = 6
+    # TypeSafe Jev decision model (routing / yes-no / grading)
+    typesafe_api_key: str | None = None
+    typesafe_base_url: str | None = None
+    jev_model: str = "jev-latest"
+    jev_enabled: bool = True
+    jev_confidence_threshold: float = 0.7
+    jev_grade_noul_threshold: float = 0.55
+
     @model_validator(mode="after")
     def secrets_must_differ(self) -> "Settings":
         if self.auth_secret == self.admin_auth_secret:
@@ -108,6 +138,24 @@ class Settings(BaseSettings):
         ):
             return False
         return subject.startswith("mailto:") or subject.startswith("https:")
+
+    @property
+    def rag_enabled(self) -> bool:
+        return bool(
+            self.ai_tutor_enabled
+            and self.zilliz_uri
+            and self.zilliz_token
+            and self.milvus_collection
+        )
+
+    @property
+    def effective_grader_model(self) -> str:
+        return (self.llm_grader_model or self.llm_model).strip()
+
+    @property
+    def jev_ready(self) -> bool:
+        """True when Jev decisions should be attempted (kill switch + API key)."""
+        return bool(self.jev_enabled and (self.typesafe_api_key or "").strip())
 
 
 settings = Settings()  # type: ignore

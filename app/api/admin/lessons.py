@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from app.api.deps import require_admin
 from app.api.responses import (
@@ -19,6 +19,7 @@ from app.services.console import (
     GetLessonTreeService,
     ImportLessonService,
 )
+from app.services.rag.ingest import schedule_index
 
 router = APIRouter(prefix="/lessons", tags=["Admin / Lessons"])
 tree_router = APIRouter(prefix="/lesson-tree", tags=["Admin / Lessons"])
@@ -45,8 +46,13 @@ async def import_lesson(
     body: LessonImportIn,
     session: AnSession,
     admin: Annotated[Admin, Depends(require_admin)],
+    background: BackgroundTasks,
 ):
-    return await ImportLessonService(session, admin.id, body).process()
+    result = await ImportLessonService(session, admin.id, body).process()
+    lesson_id = result.get("lessonId")
+    if lesson_id:
+        schedule_index(background, "lesson", lesson_id)
+    return result
 
 
 @browse_router.get("", response_model=LessonBrowseOut)

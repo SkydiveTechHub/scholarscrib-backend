@@ -17,6 +17,7 @@ from app.api.student.push import router as push_router
 from app.api.student.questions import router as questions_router
 from app.api.student.study_plan import router as study_plan_router
 from app.api.student.subjects import router as subjects_router
+from app.api.student.tutor import router as tutor_router
 from app.api.student.user import router as user_router
 
 router = APIRouter(prefix="/api")
@@ -38,3 +39,4 @@ router.include_router(performance_router)
 router.include_router(classroom_router)
 router.include_router(billing_router)
 router.include_router(push_router)
+router.include_router(tutor_router)

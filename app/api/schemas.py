@@ -527,3 +527,37 @@ class TopicAnswersIn(BaseModel):
     subjectId: str = Field(min_length=1, max_length=64)
     topic: str = Field(min_length=1, max_length=64)
     answers: list[TopicAnswerIn] = Field(min_length=1, max_length=50)
+
+
+class TutorThreadCreateIn(BaseModel):
+    subjectId: str | None = None
+    topicId: str | None = None
+    questionId: str | None = None
+    lessonId: str | None = None
+    title: str | None = Field(default=None, max_length=120)
+    firstMessage: str | None = Field(default=None, max_length=8000)
+    wrongAnswerContext: str | None = Field(default=None, max_length=500)
+
+
+class TutorMessageIn(BaseModel):
+    content: str = Field(min_length=1, max_length=8000)
+
+
+class TutorFeedbackIn(BaseModel):
+    rating: Literal["up", "down"]
+    comment: str | None = Field(default=None, max_length=1000)
+
+
+class RagReindexIn(BaseModel):
+    subjectId: str | None = None
+    source: Literal["lesson", "question", "material", "full"] | None = None
+    entityId: str | None = None
+
+
+class TutorReplayIn(BaseModel):
+    checkpointId: str = Field(min_length=1)
+
+
+class TutorForkIn(BaseModel):
+    checkpointId: str = Field(min_length=1)
+    question: str | None = Field(default=None, max_length=8000)

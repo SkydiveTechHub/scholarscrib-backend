@@ -820,3 +820,76 @@ class AnalyticsOut(ApiOut):
     classLevels: list[dict]
     states: list[dict]
     funnel: dict
+
+
+class TutorMessageOut(ApiOut):
+    id: str
+    role: str
+    content: str
+    groundedOn: list = Field(default_factory=list)
+    createdAt: str | None = None
+
+
+class TutorThreadOut(ApiOut):
+    id: str
+    title: str | None = None
+    subjectId: str | None = None
+    topicId: str | None = None
+    questionId: str | None = None
+    lessonId: str | None = None
+    archived: bool = False
+    createdAt: str | None = None
+    updatedAt: str | None = None
+    messages: list[TutorMessageOut] | None = None
+    assistantMessage: TutorMessageOut | None = None
+
+
+class TutorThreadsOut(ApiOut):
+    threads: list[TutorThreadOut]
+
+
+class TutorPostMessageOut(ApiOut):
+    userMessage: TutorMessageOut
+    assistantMessage: TutorMessageOut
+
+
+class RagJobOut(ApiOut):
+    id: str
+    source: str
+    entityId: str | None = None
+    status: str
+    chunks: int = 0
+    error: str | None = None
+    createdAt: str | None = None
+    finishedAt: str | None = None
+
+
+class RagJobsOut(ApiOut):
+    jobs: list[RagJobOut]
+
+
+class RagReindexOut(ApiOut):
+    ok: bool
+    chunks: int = 0
+    jobId: str | None = None
+    error: str | None = None
+
+
+class TutorCheckpointOut(ApiOut):
+    checkpointId: str | None = None
+    next: list = Field(default_factory=list)
+    createdAt: object | None = None
+    metadata: dict = Field(default_factory=dict)
+    values: dict = Field(default_factory=dict)
+
+
+class TutorCheckpointHistoryOut(ApiOut):
+    checkpoints: list[TutorCheckpointOut]
+
+
+class TutorTimeTravelOut(ApiOut):
+    ok: bool = True
+    checkpointId: str | None = None
+    forkedFrom: str | None = None
+    route: str | None = None
+    question: str | None = None

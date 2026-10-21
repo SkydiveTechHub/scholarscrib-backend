@@ -2,11 +2,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import StudentPrincipal, require_student
-from app.api.responses import ProgressOut
-from app.api.schemas import ProgressIn
+from app.api.deps import StudentPrincipal, require_feature, require_student
+from app.api.responses import ProgressOut, TutorThreadOut
+from app.api.schemas import ProgressIn, TutorThreadCreateIn
 from app.database.db import AnSession
 from app.services.learning import SaveLessonProgressService
+from app.services.rag.service import LessonTutorService
 
 router = APIRouter(prefix="/lessons", tags=["Student / Lessons"])
 
@@ -21,3 +22,19 @@ async def lesson_progress(
     return await SaveLessonProgressService(
         session, student.id, lesson_id, body
     ).process()
+
+
+@router.post(
+    "/{lesson_id}/tutor",
+    status_code=201,
+    response_model=TutorThreadOut,
+    dependencies=[Depends(require_feature("aiTutor"))],
+)
+async def lesson_tutor(
+    lesson_id: str,
+    body: TutorThreadCreateIn,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    """Thin wrapper: start a lesson-scoped tutor thread (lesson-engine contract)."""
+    return await LessonTutorService(session, student.id, lesson_id, body).process()

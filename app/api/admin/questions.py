@@ -1,6 +1,7 @@
+import contextlib
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request, Response
 
 from app.api.deps import require_admin
 from app.api.responses import (
@@ -41,6 +42,8 @@ from app.services.question_coverage import (
     ExportQuestionsService,
     GetQuestionCoverageService,
 )
+from app.services.rag.ingest import schedule_index
+from app.services.rag.vectorstore import delete_by_expr, rag_ready
 
 router = APIRouter(prefix="/questions", tags=["Admin / Questions"])
 
@@ -118,8 +121,12 @@ async def create_question(
     body: QuestionCreateIn,
     session: AnSession,
     admin: Annotated[Admin, Depends(require_admin)],
+    background: BackgroundTasks,
 ):
-    return await CreateQuestionService(session, admin.id, body).process()
+    result = await CreateQuestionService(session, admin.id, body).process()
+    if result.get("id"):
+        schedule_index(background, "question", result["id"])
+    return result
 
 
 @router.get("/{question_id}", response_model=QuestionOut)
@@ -141,8 +148,11 @@ async def update_question(
     body: QuestionPatchIn,
     session: AnSession,
     admin: Annotated[Admin, Depends(require_admin)],
+    background: BackgroundTasks,
 ):
-    return await UpdateQuestionService(session, admin.id, question_id, body).process()
+    result = await UpdateQuestionService(session, admin.id, question_id, body).process()
+    schedule_index(background, "question", question_id)
+    return result
 
 
 @router.get("/{question_id}/usage", response_model=UsageOut)
@@ -164,7 +174,12 @@ async def delete_questions(
     ids = request.query_params.getlist("id")
     if not ids and body is not None:
         ids = body.ids
-    return await DeleteQuestionsService(session, admin.id, ids).process()
+    result = await DeleteQuestionsService(session, admin.id, ids).process()
+    if rag_ready():
+        for question_id in result.get("deleted") or ids:
+            with contextlib.suppress(Exception):
+                delete_by_expr(f'question_id == "{question_id}"')
+    return result
 
 
 @router.post("/import", response_model=ImportQuestionsOut)

@@ -60,6 +60,7 @@ PAID_ENTITLEMENTS = {
     "studyPlanner": "STANDARD",
     "premiumLibrary": "PREMIUM",
     "advancedAnalytics": "PREMIUM",
+    "aiTutor": "PREMIUM",
 }
 # Beta: these features are open to every tier while testers try the product.
 # Ending the beta is emptying this set (and the matching one in the frontend's
