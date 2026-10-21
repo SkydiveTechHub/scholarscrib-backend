@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Request
+from fastapi import APIRouter, Body, Depends, Query, Request, Response
 
 from app.api.deps import require_admin
 from app.api.responses import (
@@ -9,6 +9,7 @@ from app.api.responses import (
     FormOptionsOut,
     IdOut,
     ImportQuestionsOut,
+    QuestionCoverageOut,
     QuestionOut,
     UsageOut,
 )
@@ -35,6 +36,10 @@ from app.services.console import (
     GetQuestionUsageService,
     ImportQuestionsService,
     UpdateQuestionService,
+)
+from app.services.question_coverage import (
+    ExportQuestionsService,
+    GetQuestionCoverageService,
 )
 
 router = APIRouter(prefix="/questions", tags=["Admin / Questions"])
@@ -72,6 +77,40 @@ async def question_form_options(
     session: AnSession, admin: Annotated[Admin, Depends(require_admin)]
 ):
     return await GetQuestionFormOptionsService(session).process()
+
+
+@router.get("/coverage", response_model=QuestionCoverageOut)
+async def question_coverage(
+    session: AnSession, admin: Annotated[Admin, Depends(require_admin)]
+):
+    return await GetQuestionCoverageService(session).process()
+
+
+@router.get("/export")
+async def export_questions(
+    session: AnSession,
+    admin: Annotated[Admin, Depends(require_admin)],
+    subjectId: str,
+    fmt: Annotated[str, Query(alias="format")],
+    examType: ExamType | None = None,
+    examYear: int | None = None,
+):
+    content, media_type, filename = await ExportQuestionsService(
+        session,
+        admin.id,
+        subject_id=subjectId,
+        exam_type=examType,
+        exam_year=examYear,
+        fmt=fmt,
+    ).process()
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.post("", status_code=201, response_model=IdOut)

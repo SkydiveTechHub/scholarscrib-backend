@@ -663,6 +663,7 @@ def question_row(question: Question) -> dict:
         "topicId": question.topic_id,
         "examType": question.exam_type,
         "examYear": question.exam_year,
+        "questionNumber": question.question_number,
         "questionText": question.question_text,
         "questionType": question.question_type,
         "options": question.options,

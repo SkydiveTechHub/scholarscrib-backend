@@ -33,6 +33,7 @@ from app.database.repositories.notification import (
     preferences_repository,
     push_subscriptions_repository,
 )
+from app.database.repositories.planner import plans_repository
 from app.domain import DEVICE_LIMIT, NIGERIAN_STATES, PHONE_PATTERN, TIER_RANK
 from app.services.auth.rules import is_session_revoked
 from app.services.billing import RefreshUserTierService
@@ -284,7 +285,13 @@ class UpdateProfileService:
         if not self.patch.model_fields_set:
             raise ApiError(400, "Nothing to update")
         user = await self._load()
+        before = (user.class_level, user.track)
         self._apply(user)
+        if (user.class_level, user.track) != before:
+            # A plan is built for one class level and track; it means nothing
+            # for the new one.
+            for plan in await plans_repository.list_active(self.session, user.id):
+                plan.is_active = False
         try:
             await self.session.flush()
         except IntegrityError as exc:

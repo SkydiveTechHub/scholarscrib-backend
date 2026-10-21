@@ -13,8 +13,33 @@ from app.database.models import (
 from app.database.repositories.base import BaseRepository
 
 
+def paper_status_statement(provider: str):
+    """One provider's dated fetch rows, for the admin coverage view.
+
+    A paper can have a fetch row per provider, so mixing them would make its
+    badge depend on whichever row came back last.
+    """
+    return select(
+        ProviderFetch.subject_id,
+        ProviderFetch.exam_type,
+        ProviderFetch.exam_year,
+        ProviderFetch.status,
+        ProviderFetch.checkpoint_at,
+    ).where(
+        ProviderFetch.provider == provider,
+        ProviderFetch.subject_id.is_not(None),
+        ProviderFetch.exam_year.is_not(None),
+    )
+
+
 class ProviderFetchRepository(BaseRepository[ProviderFetch]):
     model = ProviderFetch
+
+    async def paper_statuses(
+        self, session: AsyncSession, provider: str
+    ) -> list[tuple]:
+        result = await session.execute(paper_status_statement(provider))
+        return [tuple(row) for row in result.all()]
 
     async def by_cache_key(
         self, session: AsyncSession, provider: str, cache_key: str

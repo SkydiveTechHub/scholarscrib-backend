@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Path, Request
 from redis_fastapi import AsyncRedisDep, cache
 
 from app.api.deps import StudentPrincipal, require_student
@@ -26,6 +26,7 @@ from app.services.provider import (
     ProviderDiscoveryService,
     SearchProviderQuestionsService,
     TopicQuizQuestionsService,
+    schedule_provider_bank_page,
 )
 
 router = APIRouter(prefix="/questions", tags=["Student / Questions"])
@@ -74,13 +75,14 @@ def questions_cache_key(request: Request, eviction_group: str = "", prefix: str 
 async def list_questions(
     session: AnSession,
     redis: AsyncRedisDep,
+    background: BackgroundTasks,
     subjectId: str | None = None,
     examType: ExamType | None = None,
     examYear: int | None = None,
     limit: int = 20,
     cursor: str | None = None,
 ):
-    return await SearchProviderQuestionsService(
+    payload = await SearchProviderQuestionsService(
         session,
         subject_key=subjectId,
         exam_type=examType,
@@ -89,6 +91,12 @@ async def list_questions(
         cursor=cursor,
         redis=redis,
     ).process()
+    subject_slug = None
+    if subjectId:
+        subject = await subjects_repository.by_id_or_slug(session, subjectId)
+        subject_slug = subject.slug if subject is not None else subjectId
+    schedule_provider_bank_page(background, subject_slug, examType, examYear)
+    return payload
     # Database-backed listing, paused while questions come straight from ALOC.
     # Restore the topicId, difficulty and page params above when re-enabling.
     # limit = _page_limit(limit)
@@ -120,10 +128,12 @@ async def list_questions(
 @router.get("/topic-quiz", response_model=TopicQuizQuestionsOut)
 async def topic_quiz_questions(
     session: AnSession,
+    background: BackgroundTasks,
     student: Annotated[StudentPrincipal, Depends(require_student)],
     subjectId: str,
     topic: str,
     examType: ExamType = "WAEC",
+    examYear: int | None = None,
     limit: int = 10,
     random: bool = True,
 ):
@@ -133,7 +143,7 @@ async def topic_quiz_questions(
     Falls back to JAMB when the requested exam has nothing for the topic.
     """
     hit(f"topic-quiz:{student.id}", 20, 60)
-    return await TopicQuizQuestionsService(
+    payload = await TopicQuizQuestionsService(
         session,
         subject_key=subjectId,
         topic_key=topic,
@@ -141,6 +151,16 @@ async def topic_quiz_questions(
         limit=_page_limit(limit),
         random=random,
     ).process()
+    # Bank checkpoint is per paper year; skip when the client did not name one.
+    if examYear is not None:
+        subject = await subjects_repository.by_id_or_slug(session, subjectId)
+        schedule_provider_bank_page(
+            background,
+            subject.slug if subject is not None else subjectId,
+            payload.get("examType") or examType,
+            examYear,
+        )
+    return payload
 
 
 @router.post("/topic-answers", response_model=RecordedOut)

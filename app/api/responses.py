@@ -655,6 +655,10 @@ class UsageOut(ApiOut):
     deletable: bool
 
 
+class QuestionCoverageOut(ApiOut):
+    subjects: list[dict]
+
+
 class DeleteQuestionsOut(ApiOut):
     deleted: list[str]
     refused: list

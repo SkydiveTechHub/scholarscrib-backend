@@ -11,7 +11,6 @@ from app.database.models import Admin
 from app.services.admin import RecordAuditService
 from app.services.provider import (
     ClearProviderBlockService,
-    EnsureProviderQuestionsService,
     ResetFailedFetchService,
     SaturateProviderService,
 )
@@ -35,9 +34,6 @@ async def backfill(
         was_reset = await ResetFailedFetchService(
             session, slug, exam_type, exam_year
         ).process()
-    await EnsureProviderQuestionsService(
-        session, slug, exam_type, exam_year, redis=redis
-    ).process()
     ledger = await SaturateProviderService(
         session, slug, exam_type, exam_year, redis=redis
     ).process()

@@ -45,6 +45,10 @@ class ProviderFetch(Base):
     )
     exam_type: Mapped[str | None] = mapped_column("examType", ExamType)
     exam_year: Mapped[int | None] = mapped_column("examYear", Integer)
+    next_cursor: Mapped[str | None] = mapped_column("nextCursor", String)
+    checkpoint_at: Mapped[datetime | None] = mapped_column(
+        "checkpointAt", DateTime(timezone=True)
+    )
 
 
 class ProviderQuestion(Base):

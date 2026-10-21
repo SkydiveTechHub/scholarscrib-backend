@@ -142,8 +142,10 @@ async def library_student(request: Request, session: AnSession) -> StudentPrinci
         email=user.email if user else None,
         tier=profile.get("tier") or (user.tier if user else "FREEMIUM"),
         device_id=claims.get("deviceId"),
-        class_level=profile.get("classLevel"),
-        track=profile.get("track"),
+        class_level=user.class_level if user else profile.get("classLevel"),
+        # The token is minted at login, so its track goes stale when the student
+        # changes track; the shelf must follow the stored one.
+        track=user.track if user else profile.get("track"),
         state=profile.get("state"),
         first_name=profile.get("firstName"),
         last_name=profile.get("lastName"),

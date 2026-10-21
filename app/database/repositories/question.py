@@ -9,9 +9,61 @@ from app.database.models import (
     CurriculumLevel,
     Question,
     QuestionResponse,
+    Subject,
     Topic,
 )
 from app.database.repositories.base import BaseRepository
+
+
+def coverage_statement():
+    """Question counts per subject, exam type and year, dated papers only."""
+    return (
+        select(
+            Question.subject_id,
+            Subject.name,
+            Subject.code,
+            Question.exam_type,
+            Question.exam_year,
+            func.count(),
+        )
+        .join(Subject, Subject.id == Question.subject_id)
+        .where(Question.exam_year.is_not(None))
+        .group_by(
+            Question.subject_id,
+            Subject.name,
+            Subject.code,
+            Question.exam_type,
+            Question.exam_year,
+        )
+    )
+
+
+def list_order(filters: dict) -> list:
+    """Paper order once a year is chosen; otherwise the stable id order."""
+    if filters.get("examYear"):
+        return [Question.question_number.asc().nulls_last(), Question.id]
+    return [Question.id]
+
+
+def export_statement(
+    subject_id: str, exam_type: str | None, exam_year: int | None, limit: int
+):
+    """A subject's dated questions with their topic title, in paper order."""
+    statement = (
+        select(Question, Topic.title)
+        .outerjoin(Topic, Topic.id == Question.topic_id)
+        .where(Question.subject_id == subject_id, Question.exam_year.is_not(None))
+    )
+    if exam_type:
+        statement = statement.where(Question.exam_type == exam_type)
+    if exam_year is not None:
+        statement = statement.where(Question.exam_year == exam_year)
+    return statement.order_by(
+        Question.exam_type,
+        Question.exam_year,
+        Question.question_number.asc().nulls_last(),
+        Question.id,
+    ).limit(limit)
 
 
 class QuestionRepository(BaseRepository[Question]):
@@ -42,11 +94,28 @@ class QuestionRepository(BaseRepository[Question]):
         )
         rows = await self.many(
             session,
-            statement.order_by(Question.id)
+            statement.order_by(*list_order(filters))
             .offset((page - 1) * page_size)
             .limit(page_size),
         )
         return rows, int(total or 0)
+
+    async def coverage_counts(self, session: AsyncSession) -> list[tuple]:
+        result = await session.execute(coverage_statement())
+        return [tuple(row) for row in result.all()]
+
+    async def for_export(
+        self,
+        session: AsyncSession,
+        subject_id: str,
+        exam_type: str | None,
+        exam_year: int | None,
+        limit: int,
+    ) -> list[tuple[Question, str | None]]:
+        result = await session.execute(
+            export_statement(subject_id, exam_type, exam_year, limit)
+        )
+        return [(row[0], row[1]) for row in result.all()]
 
     async def usage_counts(
         self, session: AsyncSession, question_id: str

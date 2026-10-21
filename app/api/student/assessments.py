@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from redis_fastapi import AsyncRedisDep
 
 from app.api.deps import StudentPrincipal, require_student
 from app.api.responses import (
@@ -22,11 +21,13 @@ from app.api.schemas import (
     ScopedMockIn,
     SubmitIn,
 )
-from app.core.config import settings
-from app.core.errors import ApiError, RateLimited
-from app.core.logger import logger
+from app.core.errors import ApiError
 from app.core.rate_limit import hit
 from app.database.db import AnSession, get_session
+from app.database.repositories.assessment import (
+    assessments_repository,
+    attempts_repository,
+)
 from app.services.assessments import (
     ContinuePastPaperService,
     GenerateJambPaperService,
@@ -42,14 +43,15 @@ from app.services.assessments import (
     SubmitAttemptService,
     SyncJambPaperService,
 )
+from app.services.assessments.past_paper import resolve_subject
 from app.services.learning import AwardAchievementsService
 from app.services.planner import MarkStudyPlanItemService
 from app.services.practice_exit import (
     CompletePracticeExitService,
     StartPracticeExitService,
 )
-from app.services.provider import EnsureProviderQuestionsService
-from app.services.provider.cache import AsyncRedisClient
+from app.services.provider import ProviderFactory, schedule_provider_bank_page
+from app.services.provider.mapping import exam_type_for
 
 router = APIRouter(prefix="/assessments", tags=["Student / Assessments"])
 
@@ -59,7 +61,6 @@ async def generate_quiz(
     body: GenerateQuizIn,
     background: BackgroundTasks,
     session: AnSession,
-    redis: AsyncRedisDep,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"generate:{student.id}", 20, 60)
@@ -68,49 +69,39 @@ async def generate_quiz(
         return await StartPracticeExitService(session, student.id, body).process()
 
     async def schedule(subject, exam_type, exam_year):
-        if not settings.provider_enabled:
-            return False
-        try:
-            hit("provider:outbound", 30, 60)
-        except RateLimited:
-            return False
-        background.add_task(_provider_job, subject.slug, exam_type, exam_year, redis)
-        return True
+        return schedule_provider_bank_page(
+            background, subject.slug, exam_type, exam_year
+        )
 
     return await GenerateQuizService(session, student.id, body, schedule).process()
-
-
-async def _provider_job(
-    slug: str,
-    exam_type: str,
-    exam_year: int,
-    redis: AsyncRedisClient,
-) -> None:
-    async with get_session() as session:
-        try:
-            await EnsureProviderQuestionsService(
-                session, slug, exam_type, exam_year, redis=redis
-            ).process()
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            logger.exception("Provider question backfill failed")
 
 
 @router.post("/past-paper", response_model=QuizOut)
 async def start_past_paper(
     body: PastPaperIn,
+    background: BackgroundTasks,
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"past-paper:{student.id}", 20, 60)
-    return await StartPastPaperService(
+    payload = await StartPastPaperService(
         session,
         student.id,
         subject_key=body.subject,
         exam=body.examType,
         exam_year=body.examYear,
     ).process()
+    try:
+        subject = await resolve_subject(session, ProviderFactory.create(), body.subject)
+        schedule_provider_bank_page(
+            background,
+            subject.slug,
+            exam_type_for(body.examType) or body.examType,
+            body.examYear,
+        )
+    except ApiError:
+        pass
+    return payload
 
 
 @router.get("/past-paper/history", response_model=PastPaperHistoryOut)
@@ -129,17 +120,36 @@ async def past_paper_history(
 async def continue_past_paper(
     attempt_id: str,
     body: PastPaperMoreIn,
+    background: BackgroundTasks,
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"past-paper:{student.id}", 20, 60)
-    return await ContinuePastPaperService(
+    payload = await ContinuePastPaperService(
         session,
         student.id,
         attempt_id=attempt_id,
         subject_key=body.subject,
         cursor=body.cursor,
     ).process()
+    try:
+        subject = await resolve_subject(session, ProviderFactory.create(), body.subject)
+        attempt = await attempts_repository.by_id(session, attempt_id)
+        assessment = (
+            await assessments_repository.by_id(session, attempt.assessment_id)
+            if attempt is not None
+            else None
+        )
+        if assessment is not None:
+            schedule_provider_bank_page(
+                background,
+                subject.slug,
+                assessment.exam_type,
+                assessment.exam_year,
+            )
+    except ApiError:
+        pass
+    return payload
 
 
 @router.post("/submit", response_model=AttemptResultOut)
