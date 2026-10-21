@@ -17,6 +17,8 @@ def _psycopg_url() -> str:
         return url.replace("postgresql+asyncpg://", "postgresql://", 1)
     if url.startswith("postgres+asyncpg://"):
         return url.replace("postgres+asyncpg://", "postgresql://", 1)
+
+    url.replace("?ssl=require", "")
     return url
 
 
