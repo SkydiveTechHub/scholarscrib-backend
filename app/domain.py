@@ -65,7 +65,7 @@ PAID_ENTITLEMENTS = {
 # Beta: these features are open to every tier while testers try the product.
 # Ending the beta is emptying this set (and the matching one in the frontend's
 # lib/subscription.ts); the paid tiers above are untouched.
-BETA_OPEN_FEATURES = frozenset({"flashcards", "studyPlanner"})
+BETA_OPEN_FEATURES = frozenset({"flashcards", "studyPlanner", "aiTutor"})
 ENTITLEMENTS = {
     feature: "FREEMIUM" if feature in BETA_OPEN_FEATURES else tier
     for feature, tier in PAID_ENTITLEMENTS.items()

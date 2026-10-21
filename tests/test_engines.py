@@ -77,14 +77,14 @@ def test_evidence_prior_blocks_a_perfect_score():
 
 
 def test_entitlements_and_session_revocation():
-    # Beta: flashcards and the study planner are open to every tier.
+    # Beta: flashcards, the study planner and the AI tutor are open to every tier.
     assert can("FREEMIUM", "flashcards") is True
     assert can("FREEMIUM", "studyPlanner") is True
+    assert can("FREEMIUM", "aiTutor") is True
     # The paid tiers still gate everything else.
     assert can("FREEMIUM", "premiumLibrary") is False
     assert can("STANDARD", "advancedAnalytics") is False
     assert can("PREMIUM", "advancedAnalytics") is True
-    assert can("FREEMIUM", "aiTutor") is False
     assert can("PREMIUM", "aiTutor") is True
     # Ending the beta restores the original tiers without touching this table.
     assert PAID_ENTITLEMENTS["flashcards"] == "STANDARD"
