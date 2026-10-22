@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.logger import logger
 from app.services.rag.checkpointer import _psycopg_url
 from app.services.rag.llm import get_chat_model
+from app.services.rag.message_text import visible_assistant_text
 
 # Prisma-style table names (quoted identifiers in Postgres).
 ALLOWED_TABLES = (
@@ -165,6 +166,7 @@ def run_sql_agent(question: str) -> str:
     messages = result.get("messages") or []
     for message in reversed(messages):
         if isinstance(message, AIMessage) and message.content:
-            content = message.content
-            return content if isinstance(content, str) else str(content)
+            text = visible_assistant_text(message.content)
+            if text:
+                return text
     return "I could not look up that curriculum information."

@@ -92,9 +92,7 @@ async def _auto_title(text: str) -> str:
         response = model.invoke(
             [{"role": "user", "content": TITLE_PROMPT.format(message=text[:500])}]
         )
-        content = response.content
-        title = content if isinstance(content, str) else str(content)
-        cleaned = visible_assistant_text(title).strip().strip('"')[:80]
+        cleaned = visible_assistant_text(response.content).strip().strip('"')[:80]
         return cleaned or (text or "New chat")[:60]
     except Exception:  # noqa: BLE001
         return (text or "New chat")[:60]

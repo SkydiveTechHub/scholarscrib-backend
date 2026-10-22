@@ -350,8 +350,7 @@ def summarize_node(state: TutorState) -> dict[str, Any]:
     prompt = SUMMARIZE_PROMPT.format(prior=prior or "(none)", messages=blob[:6000])
     try:
         response = model.invoke([{"role": "user", "content": prompt}])
-        content = response.content
-        summary = content if isinstance(content, str) else str(content)
+        summary = visible_assistant_text(response.content)
     except Exception:  # noqa: BLE001
         summary = prior
     return {"summary": (summary or "").strip()}
@@ -458,8 +457,7 @@ def rewrite_question_node(state: TutorState) -> dict[str, Any]:
     model = get_grader_model()
     prompt = REWRITE_PROMPT.format(question=state["question"])
     response = model.invoke([{"role": "user", "content": prompt}])
-    content = response.content
-    rewritten = content if isinstance(content, str) else str(content)
+    rewritten = visible_assistant_text(response.content)
     return {
         "question": rewritten.strip() or state["question"],
         "rewrite_count": state.get("rewrite_count", 0) + 1,
@@ -634,8 +632,7 @@ async def remember_node(state: TutorState) -> dict[str, Any]:
     prompt = REMEMBER_PROMPT.format(question=question[:500], answer=answer[:800])
     try:
         response = model.invoke([{"role": "user", "content": prompt}])
-        content = response.content
-        text = (content if isinstance(content, str) else str(content)).strip()
+        text = visible_assistant_text(response.content)
     except Exception:  # noqa: BLE001
         return {"decision_trace": trace} if trace else {}
     if not text or text.upper() == "NONE":
