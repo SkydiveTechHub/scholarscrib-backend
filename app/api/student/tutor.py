@@ -34,6 +34,8 @@ from app.services.rag.service import (
     ListTutorThreadsService,
     PostTutorMessageService,
     TutorFeedbackService,
+    prepare_new_thread_stream,
+    stream_new_tutor_thread,
     stop_tutor_stream,
     stream_tutor_reply,
 )
@@ -58,6 +60,21 @@ async def create_thread(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     return await CreateTutorThreadService(session, student.id, body).process()
+
+
+@router.post("/threads/stream")
+async def create_thread_stream(
+    body: TutorThreadCreateIn,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    """Create a thread with its first message and stream the reply.
+
+    Nothing exists until the first message arrives; the ``streamStarted``
+    event carries the new ``threadId``.
+    """
+    prepared = await prepare_new_thread_stream(session, student.id, body)
+    return await sse_response(stream_new_tutor_thread(prepared, student.id))
 
 
 @router.get("/threads", response_model=TutorThreadsOut)

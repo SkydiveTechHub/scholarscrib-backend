@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.errors import ApiError
 from app.core.ids import cuid
 from app.core.timeutil import utcnow
+from app.database.db import async_session
 from app.database.models.chat import ChatFeedback, ChatMessage, ChatThread
 from app.database.repositories.chat import (
     chat_feedback_repository,
@@ -231,7 +232,9 @@ class ListTutorThreadsService:
 
     async def process(self) -> dict:
         require_rag()
-        rows = await chat_threads_repository.for_user(self.session, self.user_id)
+        rows = await chat_threads_repository.for_user(
+            self.session, self.user_id, only_started=True
+        )
         return {"threads": [_thread_out(row) for row in rows]}
 
 
@@ -441,12 +444,105 @@ async def stop_tutor_stream(
 
 
 async def stream_tutor_reply(
-    session: AsyncSession, user_id: str, thread_id: str, content: str
+    _request_session: AsyncSession, user_id: str, thread_id: str, content: str
 ) -> AsyncIterator[dict]:
-    """Yield SSE-friendly dict events while running the graph."""
+    """Yield SSE-friendly dict events while running the graph.
+
+    The request-scoped session is committed and closed before a streaming
+    body runs, so the stream owns its own session and commits as it goes.
+    """
+    async with async_session() as session:
+        async for event in _stream_tutor_reply(session, user_id, thread_id, content):
+            yield event
+
+
+async def prepare_new_thread_stream(
+    session: AsyncSession, user_id: str, body: TutorThreadCreateIn
+) -> TutorThreadCreateIn:
+    """Validate a create-and-stream request before the response starts.
+
+    Nothing is written: the thread is created by the stream itself, together
+    with the student's first message.
+    """
     require_rag()
+    if not (body.firstMessage or "").strip():
+        raise ApiError(400, "firstMessage is required")
     enforce_daily_message_limit(user_id)
-    thread = await _owned_thread(session, user_id, thread_id)
+    if body.lessonId:
+        from app.database.models import Lesson, Subtopic, Topic
+
+        row = (
+            await session.execute(
+                select(Topic.id, Topic.subject_id)
+                .select_from(Lesson)
+                .join(Subtopic, Subtopic.id == Lesson.subtopic_id)
+                .join(Topic, Topic.id == Subtopic.topic_id)
+                .where(Lesson.id == body.lessonId)
+            )
+        ).one_or_none()
+        if row is None:
+            raise ApiError(404, "Lesson not found")
+        body = body.model_copy(
+            update={
+                "topicId": body.topicId or row[0],
+                "subjectId": body.subjectId or row[1],
+            }
+        )
+    await CreateTutorThreadService(session, user_id, body)._validate_refs()
+    return body
+
+
+async def stream_new_tutor_thread(
+    body: TutorThreadCreateIn, user_id: str
+) -> AsyncIterator[dict]:
+    """Create the thread with the first message, then stream the reply."""
+    async with async_session() as session:
+        async for event in _stream_tutor_reply(
+            session, user_id, None, body.firstMessage or "", create=body
+        ):
+            yield event
+
+
+async def _stream_tutor_reply(
+    session: AsyncSession,
+    user_id: str,
+    thread_id: str | None,
+    content: str,
+    *,
+    create: TutorThreadCreateIn | None = None,
+) -> AsyncIterator[dict]:
+    require_rag()
+    if create is None:
+        enforce_daily_message_limit(user_id)
+        thread = await _owned_thread(session, user_id, thread_id or "")
+    else:
+        thread = ChatThread(
+            id=cuid(),
+            user_id=user_id,
+            title=create.title or "New chat",
+            subject_id=create.subjectId,
+            topic_id=create.topicId,
+            question_id=create.questionId,
+            lesson_id=create.lessonId,
+        )
+        await chat_threads_repository.add(session, thread, flush=True)
+        wrong = (create.wrongAnswerContext or "").strip()
+        if wrong and create.questionId:
+            await chat_messages_repository.add(
+                session,
+                ChatMessage(
+                    id=cuid(),
+                    thread_id=thread.id,
+                    role="system",
+                    content=(
+                        "The student answered a practice question incorrectly. "
+                        f"Their answer was: {wrong}. Help them understand the "
+                        "mistake without simply restating the answer key unless "
+                        "they ask."
+                    ),
+                ),
+                flush=True,
+            )
     text = content.strip()
     if not text:
         raise ApiError(400, "content is required")
@@ -460,6 +556,7 @@ async def stream_tutor_reply(
     )
     await chat_messages_repository.add(session, user_msg, flush=True)
     await _ensure_thread_title(session, thread, text)
+    await session.commit()
     begin_stream(thread.id, stream_id)
     yield {
         "event": "streamStarted",
@@ -543,7 +640,7 @@ async def stream_tutor_reply(
 
         if cancelled or should_stop(thread.id, stream_id):
             await session.delete(user_msg)
-            await session.flush()
+            await session.commit()
             yield {
                 "event": "done",
                 "data": {
@@ -558,6 +655,7 @@ async def stream_tutor_reply(
         full = "".join(final_text_parts).strip()
         if not full:
             assistant = await _run_graph_and_persist(session, thread, text)
+            await session.commit()
             yield {"event": "assistantMessage", "data": assistant}
             yield {
                 "event": "done",
@@ -574,7 +672,7 @@ async def stream_tutor_reply(
         )
         await chat_messages_repository.add(session, assistant, flush=True)
         thread.updated_at = utcnow()
-        await session.flush()
+        await session.commit()
         yield {"event": "assistantMessage", "data": _message_out(assistant)}
         yield {
             "event": "done",

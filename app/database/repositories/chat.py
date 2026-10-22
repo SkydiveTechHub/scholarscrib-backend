@@ -1,6 +1,6 @@
 """Repositories for tutor chat and RAG index jobs."""
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models.chat import ChatFeedback, ChatMessage, ChatThread, RagIndexJob
@@ -11,9 +11,22 @@ class ChatThreadRepository(BaseRepository[ChatThread]):
     model = ChatThread
 
     async def for_user(
-        self, session: AsyncSession, user_id: str, *, include_archived: bool = False
+        self,
+        session: AsyncSession,
+        user_id: str,
+        *,
+        include_archived: bool = False,
+        only_started: bool = False,
     ) -> list[ChatThread]:
         filters = [ChatThread.user_id == user_id]
+        if only_started:
+            # A thread only counts once the student has sent a message.
+            filters.append(
+                exists().where(
+                    ChatMessage.thread_id == ChatThread.id,
+                    ChatMessage.role == "user",
+                )
+            )
         if not include_archived:
             filters.append(ChatThread.archived.is_(False))
         return await self.list_where(
