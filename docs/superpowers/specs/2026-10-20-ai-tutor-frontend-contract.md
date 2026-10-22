@@ -80,9 +80,7 @@ Chitchat / curriculum-SQL turns may emit `assistantMessage` without tokens.
 `POST /api/tutor/threads/{id}/messages/stream/stop`  
 Body (optional): `{ "streamId": "..." }` from `streamStarted`.
 
-Stops the active reply for that thread. On cancel, the in-flight user message is removed and SSE ends with `done.cancelled: true`. Then send a new stream with the revised question.
-
-Also abort the fetch (`AbortController`) on the client so the HTTP connection closes.
+Stops the active reply for that thread. SSE ends with `done.cancelled: true`. The user message stays, and any partial assistant text already produced is stored. Closing the socket does not cancel the run; rejoin it with `GET /api/tutor/threads/{id}/runs/{runId}/stream` (`Last-Event-ID`). A finished run is `404` — load the thread instead. See the integration guide for `activeRun`, `tool`, `ui`, and editable `fields`.
 
 ## Time travel
 
