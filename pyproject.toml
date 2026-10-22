@@ -43,6 +43,7 @@ dependencies = [
     "langchain-cohere>=0.4",
     "langchain-typesafe>=0.0.1a3",
     "flashrank>=0.2",
+    "langchain-anthropic>=1.7.6",
 ]
 
 [tool.pytest.ini_options]
