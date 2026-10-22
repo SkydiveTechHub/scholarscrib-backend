@@ -2,7 +2,7 @@
 
 Date: 2026-10-20
 
-> **Full guide:** see [`2026-10-21-ai-tutor-frontend-integration.md`](./2026-10-21-ai-tutor-frontend-integration.md) for TypeScript types, SSE client sketch, UX recipes, and error handling.
+> **Full guide:** see [`2026-10-21-ai-tutor-frontend-integration.md`](./2026-10-21-ai-tutor-frontend-integration.md) for TypeScript types, SSE client sketch, UX recipes, and error handling. Admin console chat is [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md).
 
 ## Auth & access
 

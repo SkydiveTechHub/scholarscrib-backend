@@ -283,6 +283,27 @@ Order:
 
 Algorithm constants are in [12-question-provider.md](./12-question-provider.md).
 
+## Astra
+
+Operator chat at `/admin/api/astra`. Any active admin. Threads are per admin. Reads run during the turn. Mutations pause on an approval card and then call the same services as the routes above, with `actor_id` set to the signed-in admin. Owner-only tools (team, catalogue writes, student delete, force sign-out) are hidden unless `isOwner`, and execute checks that again.
+
+The frontend contract, SSE events, and card fields are in [`../superpowers/specs/2026-10-22-admin-astra-frontend-integration.md`](../superpowers/specs/2026-10-22-admin-astra-frontend-integration.md).
+
+| Method | Path |
+|---|---|
+| `POST` | `/admin/api/astra/threads` |
+| `GET` | `/admin/api/astra/threads` |
+| `GET` | `/admin/api/astra/threads/{id}` |
+| `DELETE` | `/admin/api/astra/threads/{id}` |
+| `GET` | `/admin/api/astra/threads/{id}/messages` |
+| `POST` | `/admin/api/astra/threads/{id}/messages` |
+| `POST` | `/admin/api/astra/threads/{id}/messages/stream` |
+| `POST` | `/admin/api/astra/threads/{id}/messages/stream/stop` |
+| `GET` | `/admin/api/astra/threads/{id}/runs/{runId}/stream` |
+| `POST` | `/admin/api/astra/threads/{id}/actions/resume` |
+
+Login, logout, password reset, material upload signing, and question CSV/ZIP export stay on their existing routes. Reindex through Astra writes audit `rag.reindex` / entity `RagIndexJob`.
+
 ## Audit action list
 
 | Action | Entity |
@@ -296,5 +317,6 @@ Algorithm constants are in [12-question-provider.md](./12-question-provider.md).
 | `announcement.send`, `announcement.cancel` | `Announcement` |
 | `announcement.test` | `User` |
 | `provider.backfill` | `ProviderFetch` |
+| `rag.reindex` | `RagIndexJob` (Astra reindex; the HTTP reindex route does not audit) |
 
 The filter dropdown in `src/lib/admin-audit-filter.ts` is a subset. It omits `material.*`, `academic-term.*`, and `provider.backfill`. The writer accepts the full set. Port the writer’s union, not only the dropdown.

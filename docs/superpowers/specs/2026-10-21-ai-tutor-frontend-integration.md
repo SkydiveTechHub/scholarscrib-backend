@@ -3,7 +3,7 @@
 Date: 2026-10-21  
 Audience: Next.js / student app engineers wiring the chat UI to the ScholarsCrib API.
 
-This guide is the implementation reference for the student tutor surface. The shorter contract note lives in [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md).
+This guide is the implementation reference for the student tutor surface. The shorter contract note lives in [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md). Admin console chat is a separate API: [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md).
 
 ---
 
@@ -764,7 +764,7 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 
 ## 14. What not to build against
 
-- Do **not** call admin `/admin/api/rag/*` from the student app.  
+- Do **not** call admin `/admin/api/rag/*` or `/admin/api/astra/*` from the student app. Admin chat is [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md).  
 - Do **not** depend on LangSmith, Jev, or Milvus from the browser.  
 - Do **not** treat token concatenation as final.  
 - Do **not** assume every turn has citations.  
@@ -792,6 +792,7 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 
 ## Related docs
 
+- [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md) — admin console chat  
 - [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md) — short contract  
 - [`2026-10-20-ai-tutor-rag-design.md`](./2026-10-20-ai-tutor-rag-design.md) — backend design  
 - Routes: `app/api/student/tutor.py`, `app/api/student/lessons.py`  

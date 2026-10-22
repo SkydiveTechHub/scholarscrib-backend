@@ -576,3 +576,27 @@ class TutorReplayIn(BaseModel):
 class TutorForkIn(BaseModel):
     checkpointId: str = Field(min_length=1)
     question: str | None = Field(default=None, max_length=8000)
+
+
+class AdminAstraThreadCreateIn(BaseModel):
+    title: str | None = Field(default=None, max_length=120)
+    firstMessage: str | None = Field(default=None, max_length=8000)
+
+
+class AdminAstraMessageIn(BaseModel):
+    content: str = Field(min_length=1, max_length=8000)
+
+
+class AdminAstraStreamStopIn(BaseModel):
+    """Optional stream id from the ``streamStarted`` SSE event."""
+
+    streamId: str | None = Field(default=None, min_length=1)
+
+
+class AdminAstraResumeIn(BaseModel):
+    """Approve or reject a paused admin action. Does not send a new chat message."""
+
+    approved: bool
+    actionId: str | None = Field(default=None, min_length=1)
+    args: dict | None = None
+    stream: bool = False

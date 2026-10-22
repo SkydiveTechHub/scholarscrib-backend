@@ -914,6 +914,21 @@ class TutorActionResumeOut(ApiOut):
     actionResult: dict | None = None
 
 
+class AdminAstraThreadOut(ApiOut):
+    id: str
+    title: str | None = None
+    archived: bool = False
+    activeRun: TutorActiveRunOut | None = None
+    createdAt: str | None = None
+    updatedAt: str | None = None
+    messages: list[TutorMessageOut] | None = None
+    assistantMessage: TutorMessageOut | None = None
+
+
+class AdminAstraThreadsOut(ApiOut):
+    threads: list[AdminAstraThreadOut]
+
+
 class RagJobOut(ApiOut):
     id: str
     source: str

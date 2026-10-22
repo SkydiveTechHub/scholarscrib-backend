@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.admin.admins import router as admins_router
 from app.api.admin.announcements import router as announcements_router
+from app.api.admin.astra import router as astra_router
 from app.api.admin.audit import router as audit_router
 from app.api.admin.auth import router as auth_router
 from app.api.admin.catalogue import (
@@ -35,6 +36,7 @@ router.include_router(lessons_router)
 router.include_router(tree_router)
 router.include_router(browse_router)
 router.include_router(announcements_router)
+router.include_router(astra_router)
 router.include_router(audit_router)
 router.include_router(stats_router)
 router.include_router(overview_router)

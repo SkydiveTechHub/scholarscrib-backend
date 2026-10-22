@@ -19,6 +19,7 @@ _STATUS_NODES = frozenset(
         "generate_answer",
         "ground_answer",
         "remember",
+        "pick_domain",
         "action_agent",
         "action_tools",
         "inspect_action_tools",

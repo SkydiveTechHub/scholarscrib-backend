@@ -1,6 +1,7 @@
 """ScholarsCrib tables, grouped by domain."""
 
 from app.database.models.admin import Admin, AdminAudit
+from app.database.models.admin_chat import AdminChatMessage, AdminChatThread
 from app.database.models.assessment import (
     Assessment,
     AssessmentAttempt,
@@ -78,6 +79,8 @@ __all__ = [
     "Achievement",
     "Admin",
     "AdminAudit",
+    "AdminChatMessage",
+    "AdminChatThread",
     "Announcement",
     "AnnouncementDelivery",
     "AnnouncementDismissal",
