@@ -10,11 +10,13 @@ from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, HumanMessage
 
 from app.services.rag import decisions as decisions_mod
+from app.services.rag.decisions import order_by_noul_scores
 from app.services.rag.graph import (
     classify_intent_node,
     grade_documents_node,
     ground_answer_node,
     remember_node,
+    rerank_node,
 )
 
 
@@ -110,7 +112,57 @@ async def test_grade_documents_filters_by_noul(mock_classifier):
     )
     kept_ids = [d.metadata["doc_id"] for d in out["documents"]]
     assert kept_ids == ["a", "c"]
+    assert out["document_scores"] == [0.9, 0.6]
     assert out["decision_meta"]["source"] == "jev"
+
+
+def test_order_by_noul_scores_sorts_and_clips():
+    items = ["a", "b", "c"]
+    ordered, scores = order_by_noul_scores(items, [0.4, None, 0.9], top_k=1)
+    assert ordered == ["c"]
+    assert scores == [0.9]
+
+
+@pytest.mark.asyncio
+async def test_rerank_reuses_grade_scores(mock_classifier):
+    docs = [
+        Document(page_content="semi", metadata={"doc_id": "c"}),
+        Document(page_content="best", metadata={"doc_id": "a"}),
+    ]
+    out = await rerank_node(
+        {
+            "question": "What is osmosis?",
+            "documents": docs,
+            "document_scores": [0.6, 0.9],
+        }
+    )
+    assert [d.metadata["doc_id"] for d in out["documents"]] == ["a", "c"]
+    assert out["document_scores"] == [0.9, 0.6]
+    assert out["decision_meta"]["source"] == "jev"
+    assert out["decision_meta"]["detail"]["from"] == "grade_scores"
+    mock_classifier.ainvoke.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_rerank_calls_jev_when_scores_missing(mock_classifier, monkeypatch):
+    from app.core import config
+
+    monkeypatch.setattr(config.settings, "rag_rerank_k", 1)
+    mock_classifier.ainvoke.return_value = _noul_response({"doc_0": 0.2, "doc_1": 0.8})
+    docs = [
+        Document(page_content="weak", metadata={"doc_id": "w"}),
+        Document(page_content="strong", metadata={"doc_id": "s"}),
+    ]
+    out = await rerank_node(
+        {
+            "question": "What is osmosis?",
+            "documents": docs,
+            "document_scores": [],
+        }
+    )
+    assert [d.metadata["doc_id"] for d in out["documents"]] == ["s"]
+    assert out["decision_meta"]["source"] == "jev"
+    mock_classifier.ainvoke.assert_called_once()
 
 
 @pytest.mark.asyncio

@@ -26,7 +26,7 @@ lesson) and receive grounded answers from indexed lessons, Q&A, and PDF material
 
 ## Graph
 
-`retrieve` → `grade_documents` → (`rewrite_question` loop) → `rerank` → `generate_answer`
+`retrieve` → `grade_documents` (Jev Noul filter) → (`rewrite_question` loop) → `rerank` (Jev Noul sort / top‑k; legacy Flashrank/Cohere only if Jev off) → `generate_answer`
 
 Citations returned as `groundedOn` on assistant messages.
 

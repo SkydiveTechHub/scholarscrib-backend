@@ -17,8 +17,10 @@ from app.services.rag.decisions import (
     decide_document_grades,
     decide_groundedness,
     decide_intent,
+    decide_rerank,
     decide_should_rewrite,
     decide_worth_remembering,
+    order_by_noul_scores,
 )
 from app.services.rag.llm import get_chat_model, get_grader_model
 from app.services.rag.message_text import visible_assistant_text
@@ -71,6 +73,8 @@ class TutorState(TypedDict):
     decision_trace: Annotated[list[dict[str, Any]], _append_trace]
     decision_meta: dict[str, Any]
     skip_rewrite: bool
+    # Noul relevance scores aligned with ``documents`` after grading (for Jev rerank).
+    document_scores: list[float]
 
 
 def _milvus_expr(state: TutorState) -> str | None:
@@ -335,7 +339,12 @@ def retrieve_node(state: TutorState) -> dict[str, Any]:
         documents.sort(
             key=lambda doc: 0 if doc.metadata.get("question_id") == qid else 1
         )
-    return {"question": query, "documents": documents, "skip_rewrite": False}
+    return {
+        "question": query,
+        "documents": documents,
+        "skip_rewrite": False,
+        "document_scores": [],
+    }
 
 
 async def grade_documents_node(state: TutorState) -> dict[str, Any]:
@@ -343,6 +352,7 @@ async def grade_documents_node(state: TutorState) -> dict[str, Any]:
     documents = list(state.get("documents") or [])[: settings.rag_retrieve_k]
     trace: list[dict[str, Any]] = []
     kept: list[Document] = []
+    kept_scores: list[float] = []
     skip_rewrite = False
 
     if settings.jev_ready and documents:
@@ -354,6 +364,7 @@ async def grade_documents_node(state: TutorState) -> dict[str, Any]:
             for doc, score in zip(documents, scores, strict=False):
                 if score is not None and score >= threshold:
                     kept.append(doc)
+                    kept_scores.append(score)
         else:
             # full API miss → per-doc LLM fallback
             for doc in documents:
@@ -394,6 +405,7 @@ async def grade_documents_node(state: TutorState) -> dict[str, Any]:
     meta = trace[-1] if trace else {"node": "grade_documents", "source": "empty"}
     return {
         "documents": kept,
+        "document_scores": kept_scores,
         "skip_rewrite": skip_rewrite,
         "decision_meta": meta,
         "decision_trace": trace,
@@ -425,13 +437,61 @@ def rewrite_question_node(state: TutorState) -> dict[str, Any]:
     }
 
 
-def rerank_node(state: TutorState) -> dict[str, Any]:
+async def rerank_node(state: TutorState) -> dict[str, Any]:
+    """Reorder graded docs by Jev Noul (prefer grade scores); else legacy reranker."""
     docs = list(state.get("documents") or [])
-    top = rerank_documents(state.get("question") or "", docs)
+    question = state.get("question") or ""
+    top_k = settings.rag_rerank_k
+    scores = list(state.get("document_scores") or [])
+    meta: dict[str, Any]
+    top: list[Document]
+    ordered_scores: list[float] = []
+
+    if docs and scores and len(scores) == len(docs):
+        top, ordered_scores = order_by_noul_scores(docs, scores, top_k=top_k)
+        meta = {
+            "node": "rerank",
+            "source": "jev",
+            "detail": {
+                "from": "grade_scores",
+                "top_k": top_k,
+                "kept": len(top),
+                "scores": ordered_scores,
+            },
+        }
+    elif docs and settings.jev_ready:
+        texts = [doc.page_content for doc in docs]
+        indices, ordered_scores, meta = await decide_rerank(
+            question, texts, top_k=top_k
+        )
+        if indices:
+            top = [docs[i] for i in indices]
+        else:
+            top = rerank_documents(question, docs)
+            meta = {
+                "node": "rerank",
+                "source": "fallback",
+                "detail": {"reason": "jev_miss", "kept": len(top)},
+            }
+            ordered_scores = []
+    else:
+        top = rerank_documents(question, docs)
+        meta = {
+            "node": "rerank",
+            "source": "configured" if settings.reranker_model else "truncate",
+            "detail": {"kept": len(top)},
+        }
+
     citations = [
         citation_from_metadata(doc.metadata, excerpt=doc.page_content) for doc in top
     ]
-    return {"documents": top, "citations": citations}
+    return {
+        "documents": top,
+        "document_scores": ordered_scores,
+        "citations": citations,
+        "decision_meta": meta,
+        "decision_trace": [meta],
+    }
 
 
 def generate_answer_node(state: TutorState) -> dict[str, Any]:

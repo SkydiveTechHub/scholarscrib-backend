@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
 from typing import Any, cast
 
@@ -217,6 +218,54 @@ async def decide_document_grades(
         "grade_documents",
         source="jev",
         detail={"scores": detail, "threshold": settings.jev_grade_noul_threshold},
+    )
+
+
+def order_by_noul_scores[T](
+    items: Sequence[T], scores: Sequence[float | None], *, top_k: int
+) -> tuple[list[T], list[float]]:
+    """Sort items by noul descending; drop None scores; keep top_k."""
+    paired = [
+        (item, score)
+        for item, score in zip(items, scores, strict=False)
+        if score is not None
+    ]
+    paired.sort(key=lambda row: row[1], reverse=True)
+    clipped = paired[: max(0, top_k)]
+    return [item for item, _ in clipped], [score for _, score in clipped]
+
+
+async def decide_rerank(
+    question: str, doc_texts: list[str], *, top_k: int
+) -> tuple[list[int], list[float], dict[str, Any]]:
+    """Score candidates with Jev Nouls and return ranked indices + scores."""
+    if not doc_texts:
+        return [], [], _trace_entry("rerank", source="jev", detail={"count": 0})
+    scores, grade_meta = await decide_document_grades(question, doc_texts)
+    if not any(score is not None for score in scores):
+        return (
+            [],
+            [],
+            _trace_entry(
+                "rerank",
+                source="fallback",
+                detail={"count": len(doc_texts), "reason": "no_scores"},
+            ),
+        )
+    indexed = list(range(len(doc_texts)))
+    ordered_idx, ordered_scores = order_by_noul_scores(indexed, scores, top_k=top_k)
+    return (
+        ordered_idx,
+        ordered_scores,
+        _trace_entry(
+            "rerank",
+            source="jev",
+            detail={
+                "scores": (grade_meta.get("detail") or {}).get("scores", {}),
+                "top_k": top_k,
+                "kept": len(ordered_idx),
+            },
+        ),
     )
 
 
