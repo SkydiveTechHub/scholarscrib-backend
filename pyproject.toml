@@ -44,6 +44,7 @@ dependencies = [
     "langchain-typesafe>=0.0.1a3",
     "flashrank>=0.2",
     "langchain-anthropic>=1.7.6",
+    "psycopg2>=2.9.13",
 ]
 
 [tool.pytest.ini_options]
