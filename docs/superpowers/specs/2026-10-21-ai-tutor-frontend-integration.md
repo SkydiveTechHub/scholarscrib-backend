@@ -230,6 +230,8 @@ SSE:
 | `actionProposal` | `{ actionId, checkpointId, tool, args, summary, destructive }` |
 | `done` | `{ ok: true, paused: true, pendingAction }` |
 
+`summary` is the plan Astra wrote for the card. Show it in full and keep the line breaks. `args` is the payload that runs on approve, without that text.
+
 The assistant message stored for that turn keeps the summary in `content`. While it is waiting, `groundedOn` includes `{ kind: "actionProposal", status: "pending", ... }`. **Redraw the card only for that pending shape.**
 
 When resume finishes (approve or dismiss), that same message is updated in place: `kind` is removed and `status` becomes `executed` or `rejected`. The summary text stays. A reload must not show Approve again. The resume body also returns `proposalMessage` (the updated row). SSE resume emits `proposalSettled` with that message before `assistantMessage`.

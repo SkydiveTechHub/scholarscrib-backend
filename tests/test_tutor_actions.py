@@ -73,6 +73,13 @@ def test_action_history_drops_tool_results_whose_call_was_cut_off():
     assert repaired == [earlier, follow_up]
 
 
+_PLAN = (
+    "Plan: Create a study plan\n\n"
+    "I'll build an SS2 First term plan for Mathematics.\n\n"
+    "Nothing changes until you approve."
+)
+
+
 def test_heuristic_routes_study_plan_to_action():
     assert _heuristic_route("Help me create a study plan") == "action"
     assert _heuristic_route("What subjects do you have?") == "sql"
@@ -92,10 +99,12 @@ async def test_create_tool_proposes_without_executing(monkeypatch):
         "app.services.rag.tools.study_plan.CreateStudyPlanService", Boom
     )
     ensure_tools()
-    raw = await _create_study_plan(**_plan_args())
+    raw = await _create_study_plan(**_plan_args(), summary=_PLAN)
     proposal = decode_proposal(raw)
     assert proposal is not None
     assert proposal["tool"] == "create_study_plan"
+    assert proposal["summary"] == _PLAN
+    assert "summary" not in proposal["args"]
     assert proposal["args"]["subjectIds"] == ["sub-1"]
     assert called["n"] == 0
     assert PROPOSAL_KEY in raw
@@ -107,6 +116,7 @@ async def test_create_tool_rejects_incomplete_settings():
             **_plan_args(),
             "weekdayMinutes": 0,
             "weekendMinutes": 0,
+            "summary": _PLAN,
         }
     )
     assert decode_proposal(raw) is None
@@ -123,7 +133,7 @@ class _ScriptedModel:
             tool_calls=[
                 {
                     "name": "create_study_plan",
-                    "args": _plan_args(),
+                    "args": {**_plan_args(), "summary": _PLAN},
                     "id": "call-1",
                     "type": "tool_call",
                 }
@@ -185,6 +195,7 @@ async def test_interrupt_then_approve_creates_plan(monkeypatch):
         assert snapshot.interrupts
         pending = snapshot.interrupts[0].value
         assert pending["tool"] == "create_study_plan"
+        assert pending["summary"] == _PLAN
         assert created == {}
 
         result = await graph.ainvoke(Command(resume={"approved": True}), config=config)

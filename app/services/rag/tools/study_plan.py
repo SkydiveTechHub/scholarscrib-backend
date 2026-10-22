@@ -30,6 +30,14 @@ from app.services.rag.tools.registry import (
 )
 
 _FEATURE = "studyPlanner"
+_SUMMARY = Field(
+    min_length=1,
+    description=(
+        "The approval card. Follow the plan example in your instructions: "
+        "what will change, the details in names (not ids), and what happens "
+        "if the student approves."
+    ),
+)
 
 
 class CreateStudyPlanArgs(StudyPlanIn):
@@ -58,6 +66,26 @@ class SetItemStatusArgs(BaseModel):
     status: str = Field(description="COMPLETED, SKIPPED, or PENDING")
 
 
+class CreateStudyPlanToolArgs(CreateStudyPlanArgs):
+    summary: str = _SUMMARY
+
+
+class UpdateStudyPlanToolArgs(UpdateStudyPlanArgs):
+    summary: str = _SUMMARY
+
+
+class DeleteStudyPlanToolArgs(DeleteStudyPlanArgs):
+    summary: str = _SUMMARY
+
+
+class SetPositionsToolArgs(SetPositionsArgs):
+    summary: str = _SUMMARY
+
+
+class SetItemStatusToolArgs(SetItemStatusArgs):
+    summary: str = _SUMMARY
+
+
 def _settings_error(body: StudyPlanIn) -> str | None:
     target = body.targetDate.isoformat() if body.targetDate else None
     problem = plan_settings_problem(
@@ -82,126 +110,120 @@ def _fail(message: str) -> str:
     return json.dumps({"ok": False, "error": message})
 
 
-def _propose(name: str, args: dict[str, Any]) -> str:
-    return encode_proposal(proposal_from_args(name, args))
+def _propose(name: str, args: dict[str, Any], summary: str | None = None) -> str:
+    return encode_proposal(proposal_from_args(name, args, summary=summary))
+
+
+def _split_summary(model: BaseModel) -> tuple[dict[str, Any], str]:
+    payload = dump_model(model)
+    summary = str(payload.pop("summary", "")).strip()
+    return payload, summary
 
 
 async def _create_study_plan(**kwargs: Any) -> str:
     try:
-        args = CreateStudyPlanArgs.model_validate(kwargs)
+        parsed = CreateStudyPlanToolArgs.model_validate(kwargs)
     except ValidationError as exc:
         return _fail(exc.errors()[0].get("msg", "Invalid study plan"))
-    problem = _settings_error(args)
+    problem = _settings_error(parsed)
     if problem:
         return _fail(problem)
-    return _propose("create_study_plan", dump_model(args))
+    payload, summary = _split_summary(parsed)
+    return _propose("create_study_plan", payload, summary)
 
 
 async def _update_study_plan(**kwargs: Any) -> str:
     try:
-        args = UpdateStudyPlanArgs.model_validate(kwargs)
+        parsed = UpdateStudyPlanToolArgs.model_validate(kwargs)
     except ValidationError as exc:
         return _fail(exc.errors()[0].get("msg", "Invalid study plan"))
-    problem = _settings_error(args)
+    problem = _settings_error(parsed)
     if problem:
         return _fail(problem)
-    return _propose("update_study_plan", dump_model(args))
+    payload, summary = _split_summary(parsed)
+    return _propose("update_study_plan", payload, summary)
 
 
-async def _delete_study_plan(planId: str) -> str:
-    return _propose("delete_study_plan", {"planId": planId})
+async def _delete_study_plan(**kwargs: Any) -> str:
+    try:
+        parsed = DeleteStudyPlanToolArgs.model_validate(kwargs)
+    except ValidationError as exc:
+        return _fail(exc.errors()[0].get("msg", "Invalid study plan"))
+    payload, summary = _split_summary(parsed)
+    return _propose("delete_study_plan", payload, summary)
 
 
 async def _set_positions(**kwargs: Any) -> str:
     try:
-        parsed = SetPositionsArgs.model_validate(kwargs)
+        parsed = SetPositionsToolArgs.model_validate(kwargs)
     except ValidationError as exc:
         return _fail(exc.errors()[0].get("msg", "Invalid positions"))
-    payload = {"positions": [row.model_dump() for row in parsed.positions]}
-    return _propose("set_study_plan_positions", payload)
+    payload, summary = _split_summary(parsed)
+    return _propose("set_study_plan_positions", payload, summary)
 
 
-async def _set_item_status(itemId: str, status: str) -> str:
-    normalized = status.strip().upper()
+async def _set_item_status(**kwargs: Any) -> str:
+    try:
+        parsed = SetItemStatusToolArgs.model_validate(kwargs)
+    except ValidationError as exc:
+        return _fail(exc.errors()[0].get("msg", "Invalid status"))
+    normalized = parsed.status.strip().upper()
     if normalized not in {"COMPLETED", "SKIPPED", "PENDING"}:
         return _fail("status must be COMPLETED, SKIPPED, or PENDING")
-    return _propose(
-        "set_study_plan_item_status", {"itemId": itemId, "status": normalized}
-    )
+    payload, summary = _split_summary(parsed)
+    payload["status"] = normalized
+    return _propose("set_study_plan_item_status", payload, summary)
 
 
-def _summary_create(args: dict[str, Any]) -> str:
-    days = ", ".join(str(day) for day in args.get("studyDays") or [])
-    return (
-        f"Create a study plan for {args.get('classLevel')} {args.get('term')} "
-        f"covering {len(args.get('subjectIds') or [])} subject(s), "
-        f"days [{days}], {args.get('weekdayMinutes')} weekday min / "
-        f"{args.get('weekendMinutes')} weekend min."
-    )
-
-
-def _summary_update(args: dict[str, Any]) -> str:
-    return f"Update study plan {args.get('planId')}. " + _summary_create(args)
-
-
-def _summary_delete(args: dict[str, Any]) -> str:
-    return f"Archive study plan {args.get('planId')}. This deactivates the plan."
-
-
-def _summary_positions(args: dict[str, Any]) -> str:
-    count = len(args.get("positions") or [])
-    return f"Set class position on {count} subject(s) and rebuild the plan."
-
-
-def _summary_status(args: dict[str, Any]) -> str:
-    return f"Mark plan item {args.get('itemId')} as {args.get('status')}."
+def _fallback_summary(_: dict[str, Any]) -> str:
+    return "Please confirm this change."
 
 
 def register_study_plan_tools() -> None:
-    entries: list[tuple[str, str, Any, type[BaseModel], Any, bool]] = [
+    entries: list[tuple[str, str, Any, type[BaseModel], bool]] = [
         (
             "create_study_plan",
-            "Propose a new study plan. Does not create it until the student approves. "
-            "subjectIds must be real ids from get_study_plan or list_subjects.",
+            "Propose a new study plan. It is not created until the student "
+            "approves. subjectIds must be real ids from a read tool. "
+            "summary is the plan on the approval card.",
             _create_study_plan,
-            CreateStudyPlanArgs,
-            _summary_create,
+            CreateStudyPlanToolArgs,
             False,
         ),
         (
             "update_study_plan",
-            "Propose updating plan settings. Requires planId from get_study_plan.",
+            "Propose new settings for an existing plan. planId comes from "
+            "get_study_plan. summary is the plan on the approval card.",
             _update_study_plan,
-            UpdateStudyPlanArgs,
-            _summary_update,
+            UpdateStudyPlanToolArgs,
             False,
         ),
         (
             "delete_study_plan",
-            "Propose archiving a study plan. Destructive; waits for approval.",
+            "Propose archiving a study plan. Destructive; waits for approval. "
+            "summary is the plan on the approval card.",
             _delete_study_plan,
-            DeleteStudyPlanArgs,
-            _summary_delete,
+            DeleteStudyPlanToolArgs,
             True,
         ),
         (
             "set_study_plan_positions",
-            "Propose where the class currently is (topic per subject) and replan.",
+            "Propose where the class is (topic per subject) and replan. "
+            "summary is the plan on the approval card.",
             _set_positions,
-            SetPositionsArgs,
-            _summary_positions,
+            SetPositionsToolArgs,
             False,
         ),
         (
             "set_study_plan_item_status",
-            "Propose marking a plan item COMPLETED, SKIPPED, or PENDING.",
+            "Propose marking one session COMPLETED, SKIPPED, or PENDING. "
+            "summary is the plan on the approval card.",
             _set_item_status,
-            SetItemStatusArgs,
-            _summary_status,
+            SetItemStatusToolArgs,
             False,
         ),
     ]
-    for name, description, fn, schema, summary, destructive in entries:
+    for name, description, fn, schema, destructive in entries:
         tool = StructuredTool.from_function(
             coroutine=fn,
             name=name,
@@ -214,7 +236,7 @@ def register_study_plan_tools() -> None:
                 mutating=True,
                 feature=_FEATURE,
                 tool=tool,
-                summary_fn=summary,
+                summary_fn=_fallback_summary,
                 destructive=destructive,
             )
         )
