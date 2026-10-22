@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
 from app.services.rag.graph import _heuristic_route, build_tutor_graph
+from app.services.rag.service import _settled_grounding
 from app.services.rag.tools import ensure_tools
+from app.services.rag.tools.agent import _action_history
 from app.services.rag.tools.context import (
     TutorToolContext,
     reset_tool_context,
@@ -26,6 +28,49 @@ def _plan_args() -> dict:
         "weekdayMinutes": 60,
         "weekendMinutes": 0,
     }
+
+
+def test_settled_grounding_drops_pending_proposal_kind():
+    grounded = [
+        {
+            "kind": "actionProposal",
+            "status": "pending",
+            "actionId": "act-1",
+            "summary": "Create a study plan",
+            "tool": "create_study_plan",
+        }
+    ]
+    executed = _settled_grounding(grounded, "act-1", "executed")
+    assert executed is not None
+    assert executed[0]["status"] == "executed"
+    assert "kind" not in executed[0]
+    assert executed[0]["summary"] == "Create a study plan"
+    assert _settled_grounding(executed, "act-1", "rejected") is None
+    other = _settled_grounding(grounded, "act-2", "rejected")
+    assert other is None
+
+
+def test_action_history_drops_tool_results_whose_call_was_cut_off():
+    orphan = ToolMessage(content="{}", tool_call_id="toolu_01141AmXc9Tcv3UQjR4kEFZa")
+    question = HumanMessage(content="Make me a study plan")
+    history = _action_history([orphan, question])
+    assert history == [question]
+
+    call = AIMessage(
+        content="",
+        tool_calls=[{"id": "toolu_cut", "name": "get_study_plan", "args": {}}],
+    )
+    result = ToolMessage(content="plan", tool_call_id="toolu_cut")
+    earlier = HumanMessage(content="What is on my plan?")
+    follow_up = HumanMessage(content="Update it")
+    kept = _action_history([earlier, call, result, follow_up])
+    assert kept == [earlier, call, result, follow_up]
+    # A window that would open on the tool result starts on the human instead.
+    assert _action_history([call, result, follow_up], limit=2) == [follow_up]
+
+    mismatched = ToolMessage(content="x", tool_call_id="toolu_other")
+    repaired = _action_history([earlier, mismatched, follow_up])
+    assert repaired == [earlier, follow_up]
 
 
 def test_heuristic_routes_study_plan_to_action():

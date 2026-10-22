@@ -440,7 +440,50 @@ def _proposal_payload(pending: dict, checkpoint_id: str | None) -> dict:
         "summary": pending.get("summary") or "Please confirm this change.",
         "destructive": bool(pending.get("destructive")),
         "kind": "actionProposal",
+        "status": "pending",
     }
+
+
+def _settled_grounding(
+    grounded_on: list | None, action_id: str, status: str
+) -> list | None:
+    """Drop pending ``actionProposal`` kind so reloads do not redraw the card.
+
+    The summary stays on the message. The matching grounding entry keeps its
+    fields, loses ``kind``, and records ``status`` as ``executed`` or ``rejected``.
+    """
+    if not isinstance(grounded_on, list):
+        return None
+    changed = False
+    settled: list = []
+    for item in grounded_on:
+        if not isinstance(item, dict) or item.get("kind") != "actionProposal":
+            settled.append(item)
+            continue
+        if item.get("status") not in (None, "pending"):
+            settled.append(item)
+            continue
+        if action_id and item.get("actionId") not in (None, action_id):
+            settled.append(item)
+            continue
+        updated = {key: value for key, value in item.items() if key != "kind"}
+        updated["status"] = status
+        settled.append(updated)
+        changed = True
+    return settled if changed else None
+
+
+async def _settle_proposal_message(
+    session: AsyncSession, thread_id: str, action_id: str, status: str
+) -> ChatMessage | None:
+    rows = await chat_messages_repository.for_thread(session, thread_id)
+    for message in reversed(rows):
+        grounded = _settled_grounding(message.grounded_on, action_id, status)
+        if grounded is None:
+            continue
+        message.grounded_on = grounded
+        return message
+    return None
 
 
 async def _assert_no_pending(graph: Any, config: RunnableConfig) -> None:
@@ -800,7 +843,7 @@ def _outcome_text(result: dict) -> str:
 
 async def _resume_graph(
     session: AsyncSession, thread: ChatThread, body: TutorActionResumeIn
-) -> tuple[dict, dict | None]:
+) -> tuple[dict, dict | None, dict | None]:
     graph = get_tutor_graph(checkpointer=get_checkpointer(), store=get_memory_store())
     config = _graph_config(thread)
     snapshot = await graph.aget_state(config)
@@ -820,6 +863,9 @@ async def _resume_graph(
     text = _outcome_text(result) or (
         "Done." if body.approved else "Okay — I won't make that change."
     )
+    status = "executed" if body.approved else "rejected"
+    action_id = str(pending.get("actionId") or body.actionId or "")
+    settled = await _settle_proposal_message(session, thread.id, action_id, status)
     assistant = ChatMessage(
         id=cuid(),
         thread_id=thread.id,
@@ -833,7 +879,11 @@ async def _resume_graph(
     action_result = result.get("action_result")
     if not isinstance(action_result, dict):
         action_result = None
-    return _message_out(assistant), action_result
+    return (
+        _message_out(assistant),
+        action_result,
+        (_message_out(settled) if settled is not None else None),
+    )
 
 
 async def resume_tutor_action(
@@ -842,11 +892,14 @@ async def resume_tutor_action(
     """Approve or reject a paused study-plan proposal. Does not spend a message."""
     require_rag()
     thread = await _owned_thread(session, user_id, thread_id)
-    message, action_result = await _resume_graph(session, thread, body)
+    message, action_result, proposal_message = await _resume_graph(
+        session, thread, body
+    )
     return {
         "ok": True,
         "approved": body.approved,
         "assistantMessage": message,
+        "proposalMessage": proposal_message,
         "actionResult": action_result,
     }
 
@@ -857,10 +910,20 @@ async def stream_resume_tutor_action(
     async with async_session() as session:
         require_rag()
         thread = await _owned_thread(session, user_id, thread_id)
-        message, action_result = await _resume_graph(session, thread, body)
+        message, action_result, proposal_message = await _resume_graph(
+            session, thread, body
+        )
         await session.commit()
         event = "actionExecuted" if body.approved else "actionRejected"
-        yield {"event": event, "data": action_result or {"approved": body.approved}}
+        yield {
+            "event": event,
+            "data": {
+                **(action_result or {"approved": body.approved}),
+                "proposalMessage": proposal_message,
+            },
+        }
+        if proposal_message is not None:
+            yield {"event": "proposalSettled", "data": proposal_message}
         yield {"event": "assistantMessage", "data": message}
         yield {
             "event": "done",

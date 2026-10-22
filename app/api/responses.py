@@ -901,6 +901,7 @@ class TutorActionResumeOut(ApiOut):
     ok: bool = True
     approved: bool
     assistantMessage: TutorMessageOut | None = None
+    proposalMessage: TutorMessageOut | None = None
     actionResult: dict | None = None
 
 

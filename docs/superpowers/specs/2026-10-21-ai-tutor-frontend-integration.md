@@ -230,7 +230,9 @@ SSE:
 | `actionProposal` | `{ actionId, checkpointId, tool, args, summary, destructive }` |
 | `done` | `{ ok: true, paused: true, pendingAction }` |
 
-The assistant message stored for that turn has `groundedOn[0].kind === "actionProposal"` with the same fields, so a reload can redraw the card.
+The assistant message stored for that turn keeps the summary in `content`. While it is waiting, `groundedOn` includes `{ kind: "actionProposal", status: "pending", ... }`. **Redraw the card only for that pending shape.**
+
+When resume finishes (approve or dismiss), that same message is updated in place: `kind` is removed and `status` becomes `executed` or `rejected`. The summary text stays. A reload must not show Approve again. The resume body also returns `proposalMessage` (the updated row). SSE resume emits `proposalSettled` with that message before `assistantMessage`.
 
 ```http
 POST /api/tutor/threads/{id}/actions/resume
@@ -244,7 +246,7 @@ POST /api/tutor/threads/{id}/actions/resume
 - Optional `args` replaces the proposed payload (re-validated) before execution.
 - Does **not** count as a new chat message.
 - While a proposal is pending, another message returns **409** until resume.
-- `stream: true` returns SSE: `actionExecuted` or `actionRejected`, then `assistantMessage`, then `done`.
+- `stream: true` returns SSE: `actionExecuted` or `actionRejected`, then `proposalSettled`, then `assistantMessage`, then `done`.
 
 v1 mutating tools: `create_study_plan`, `update_study_plan`, `delete_study_plan`, `set_study_plan_positions`, `set_study_plan_item_status`. Reads (`get_study_plan`, `list_subjects`, `get_dashboard_summary`, `get_performance_summary`) run without a card. Assessments and flashcards are not executable tools yet.
 
