@@ -479,7 +479,7 @@ async def stream_tutor_reply(
             if kind == "on_chat_model_stream" and node in _ANSWER_NODES:
                 chunk = event.get("data", {}).get("chunk")
                 piece = getattr(chunk, "content", None) if chunk is not None else None
-                piece_text = visible_assistant_text(piece)
+                piece_text = visible_assistant_text(piece, strip=False)
                 if piece_text:
                     final_text_parts.append(piece_text)
                     yield {"event": "token", "data": {"text": piece_text}}

@@ -14,20 +14,25 @@ _THINKING_TAG_RE = re.compile(
 )
 
 
-def visible_assistant_text(content: Any) -> str:
-    """Return only final answer text (skip thinking / reasoning blocks)."""
+def visible_assistant_text(content: Any, *, strip: bool = True) -> str:
+    """Return only final answer text (skip thinking / reasoning blocks).
+
+    Pass ``strip=False`` for a streamed chunk: a token's leading space or
+    newline is part of the answer ("Great" + " question"), and stripping it
+    glues words together and flattens markdown structure.
+    """
     if content is None:
         return ""
     if isinstance(content, str):
-        return _strip_thinking_tags(content)
+        return _strip_thinking_tags(content, strip=strip)
     if isinstance(content, list):
         parts: list[str] = []
         for block in content:
             text = _block_visible_text(block)
             if text:
                 parts.append(text)
-        return _strip_thinking_tags("".join(parts))
-    return _strip_thinking_tags(str(content))
+        return _strip_thinking_tags("".join(parts), strip=strip)
+    return _strip_thinking_tags(str(content), strip=strip)
 
 
 def _block_visible_text(block: Any) -> str:
@@ -50,6 +55,6 @@ def _block_visible_text(block: Any) -> str:
     return ""
 
 
-def _strip_thinking_tags(text: str) -> str:
+def _strip_thinking_tags(text: str, *, strip: bool = True) -> str:
     cleaned = _THINKING_TAG_RE.sub("", text or "")
-    return cleaned.strip()
+    return cleaned.strip() if strip else cleaned
