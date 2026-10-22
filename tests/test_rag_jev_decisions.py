@@ -159,7 +159,7 @@ async def test_remember_skipped_when_noul_low(mock_classifier, monkeypatch):
     store.aput = AsyncMock()
     monkeypatch.setattr(
         "app.services.rag.graph.get_memory_store",
-        AsyncMock(return_value=store),
+        lambda: store,
     )
     grader = MagicMock()
     monkeypatch.setattr("app.services.rag.graph.get_grader_model", lambda: grader)

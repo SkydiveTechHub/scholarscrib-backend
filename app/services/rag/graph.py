@@ -281,7 +281,7 @@ async def load_memory_node(state: TutorState) -> dict[str, Any]:
     user_id = state.get("user_id")
     if not user_id:
         return {"long_term_context": ""}
-    store = await get_memory_store()
+    store = get_memory_store()
     if store is None:
         return {"long_term_context": ""}
     question = state.get("question") or ""
@@ -518,7 +518,7 @@ async def remember_node(state: TutorState) -> dict[str, Any]:
     user_id = state.get("user_id")
     if not user_id:
         return {}
-    store = await get_memory_store()
+    store = get_memory_store()
     if store is None:
         return {}
     question = state.get("question") or ""

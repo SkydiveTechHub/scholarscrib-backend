@@ -1,36 +1,63 @@
-"""Long-term memory store (cross-thread), via AsyncPostgresStore."""
+"""Long-term memory store (cross-thread), via AsyncPostgresStore.
+
+Opened once for the duration of the server (FastAPI lifespan), matching the
+LangGraph custom-store pattern.
+"""
 
 from __future__ import annotations
 
-from typing import Any, cast
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 from app.core.logger import logger
-from app.services.rag.checkpointer import _psycopg_url
+from app.services.rag.checkpointer import _pool_config, _psycopg_url
 
 _store: Any = None
-_setup_done = False
 
 
-async def get_memory_store() -> Any:
-    """Shared AsyncPostgresStore for user memories across chat threads."""
-    global _store, _setup_done
-    if _store is not None:
-        return _store
+@asynccontextmanager
+async def open_memory_store() -> AsyncIterator[Any]:
+    """Yield an ``AsyncPostgresStore`` open for the duration of the server."""
+    global _store
     try:
         from langgraph.store.postgres.aio import AsyncPostgresStore
+        from psycopg_pool import AsyncConnectionPool
     except ImportError:
         logger.warning("AsyncPostgresStore not available; long-term memory off")
-        return None
+        yield None
+        return
 
-    # from_conn_string is typed as AsyncIterator but returns an async CM at runtime.
-    cm = cast(Any, AsyncPostgresStore.from_conn_string(_psycopg_url()))
-    if hasattr(cm, "__aenter__"):
-        _store = await cm.__aenter__()
-    else:
-        _store = cm
-    if not _setup_done and hasattr(_store, "setup"):
-        await _store.setup()
-        _setup_done = True
+    pool: Any = None
+    try:
+        cfg = _pool_config(name="langgraph-store")
+        kwargs = cfg.pop("kwargs")
+        pool = AsyncConnectionPool(
+            conninfo=_psycopg_url(),
+            open=False,
+            kwargs=kwargs,
+            **cfg,
+        )
+        await pool.open()
+        store = AsyncPostgresStore(conn=pool)
+        await store.setup()
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to open LangGraph memory store")
+        if pool is not None:
+            await pool.close()
+        yield None
+        return
+
+    _store = store
+    try:
+        yield store
+    finally:
+        _store = None
+        await pool.close()
+
+
+def get_memory_store() -> Any:
+    """Return the server-scoped store opened in app lifespan."""
     return _store
 
 

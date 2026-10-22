@@ -17,8 +17,16 @@ from app.core.logger import logger
 
 @asynccontextmanager
 async def lifespan(api: FastAPI):
+    from app.services.rag.checkpointer import open_checkpointer
+    from app.services.rag.store import open_memory_store
+
     logger.info("Starting %s", settings.service_name)
-    yield
+    # Open for the duration of the server (LangGraph custom-checkpointer /
+    # custom-store lifecycle), not per request.
+    async with open_checkpointer() as checkpointer, open_memory_store() as store:
+        api.state.checkpointer = checkpointer
+        api.state.memory_store = store
+        yield
     logger.warning("Shutting down %s", settings.service_name)
 
 

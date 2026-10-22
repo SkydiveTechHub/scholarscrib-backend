@@ -21,10 +21,10 @@ def _config(thread_id: str, checkpoint_id: str | None = None) -> RunnableConfig:
 
 
 async def list_checkpoints(thread_id: str, *, limit: int = 30) -> list[dict]:
-    checkpointer = await get_checkpointer()
+    checkpointer = get_checkpointer()
     if checkpointer is None:
         raise ApiError(503, "Checkpointer is not available")
-    store = await get_memory_store()
+    store = get_memory_store()
     graph = get_tutor_graph(checkpointer=checkpointer, store=store)
     config = _config(thread_id)
     history = []
@@ -51,10 +51,10 @@ async def list_checkpoints(thread_id: str, *, limit: int = 30) -> list[dict]:
 
 
 async def replay_from_checkpoint(thread_id: str, checkpoint_id: str) -> dict:
-    checkpointer = await get_checkpointer()
+    checkpointer = get_checkpointer()
     if checkpointer is None:
         raise ApiError(503, "Checkpointer is not available")
-    store = await get_memory_store()
+    store = get_memory_store()
     graph = get_tutor_graph(checkpointer=checkpointer, store=store)
     config = _config(thread_id, checkpoint_id)
     result = await graph.ainvoke(None, config)
@@ -73,10 +73,10 @@ async def fork_from_checkpoint(
     question: str | None = None,
 ) -> dict:
     """Branch from a prior checkpoint; optionally inject a new user question."""
-    checkpointer = await get_checkpointer()
+    checkpointer = get_checkpointer()
     if checkpointer is None:
         raise ApiError(503, "Checkpointer is not available")
-    store = await get_memory_store()
+    store = get_memory_store()
     graph = get_tutor_graph(checkpointer=checkpointer, store=store)
     config = _config(thread_id, checkpoint_id)
     update: dict[str, Any] = {}

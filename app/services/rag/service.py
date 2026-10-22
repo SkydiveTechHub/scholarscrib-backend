@@ -330,8 +330,8 @@ async def _run_graph_and_persist(
         elif msg.role == "assistant":
             lc_messages.append(AIMessage(content=msg.content))
 
-    checkpointer = await get_checkpointer()
-    store = await get_memory_store()
+    checkpointer = get_checkpointer()
+    store = get_memory_store()
     graph = get_tutor_graph(checkpointer=checkpointer, store=store)
     config: RunnableConfig = {
         "configurable": {"thread_id": thread.id, "user_id": thread.user_id}
@@ -404,8 +404,8 @@ async def stream_tutor_reply(
         elif msg.role == "assistant":
             lc_messages.append(AIMessage(content=msg.content))
 
-    checkpointer = await get_checkpointer()
-    store = await get_memory_store()
+    checkpointer = get_checkpointer()
+    store = get_memory_store()
     graph = get_tutor_graph(checkpointer=checkpointer, store=store)
     config: RunnableConfig = {
         "configurable": {"thread_id": thread.id, "user_id": thread.user_id}
