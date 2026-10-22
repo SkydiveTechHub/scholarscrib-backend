@@ -32,10 +32,19 @@ from app.database.repositories.question import questions_repository
 from app.services.rag.checkpointer import get_checkpointer
 from app.services.rag.graph import TutorState, get_tutor_graph
 from app.services.rag.llm import get_grader_model
+from app.services.rag.message_text import visible_assistant_text
 from app.services.rag.prompts import TITLE_PROMPT
 from app.services.rag.store import get_memory_store
+from app.services.rag.stream_control import (
+    begin_stream,
+    end_stream,
+    request_stop,
+    should_stop,
+)
 from app.services.rag.tutor_limits import enforce_daily_message_limit
 from app.services.rag.vectorstore import require_rag
+
+_ANSWER_NODES = frozenset({"generate_answer", "chitchat", "sql_agent"})
 
 
 def _thread_out(thread: ChatThread, messages: list[ChatMessage] | None = None) -> dict:
@@ -357,11 +366,7 @@ async def _run_graph_and_persist(
     }
     result = await graph.ainvoke(invoke_input, config=config)
     reply_msg = result["messages"][-1]
-    content = (
-        reply_msg.content
-        if isinstance(reply_msg.content, str)
-        else str(reply_msg.content)
-    )
+    content = visible_assistant_text(getattr(reply_msg, "content", ""))
     citations = result.get("citations") or []
     assistant = ChatMessage(
         id=cuid(),
@@ -376,6 +381,19 @@ async def _run_graph_and_persist(
     return _message_out(assistant)
 
 
+async def stop_tutor_stream(
+    session: AsyncSession,
+    user_id: str,
+    thread_id: str,
+    *,
+    stream_id: str | None = None,
+) -> dict:
+    """Signal the active SSE stream for this thread to stop."""
+    require_rag()
+    await _owned_thread(session, user_id, thread_id)
+    return request_stop(thread_id, stream_id)
+
+
 async def stream_tutor_reply(
     session: AsyncSession, user_id: str, thread_id: str, content: str
 ) -> AsyncIterator[dict]:
@@ -387,6 +405,7 @@ async def stream_tutor_reply(
     if not text:
         raise ApiError(400, "content is required")
 
+    stream_id = cuid()
     user_msg = ChatMessage(
         id=cuid(),
         thread_id=thread.id,
@@ -394,122 +413,124 @@ async def stream_tutor_reply(
         content=text,
     )
     await chat_messages_repository.add(session, user_msg, flush=True)
-    yield {"event": "userMessage", "data": _message_out(user_msg)}
-
-    history = await chat_messages_repository.for_thread(session, thread.id)
-    lc_messages = []
-    for msg in history:
-        if msg.role == "user":
-            lc_messages.append(HumanMessage(content=msg.content))
-        elif msg.role == "assistant":
-            lc_messages.append(AIMessage(content=msg.content))
-
-    checkpointer = get_checkpointer()
-    store = get_memory_store()
-    graph = get_tutor_graph(checkpointer=checkpointer, store=store)
-    config: RunnableConfig = {
-        "configurable": {"thread_id": thread.id, "user_id": thread.user_id}
+    begin_stream(thread.id, stream_id)
+    yield {
+        "event": "streamStarted",
+        "data": {
+            "streamId": stream_id,
+            "threadId": thread.id,
+            "userMessageId": user_msg.id,
+        },
     }
-    final_text_parts: list[str] = []
-    citations: list = []
-    terminal_nodes = {"generate_answer", "chitchat", "sql_agent"}
+    user_payload = _message_out(user_msg)
+    user_payload["streamId"] = stream_id
+    yield {"event": "userMessage", "data": user_payload}
 
-    decision_nodes = {
-        "classify_intent",
-        "grade_documents",
-        "ground_answer",
-        "remember",
-    }
+    cancelled = False
+    try:
+        history = await chat_messages_repository.for_thread(session, thread.id)
+        lc_messages = []
+        for msg in history:
+            if msg.role == "user":
+                lc_messages.append(HumanMessage(content=msg.content))
+            elif msg.role == "assistant":
+                lc_messages.append(AIMessage(content=msg.content))
 
-    graph_input: TutorState = {
-        "messages": lc_messages,
-        "question": text,
-        "documents": [],
-        "citations": [],
-        "rewrite_count": 0,
-        "subject_id": thread.subject_id,
-        "topic_id": thread.topic_id,
-        "question_id": thread.question_id,
-        "lesson_id": thread.lesson_id,
-        "user_id": thread.user_id,
-        "route": None,
-        "summary": "",
-        "sql_result": "",
-        "long_term_context": "",
-        "decision_trace": [],
-        "decision_meta": {},
-        "skip_rewrite": False,
-    }
-    async for event in graph.astream_events(
-        graph_input,
-        config=config,
-        version="v2",
-    ):
-        kind = event.get("event")
-        name = event.get("name")
-        if kind == "on_chain_start" and name == "classify_intent":
-            yield {"event": "status", "data": {"node": "classify_intent"}}
-        if kind == "on_chat_model_stream":
-            chunk = event.get("data", {}).get("chunk")
-            piece = getattr(chunk, "content", None) if chunk is not None else None
-            if piece:
-                piece_text = piece if isinstance(piece, str) else str(piece)
-                final_text_parts.append(piece_text)
-                yield {"event": "token", "data": {"text": piece_text}}
-        elif kind == "on_chain_end" and name in decision_nodes:
-            output = event.get("data", {}).get("output") or {}
-            meta = output.get("decision_meta") or {}
-            if meta:
-                status_data = {
-                    "node": meta.get("node") or name,
-                    "route": meta.get("route"),
-                    "confidence": meta.get("confidence"),
-                    "noul": meta.get("noul"),
-                    "source": meta.get("source"),
-                }
-                yield {
-                    "event": "status",
-                    "data": {k: v for k, v in status_data.items() if v is not None},
-                }
-            # Soft-refuse may replace streamed generate_answer tokens.
-            if name == "ground_answer":
+        checkpointer = get_checkpointer()
+        store = get_memory_store()
+        graph = get_tutor_graph(checkpointer=checkpointer, store=store)
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread.id, "user_id": thread.user_id}
+        }
+        final_text_parts: list[str] = []
+        citations: list = []
+
+        graph_input: TutorState = {
+            "messages": lc_messages,
+            "question": text,
+            "documents": [],
+            "citations": [],
+            "rewrite_count": 0,
+            "subject_id": thread.subject_id,
+            "topic_id": thread.topic_id,
+            "question_id": thread.question_id,
+            "lesson_id": thread.lesson_id,
+            "user_id": thread.user_id,
+            "route": None,
+            "summary": "",
+            "sql_result": "",
+            "long_term_context": "",
+            "decision_trace": [],
+            "decision_meta": {},
+            "skip_rewrite": False,
+        }
+        async for event in graph.astream_events(
+            graph_input,
+            config=config,
+            version="v2",
+        ):
+            if should_stop(thread.id, stream_id):
+                cancelled = True
+                break
+            kind = event.get("event")
+            name = event.get("name")
+            node = (event.get("metadata") or {}).get("langgraph_node")
+            # Only stream the student-facing answer model — not graders/rewrite/etc.
+            if kind == "on_chat_model_stream" and node in _ANSWER_NODES:
+                chunk = event.get("data", {}).get("chunk")
+                piece = getattr(chunk, "content", None) if chunk is not None else None
+                piece_text = visible_assistant_text(piece)
+                if piece_text:
+                    final_text_parts.append(piece_text)
+                    yield {"event": "token", "data": {"text": piece_text}}
+            elif kind == "on_chain_end" and name in _ANSWER_NODES:
+                output = event.get("data", {}).get("output") or {}
+                citations = output.get("citations") or citations
                 messages = output.get("messages") or []
                 if messages:
-                    content = getattr(messages[-1], "content", "")
-                    if content:
-                        final_text_parts = [
-                            content if isinstance(content, str) else str(content)
-                        ]
-                    if "citations" in output:
-                        citations = output.get("citations") or []
-        elif kind == "on_chain_end" and name in terminal_nodes:
-            output = event.get("data", {}).get("output") or {}
-            citations = output.get("citations") or citations
-            if not final_text_parts:
-                messages = output.get("messages") or []
-                if messages:
-                    content = getattr(messages[-1], "content", "")
-                    if content:
-                        final_text_parts.append(
-                            content if isinstance(content, str) else str(content)
-                        )
+                    # Prefer the completed message as source of truth.
+                    final = visible_assistant_text(getattr(messages[-1], "content", ""))
+                    if final:
+                        final_text_parts = [final]
 
-    full = "".join(final_text_parts)
-    if not full:
-        assistant = await _run_graph_and_persist(session, thread, text)
-        yield {"event": "assistantMessage", "data": assistant}
-        yield {"event": "done", "data": {"ok": True}}
-        return
+        if cancelled or should_stop(thread.id, stream_id):
+            await session.delete(user_msg)
+            await session.flush()
+            yield {
+                "event": "done",
+                "data": {
+                    "ok": False,
+                    "cancelled": True,
+                    "streamId": stream_id,
+                    "userMessageId": user_msg.id,
+                },
+            }
+            return
 
-    assistant = ChatMessage(
-        id=cuid(),
-        thread_id=thread.id,
-        role="assistant",
-        content=full,
-        grounded_on=citations,
-    )
-    await chat_messages_repository.add(session, assistant, flush=True)
-    thread.updated_at = utcnow()
-    await session.flush()
-    yield {"event": "assistantMessage", "data": _message_out(assistant)}
-    yield {"event": "done", "data": {"ok": True}}
+        full = "".join(final_text_parts).strip()
+        if not full:
+            assistant = await _run_graph_and_persist(session, thread, text)
+            yield {"event": "assistantMessage", "data": assistant}
+            yield {
+                "event": "done",
+                "data": {"ok": True, "cancelled": False, "streamId": stream_id},
+            }
+            return
+
+        assistant = ChatMessage(
+            id=cuid(),
+            thread_id=thread.id,
+            role="assistant",
+            content=full,
+            grounded_on=citations,
+        )
+        await chat_messages_repository.add(session, assistant, flush=True)
+        thread.updated_at = utcnow()
+        await session.flush()
+        yield {"event": "assistantMessage", "data": _message_out(assistant)}
+        yield {
+            "event": "done",
+            "data": {"ok": True, "cancelled": False, "streamId": stream_id},
+        }
+    finally:
+        end_stream(thread.id, stream_id)

@@ -543,6 +543,12 @@ class TutorMessageIn(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
 
 
+class TutorStreamStopIn(BaseModel):
+    """Optional stream id from the ``streamStarted`` SSE event."""
+
+    streamId: str | None = Field(default=None, min_length=1)
+
+
 class TutorFeedbackIn(BaseModel):
     rating: Literal["up", "down"]
     comment: str | None = Field(default=None, max_length=1000)

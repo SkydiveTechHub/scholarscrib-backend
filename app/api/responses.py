@@ -853,6 +853,12 @@ class TutorPostMessageOut(ApiOut):
     assistantMessage: TutorMessageOut
 
 
+class TutorStreamStopOut(ApiOut):
+    ok: bool = True
+    cancelled: bool = True
+    streamId: str | None = None
+
+
 class RagJobOut(ApiOut):
     id: str
     source: str

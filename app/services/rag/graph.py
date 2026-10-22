@@ -21,10 +21,12 @@ from app.services.rag.decisions import (
     decide_worth_remembering,
 )
 from app.services.rag.llm import get_chat_model, get_grader_model
+from app.services.rag.message_text import visible_assistant_text
 from app.services.rag.prompts import (
     CHITCHAT_SYSTEM,
     GRADE_PROMPT,
     INTENT_PROMPT,
+    NO_CONTEXT_HINT,
     REMEMBER_PROMPT,
     REWRITE_PROMPT,
     SUMMARIZE_PROMPT,
@@ -35,12 +37,6 @@ from app.services.rag.schemas import GroundedCitation, citation_from_metadata
 from app.services.rag.sql_agent import run_sql_agent
 from app.services.rag.store import get_memory_store, memory_namespace
 from app.services.rag.vectorstore import similarity_search_with_score
-
-INSUFFICIENT_GROUNDED = (
-    "I do not have enough grounded material for that yet. "
-    "Try asking about a topic that has lesson notes or past questions "
-    "indexed, or narrow the question to a specific subject or topic."
-)
 
 
 class GradeDocuments(BaseModel):
@@ -99,8 +95,7 @@ def _latest_user_text(messages: list[BaseMessage]) -> str:
 
 
 def _message_text(message: BaseMessage) -> str:
-    content = message.content
-    return content if isinstance(content, str) else str(content)
+    return visible_assistant_text(message.content)
 
 
 def _heuristic_route(question: str) -> str | None:
@@ -440,18 +435,8 @@ def rerank_node(state: TutorState) -> dict[str, Any]:
 
 
 def generate_answer_node(state: TutorState) -> dict[str, Any]:
+    """Answer with retrieved context when available; otherwise answer directly."""
     docs = state.get("documents") or []
-    if not docs:
-        return {
-            "messages": [AIMessage(content=INSUFFICIENT_GROUNDED)],
-            "citations": [],
-        }
-
-    context = "\n\n---\n\n".join(
-        f"[{doc.metadata.get('title') or doc.metadata.get('source_type')}] "
-        f"{doc.page_content}"
-        for doc in docs
-    )
     memory = (state.get("long_term_context") or "").strip()
     summary = (state.get("summary") or "").strip()
     model = get_chat_model()
@@ -466,20 +451,32 @@ def generate_answer_node(state: TutorState) -> dict[str, Any]:
         system_bits.append(f"Thread summary:\n{summary}")
     if memory:
         system_bits.append(f"What we know about this student:\n{memory}")
-    messages = [
+    messages: list[BaseMessage] = [
         SystemMessage(content="\n\n".join(system_bits)),
-        SystemMessage(content=f"Context:\n{context}"),
-        *history,
     ]
+    if docs:
+        context = "\n\n---\n\n".join(
+            f"[{doc.metadata.get('title') or doc.metadata.get('source_type')}] "
+            f"{doc.page_content}"
+            for doc in docs
+        )
+        messages.append(SystemMessage(content=f"Context:\n{context}"))
+    else:
+        messages.append(SystemMessage(content=NO_CONTEXT_HINT))
+    messages.extend(history)
     response = model.invoke(messages)
     return {
         "messages": [response],
-        "citations": state.get("citations") or [],
+        "citations": (state.get("citations") or []) if docs else [],
     }
 
 
 async def ground_answer_node(state: TutorState) -> dict[str, Any]:
-    """Refuse unsupported RAG answers when Jev groundedness Noul is low."""
+    """Drop citations when the answer is not supported by retrieved context.
+
+    Does not block the reply — empty retrieval already falls back to a direct
+    academic answer in ``generate_answer``.
+    """
     if state.get("route") in ("chitchat", "sql"):
         return {}
     docs = state.get("documents") or []
@@ -502,7 +499,6 @@ async def ground_answer_node(state: TutorState) -> dict[str, Any]:
     grounded, _noul, meta = await decide_groundedness(question, context, answer)
     if grounded is False:
         return {
-            "messages": [AIMessage(content=INSUFFICIENT_GROUNDED)],
             "citations": [],
             "decision_meta": meta,
             "decision_trace": [meta],

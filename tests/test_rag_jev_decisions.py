@@ -11,7 +11,6 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from app.services.rag import decisions as decisions_mod
 from app.services.rag.graph import (
-    INSUFFICIENT_GROUNDED,
     classify_intent_node,
     grade_documents_node,
     ground_answer_node,
@@ -133,8 +132,9 @@ async def test_grade_skip_rewrite_when_noul_says_no(mock_classifier):
 
 
 @pytest.mark.asyncio
-async def test_groundedness_refuse_path(mock_classifier):
+async def test_groundedness_drops_citations_not_answer(mock_classifier):
     mock_classifier.ainvoke.return_value = _noul_response({"grounded": 0.2})
+    answer = "The capital of France is Paris and cats fly."
     out = await ground_answer_node(
         {
             "route": "rag",
@@ -142,12 +142,11 @@ async def test_groundedness_refuse_path(mock_classifier):
             "documents": [
                 Document(page_content="Osmosis is water movement.", metadata={})
             ],
-            "messages": [
-                AIMessage(content="The capital of France is Paris and cats fly.")
-            ],
+            "messages": [AIMessage(content=answer)],
+            "citations": [{"docId": "x"}],
         }
     )
-    assert out["messages"][0].content == INSUFFICIENT_GROUNDED
+    assert "messages" not in out
     assert out["citations"] == []
     assert out["decision_meta"]["noul"] == 0.2
 

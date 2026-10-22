@@ -138,16 +138,17 @@ async def decide_noul(
 
 INTENT_CRITERIA = {
     "chitchat": (
-        "Greeting, thanks, small talk, weather, or other non-academic chat "
-        "with no curriculum or exam content request."
+        "Greeting, thanks, weather, small talk, or clearly non-academic chat "
+        "that should be briefly acknowledged and redirected to study."
     ),
     "sql": (
         "Catalogue / inventory question about subjects, topics, lessons, or "
         "what content exists (lists, counts, curriculum structure)."
     ),
     "rag": (
-        "Study help that needs lesson notes, explanations, past questions, "
-        "or grounded tutoring on academic content."
+        "Any academic or exam-prep question: explanations, past questions, "
+        "lesson help, study skills, or subject content — with or without "
+        "indexed materials."
     ),
 }
 

@@ -66,13 +66,22 @@ Events:
 
 | event | data |
 |-------|------|
-| `userMessage` | message object |
-| `status` | `{ "node", "route?", "confidence?", "noul?", "source?" }` (progress / decisions) |
+| `streamStarted` | `{ "streamId", "threadId", "userMessageId" }` |
+| `userMessage` | message object (+ `streamId`) |
 | `token` | `{ "text": "..." }` |
 | `assistantMessage` | full message with `groundedOn` |
-| `done` | `{ "ok": true }` |
+| `done` | `{ "ok": true\|false, "cancelled": bool, "streamId" }` |
 
 Chitchat / curriculum-SQL turns may emit `assistantMessage` without tokens.
+
+### Stop stream
+
+`POST /api/tutor/threads/{id}/messages/stream/stop`  
+Body (optional): `{ "streamId": "..." }` from `streamStarted`.
+
+Stops the active reply for that thread. On cancel, the in-flight user message is removed and SSE ends with `done.cancelled: true`. Then send a new stream with the revised question.
+
+Also abort the fetch (`AbortController`) on the client so the HTTP connection closes.
 
 ## Time travel
 

@@ -11,6 +11,7 @@ from app.api.responses import (
     OkOut,
     TutorCheckpointHistoryOut,
     TutorPostMessageOut,
+    TutorStreamStopOut,
     TutorThreadOut,
     TutorThreadsOut,
     TutorTimeTravelOut,
@@ -20,6 +21,7 @@ from app.api.schemas import (
     TutorForkIn,
     TutorMessageIn,
     TutorReplayIn,
+    TutorStreamStopIn,
     TutorThreadCreateIn,
 )
 from app.database.db import AnSession
@@ -30,6 +32,7 @@ from app.services.rag.service import (
     ListTutorThreadsService,
     PostTutorMessageService,
     TutorFeedbackService,
+    stop_tutor_stream,
     stream_tutor_reply,
 )
 from app.services.rag.sse import sse_response
@@ -104,6 +107,21 @@ async def post_message_stream(
     return await sse_response(
         stream_tutor_reply(session, student.id, thread_id, body.content)
     )
+
+
+@router.post(
+    "/threads/{thread_id}/messages/stream/stop",
+    response_model=TutorStreamStopOut,
+)
+async def stop_message_stream(
+    thread_id: str,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+    body: TutorStreamStopIn | None = None,
+):
+    """Stop the in-flight SSE reply so the student can ask a different question."""
+    stream_id = body.streamId if body is not None else None
+    return await stop_tutor_stream(session, student.id, thread_id, stream_id=stream_id)
 
 
 @router.get(
