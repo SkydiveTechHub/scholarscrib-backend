@@ -7,6 +7,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
 from app.services.rag.graph import _heuristic_route, build_tutor_graph
+from app.services.rag.message_text import dialogue_without_tool_calls
 from app.services.rag.service import _settled_grounding
 from app.services.rag.tools import ensure_tools
 from app.services.rag.tools.agent import _action_history
@@ -78,6 +79,64 @@ _PLAN = (
     "I'll build an SS2 First term plan for Mathematics.\n\n"
     "Nothing changes until you approve."
 )
+
+
+def test_dialogue_omits_tool_calls_that_have_no_result_after_them():
+    call = AIMessage(
+        content=[
+            {"type": "text", "text": "I'll check your plan."},
+            {
+                "type": "tool_use",
+                "id": "toolu_01RPQR6fhQKJvyg8bY9HjP86",
+                "name": "get_study_plan",
+                "input": {},
+            },
+            {
+                "type": "tool_use",
+                "id": "toolu_01SG3adzQGfFiBVmuK4odf2Z",
+                "name": "list_subjects",
+                "input": {},
+            },
+        ],
+        tool_calls=[
+            {
+                "id": "toolu_01RPQR6fhQKJvyg8bY9HjP86",
+                "name": "get_study_plan",
+                "args": {},
+            },
+            {
+                "id": "toolu_01SG3adzQGfFiBVmuK4odf2Z",
+                "name": "list_subjects",
+                "args": {},
+            },
+        ],
+    )
+    history = dialogue_without_tool_calls(
+        [
+            HumanMessage(content="Make a plan"),
+            call,
+            ToolMessage(content="plan", tool_call_id="toolu_01RPQR6fhQKJvyg8bY9HjP86"),
+            ToolMessage(
+                content="subjects", tool_call_id="toolu_01SG3adzQGfFiBVmuK4odf2Z"
+            ),
+            HumanMessage(content="What is photosynthesis?"),
+        ]
+    )
+    assert [message.content for message in history] == [
+        "Make a plan",
+        "I'll check your plan.",
+        "What is photosynthesis?",
+    ]
+    assert all(not getattr(message, "tool_calls", None) for message in history)
+
+    action_history = _action_history(
+        [
+            HumanMessage(content="Make a plan"),
+            call,
+            HumanMessage(content="What is photosynthesis?"),
+        ]
+    )
+    assert all(not getattr(message, "tool_calls", None) for message in action_history)
 
 
 def test_heuristic_routes_study_plan_to_action():

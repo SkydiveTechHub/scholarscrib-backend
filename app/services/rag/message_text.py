@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+
 _THINKING_BLOCK_TYPES = frozenset(
     {"thinking", "reasoning", "redacted_thinking", "reasoning_content"}
 )
@@ -53,6 +55,29 @@ def _block_visible_text(block: Any) -> str:
         if text:
             return str(text)
     return ""
+
+
+def dialogue_without_tool_calls(
+    messages: list[BaseMessage], *, limit: int | None = None
+) -> list[BaseMessage]:
+    """Human and assistant text, with tool calls left out.
+
+    Anthropic rejects an assistant ``tool_use`` unless the next message holds
+    every matching ``tool_result``. Chitchat and answers do not replay tools.
+    """
+    cleaned: list[BaseMessage] = []
+    for message in messages:
+        if isinstance(message, HumanMessage):
+            cleaned.append(message)
+            continue
+        if not isinstance(message, AIMessage):
+            continue
+        text = visible_assistant_text(message.content)
+        if text:
+            cleaned.append(AIMessage(content=text))
+    if limit is None:
+        return cleaned
+    return cleaned[-limit:]
 
 
 def _strip_thinking_tags(text: str, *, strip: bool = True) -> str:
