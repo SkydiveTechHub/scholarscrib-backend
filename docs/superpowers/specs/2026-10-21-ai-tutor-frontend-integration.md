@@ -128,6 +128,16 @@ type TutorMessage = {
   createdAt: string | null;
 };
 
+/** `GET /api/tutor/threads/{id}/messages` — oldest-first cursor page */
+type TutorMessagesPage = {
+  messages: TutorMessage[];
+  total?: number | null;
+  currentPage?: string | null;
+  currentPageBackwards?: string | null;
+  previousPage?: string | null;
+  nextPage?: string | null;
+};
+
 type TutorThread = {
   id: string;
   title: string | null;
@@ -186,6 +196,7 @@ type TutorCheckpoint = {
 | `POST` | `/api/tutor/threads` | Create thread (optional first turn) |
 | `GET` | `/api/tutor/threads` | List threads (no messages) |
 | `GET` | `/api/tutor/threads/{id}` | Thread + full message history |
+| `GET` | `/api/tutor/threads/{id}/messages` | Cursor-paginated messages (`cursor`, `limit`, `orderBy`) |
 | `DELETE` | `/api/tutor/threads/{id}` | Soft-archive (`archived: true`) |
 | `POST` | `/api/tutor/threads/{id}/messages` | Sync turn (wait for full reply) |
 | `POST` | `/api/tutor/threads/{id}/messages/stream` | SSE turn (preferred for chat UX) |
@@ -196,6 +207,16 @@ type TutorCheckpoint = {
 | `POST` | `/api/lessons/{lessonId}/tutor` | Create lesson-scoped thread |
 
 All JSON request/response bodies use **camelCase**.
+
+### Paginated messages
+
+`GET /api/tutor/threads/{id}/messages?cursor=&limit=50&orderBy=asc`
+
+- Query: `limit` (1–100, default 50), `cursor` (omit for the first page; pass `nextPage` for the next), `orderBy` (`asc` | `desc`, default `asc`).
+- `orderBy=asc` → oldest first; `desc` → newest first (both tie-break on `id`).
+- Do not reuse a cursor across different `orderBy` values.
+- Body: `TutorMessagesPage` (`messages`, `nextPage`, `previousPage`, …). Thread id is only in the path.
+- For a one-shot full transcript (small threads), `GET /api/tutor/threads/{id}` still returns all `messages[]`.
 
 ---
 

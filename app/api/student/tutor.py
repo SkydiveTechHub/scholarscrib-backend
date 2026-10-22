@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import StudentPrincipal, require_feature, require_student
 from app.api.responses import (
@@ -94,8 +94,17 @@ async def list_messages(
     thread_id: str,
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
+    order_by: Annotated[
+        Literal["asc", "desc"],
+        Query(
+            alias="orderBy",
+            description="Sort by createdAt. asc=oldest first, desc=newest first.",
+        ),
+    ] = "asc",
 ):
-    return await ListTutorMessagesService(session, student.id, thread_id).process()
+    return await ListTutorMessagesService(
+        session, student.id, thread_id, order_by=order_by
+    ).process()
 
 
 @router.post(

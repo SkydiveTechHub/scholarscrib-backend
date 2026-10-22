@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
+from fastapi_pagination.ext.sqlalchemy import apaginate
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import (
@@ -247,19 +249,36 @@ class GetTutorThreadService:
 
 
 class ListTutorMessagesService:
-    def __init__(self, session: AsyncSession, user_id: str, thread_id: str) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        thread_id: str,
+        *,
+        order_by: str = "asc",
+    ) -> None:
         self.session = session
         self.user_id = user_id
         self.thread_id = thread_id
+        self.order_by = order_by if order_by in {"asc", "desc"} else "asc"
 
-    async def process(self) -> dict:
+    async def process(self):
         require_rag()
         thread = await _owned_thread(self.session, self.user_id, self.thread_id)
-        messages = await chat_messages_repository.for_thread(self.session, thread.id)
-        return {
-            "threadId": thread.id,
-            "messages": [_message_out(message) for message in messages],
-        }
+        if self.order_by == "desc":
+            ordering = (ChatMessage.created_at.desc(), ChatMessage.id.desc())
+        else:
+            ordering = (ChatMessage.created_at.asc(), ChatMessage.id.asc())
+        query = (
+            select(ChatMessage)
+            .where(ChatMessage.thread_id == thread.id)
+            .order_by(*ordering)
+        )
+        return await apaginate(
+            self.session,
+            query,
+            transformer=lambda rows: [_message_out(message) for message in rows],
+        )
 
 
 class DeleteTutorThreadService:

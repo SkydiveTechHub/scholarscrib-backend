@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi_pagination import add_pagination
 from redis_fastapi import FastAPIRedis
 
 from app.api.admin import router as admin_router
@@ -42,6 +43,7 @@ def get_app() -> FastAPI:
     api.include_router(student_router)
     api.include_router(admin_router)
     api.include_router(cron_router)
+    add_pagination(api)
     FastAPIRedis(api).lifespan().caching()
     api.add_middleware(
         CORSMiddleware,

@@ -45,6 +45,7 @@ dependencies = [
     "flashrank>=0.2",
     "langchain-anthropic>=1.7.6",
     "psycopg2>=2.9.13",
+    "fastapi-pagination[sqlalchemy]>=0.16.1",
 ]
 
 [tool.pytest.ini_options]

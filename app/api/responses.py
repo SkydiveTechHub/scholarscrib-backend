@@ -2,7 +2,33 @@
 
 from __future__ import annotations
 
+from typing import TypeVar
+
+from fastapi import Query
+from fastapi_pagination.cursor import CursorPage as BaseCursorPage
+from fastapi_pagination.customization import (
+    CustomizedPage,
+    UseFieldsAliases,
+    UseIncludeTotal,
+    UseParamsFields,
+)
 from pydantic import BaseModel, ConfigDict, Field
+
+T = TypeVar("T")
+
+# Cursor page with camelCase JSON (matches the rest of the student API).
+TutorCursorPage = CustomizedPage[
+    BaseCursorPage[T],
+    UseIncludeTotal(False),
+    UseParamsFields(size=Query(50, ge=1, le=100, alias="limit")),
+    UseFieldsAliases(
+        items="messages",
+        current_page="currentPage",
+        current_page_backwards="currentPageBackwards",
+        previous_page="previousPage",
+        next_page="nextPage",
+    ),
+]
 
 
 class ApiOut(BaseModel):
@@ -853,9 +879,7 @@ class TutorPostMessageOut(ApiOut):
     assistantMessage: TutorMessageOut
 
 
-class TutorMessagesOut(ApiOut):
-    threadId: str
-    messages: list[TutorMessageOut]
+TutorMessagesOut = TutorCursorPage[TutorMessageOut]
 
 
 class TutorStreamStopOut(ApiOut):
