@@ -8,10 +8,12 @@ from typing import Any
 from fastapi_pagination.ext.sqlalchemy import apaginate
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.types import Command
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import (
+    TutorActionResumeIn,
     TutorFeedbackIn,
     TutorMessageIn,
     TutorThreadCreateIn,
@@ -44,10 +46,17 @@ from app.services.rag.stream_control import (
     request_stop,
     should_stop,
 )
+from app.services.rag.tools.context import (
+    load_tool_context,
+    reset_tool_context,
+    set_tool_context,
+)
 from app.services.rag.tutor_limits import enforce_daily_message_limit
 from app.services.rag.vectorstore import require_rag
 
-_ANSWER_NODES = frozenset({"generate_answer", "chitchat", "sql_agent"})
+_ANSWER_NODES = frozenset(
+    {"generate_answer", "chitchat", "sql_agent", "action_agent", "action_outcome"}
+)
 
 
 def _thread_out(thread: ChatThread, messages: list[ChatMessage] | None = None) -> dict:
@@ -377,26 +386,14 @@ async def _owned_thread(
     return thread
 
 
-async def _run_graph_and_persist(
-    session: AsyncSession, thread: ChatThread, user_text: str
-) -> dict:
-    history = await chat_messages_repository.for_thread(session, thread.id)
-    lc_messages = []
-    for msg in history:
-        if msg.role == "user":
-            lc_messages.append(HumanMessage(content=msg.content))
-        elif msg.role == "assistant":
-            lc_messages.append(AIMessage(content=msg.content))
+def _graph_config(thread: ChatThread) -> RunnableConfig:
+    return {"configurable": {"thread_id": thread.id, "user_id": thread.user_id}}
 
-    checkpointer = get_checkpointer()
-    store = get_memory_store()
-    graph = get_tutor_graph(checkpointer=checkpointer, store=store)
-    config: RunnableConfig = {
-        "configurable": {"thread_id": thread.id, "user_id": thread.user_id}
-    }
-    invoke_input: TutorState = {
-        "messages": lc_messages,
-        "question": user_text,
+
+def _graph_input(thread: ChatThread, messages: list, question: str) -> TutorState:
+    return {
+        "messages": messages,
+        "question": question,
         "documents": [],
         "citations": [],
         "rewrite_count": 0,
@@ -412,22 +409,113 @@ async def _run_graph_and_persist(
         "decision_trace": [],
         "decision_meta": {},
         "skip_rewrite": False,
+        "document_scores": [],
+        "pending_action": None,
+        "action_decision": None,
+        "action_result": None,
     }
-    result = await graph.ainvoke(invoke_input, config=config)
-    reply_msg = result["messages"][-1]
-    content = visible_assistant_text(getattr(reply_msg, "content", ""))
-    citations = result.get("citations") or []
-    assistant = ChatMessage(
-        id=cuid(),
-        thread_id=thread.id,
-        role="assistant",
-        content=content,
-        grounded_on=citations,
-    )
+
+
+def _interrupt_value(snapshot: Any) -> dict | None:
+    interrupts = getattr(snapshot, "interrupts", None) or ()
+    if not interrupts:
+        return None
+    value = getattr(interrupts[0], "value", None)
+    return value if isinstance(value, dict) else None
+
+
+def _checkpoint_id(snapshot: Any) -> str | None:
+    config = getattr(snapshot, "config", None) or {}
+    configurable = config.get("configurable") or {}
+    checkpoint_id = configurable.get("checkpoint_id")
+    return str(checkpoint_id) if checkpoint_id else None
+
+
+def _proposal_payload(pending: dict, checkpoint_id: str | None) -> dict:
+    return {
+        "actionId": pending.get("actionId"),
+        "checkpointId": checkpoint_id,
+        "tool": pending.get("tool"),
+        "args": pending.get("args") or {},
+        "summary": pending.get("summary") or "Please confirm this change.",
+        "destructive": bool(pending.get("destructive")),
+        "kind": "actionProposal",
+    }
+
+
+async def _assert_no_pending(graph: Any, config: RunnableConfig) -> None:
+    snapshot = await graph.aget_state(config)
+    if _interrupt_value(snapshot):
+        raise ApiError(
+            409,
+            "Approve or dismiss the pending action before sending another message",
+        )
+
+
+def _history_messages(rows: list[ChatMessage]) -> list:
+    messages = []
+    for msg in rows:
+        if msg.role == "user":
+            messages.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            messages.append(AIMessage(content=msg.content))
+    return messages
+
+
+async def _run_graph_and_persist(
+    session: AsyncSession, thread: ChatThread, user_text: str
+) -> dict:
+    history = await chat_messages_repository.for_thread(session, thread.id)
+    lc_messages = []
+    for msg in history:
+        if msg.role == "user":
+            lc_messages.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            lc_messages.append(AIMessage(content=msg.content))
+
+    checkpointer = get_checkpointer()
+    store = get_memory_store()
+    graph = get_tutor_graph(checkpointer=checkpointer, store=store)
+    config = _graph_config(thread)
+    token = set_tool_context(await load_tool_context(session, thread.user_id))
+    pending: dict | None = None
+    proposal: dict | None = None
+    try:
+        await _assert_no_pending(graph, config)
+        result = await graph.ainvoke(
+            _graph_input(thread, lc_messages, user_text), config=config
+        )
+        snapshot = await graph.aget_state(config)
+        pending = _interrupt_value(snapshot)
+        if pending:
+            proposal = _proposal_payload(pending, _checkpoint_id(snapshot))
+            assistant = ChatMessage(
+                id=cuid(),
+                thread_id=thread.id,
+                role="assistant",
+                content=str(proposal["summary"]),
+                grounded_on=[proposal],
+            )
+        else:
+            reply_msg = result["messages"][-1]
+            content = visible_assistant_text(getattr(reply_msg, "content", ""))
+            assistant = ChatMessage(
+                id=cuid(),
+                thread_id=thread.id,
+                role="assistant",
+                content=content,
+                grounded_on=result.get("citations") or [],
+            )
+    finally:
+        reset_tool_context(token)
     await chat_messages_repository.add(session, assistant, flush=True)
     thread.updated_at = utcnow()
     await session.flush()
-    return _message_out(assistant)
+    payload = _message_out(assistant)
+    if pending and proposal:
+        payload["paused"] = True
+        payload["pendingAction"] = proposal
+    return payload
 
 
 async def stop_tutor_stream(
@@ -546,6 +634,11 @@ async def _stream_tutor_reply(
     text = content.strip()
     if not text:
         raise ApiError(400, "content is required")
+    if create is None:
+        existing = get_tutor_graph(
+            checkpointer=get_checkpointer(), store=get_memory_store()
+        )
+        await _assert_no_pending(existing, _graph_config(thread))
 
     stream_id = cuid()
     user_msg = ChatMessage(
@@ -584,59 +677,44 @@ async def _stream_tutor_reply(
         checkpointer = get_checkpointer()
         store = get_memory_store()
         graph = get_tutor_graph(checkpointer=checkpointer, store=store)
-        config: RunnableConfig = {
-            "configurable": {"thread_id": thread.id, "user_id": thread.user_id}
-        }
+        config = _graph_config(thread)
         final_text_parts: list[str] = []
         citations: list = []
-
-        graph_input: TutorState = {
-            "messages": lc_messages,
-            "question": text,
-            "documents": [],
-            "citations": [],
-            "rewrite_count": 0,
-            "subject_id": thread.subject_id,
-            "topic_id": thread.topic_id,
-            "question_id": thread.question_id,
-            "lesson_id": thread.lesson_id,
-            "user_id": thread.user_id,
-            "route": None,
-            "summary": "",
-            "sql_result": "",
-            "long_term_context": "",
-            "decision_trace": [],
-            "decision_meta": {},
-            "skip_rewrite": False,
-        }
-        async for event in graph.astream_events(
-            graph_input,
-            config=config,
-            version="v2",
-        ):
-            if should_stop(thread.id, stream_id):
-                cancelled = True
-                break
-            kind = event.get("event")
-            name = event.get("name")
-            node = (event.get("metadata") or {}).get("langgraph_node")
-            # Only stream the student-facing answer model — not graders/rewrite/etc.
-            if kind == "on_chat_model_stream" and node in _ANSWER_NODES:
-                chunk = event.get("data", {}).get("chunk")
-                piece = getattr(chunk, "content", None) if chunk is not None else None
-                piece_text = visible_assistant_text(piece, strip=False)
-                if piece_text:
-                    final_text_parts.append(piece_text)
-                    yield {"event": "token", "data": {"text": piece_text}}
-            elif kind == "on_chain_end" and name in _ANSWER_NODES:
-                output = event.get("data", {}).get("output") or {}
-                citations = output.get("citations") or citations
-                messages = output.get("messages") or []
-                if messages:
-                    # Prefer the completed message as source of truth.
-                    final = visible_assistant_text(getattr(messages[-1], "content", ""))
-                    if final:
-                        final_text_parts = [final]
+        token = set_tool_context(await load_tool_context(session, thread.user_id))
+        try:
+            async for event in graph.astream_events(
+                _graph_input(thread, lc_messages, text),
+                config=config,
+                version="v2",
+            ):
+                if should_stop(thread.id, stream_id):
+                    cancelled = True
+                    break
+                kind = event.get("event")
+                name = event.get("name")
+                node = (event.get("metadata") or {}).get("langgraph_node")
+                if kind == "on_chat_model_stream" and node in _ANSWER_NODES:
+                    chunk = event.get("data", {}).get("chunk")
+                    piece = None
+                    if chunk is not None:
+                        piece = getattr(chunk, "content", None)
+                    piece_text = visible_assistant_text(piece, strip=False)
+                    if piece_text:
+                        final_text_parts.append(piece_text)
+                        yield {"event": "token", "data": {"text": piece_text}}
+                elif kind == "on_chain_end" and name in _ANSWER_NODES:
+                    output = event.get("data", {}).get("output") or {}
+                    citations = output.get("citations") or citations
+                    messages = output.get("messages") or []
+                    if messages:
+                        final = visible_assistant_text(
+                            getattr(messages[-1], "content", "")
+                        )
+                        if final:
+                            final_text_parts = [final]
+            snapshot = await graph.aget_state(config)
+        finally:
+            reset_tool_context(token)
 
         if cancelled or should_stop(thread.id, stream_id):
             await session.delete(user_msg)
@@ -648,6 +726,36 @@ async def _stream_tutor_reply(
                     "cancelled": True,
                     "streamId": stream_id,
                     "userMessageId": user_msg.id,
+                },
+            }
+            return
+
+        pending = _interrupt_value(snapshot)
+        if pending:
+            proposal = _proposal_payload(pending, _checkpoint_id(snapshot))
+            assistant = ChatMessage(
+                id=cuid(),
+                thread_id=thread.id,
+                role="assistant",
+                content=str(proposal["summary"]),
+                grounded_on=[proposal],
+            )
+            await chat_messages_repository.add(session, assistant, flush=True)
+            thread.updated_at = utcnow()
+            await session.commit()
+            yield {"event": "actionProposal", "data": proposal}
+            message = _message_out(assistant)
+            message["paused"] = True
+            message["pendingAction"] = proposal
+            yield {"event": "assistantMessage", "data": message}
+            yield {
+                "event": "done",
+                "data": {
+                    "ok": True,
+                    "cancelled": False,
+                    "paused": True,
+                    "streamId": stream_id,
+                    "pendingAction": proposal,
                 },
             }
             return
@@ -680,3 +788,86 @@ async def _stream_tutor_reply(
         }
     finally:
         end_stream(thread.id, stream_id)
+
+
+def _outcome_text(result: dict) -> str:
+    messages = result.get("messages") or []
+    for message in reversed(messages):
+        if isinstance(message, AIMessage):
+            return visible_assistant_text(getattr(message, "content", ""))
+    return ""
+
+
+async def _resume_graph(
+    session: AsyncSession, thread: ChatThread, body: TutorActionResumeIn
+) -> tuple[dict, dict | None]:
+    graph = get_tutor_graph(checkpointer=get_checkpointer(), store=get_memory_store())
+    config = _graph_config(thread)
+    snapshot = await graph.aget_state(config)
+    pending = _interrupt_value(snapshot)
+    if pending is None:
+        raise ApiError(409, "No action waiting for approval")
+    if body.actionId and pending.get("actionId") != body.actionId:
+        raise ApiError(409, "That action is no longer pending")
+    payload: dict[str, Any] = {"approved": body.approved}
+    if body.args is not None:
+        payload["args"] = body.args
+    token = set_tool_context(await load_tool_context(session, thread.user_id))
+    try:
+        result = await graph.ainvoke(Command(resume=payload), config=config)
+    finally:
+        reset_tool_context(token)
+    text = _outcome_text(result) or (
+        "Done." if body.approved else "Okay — I won't make that change."
+    )
+    assistant = ChatMessage(
+        id=cuid(),
+        thread_id=thread.id,
+        role="assistant",
+        content=text,
+        grounded_on=[],
+    )
+    await chat_messages_repository.add(session, assistant, flush=True)
+    thread.updated_at = utcnow()
+    await session.flush()
+    action_result = result.get("action_result")
+    if not isinstance(action_result, dict):
+        action_result = None
+    return _message_out(assistant), action_result
+
+
+async def resume_tutor_action(
+    session: AsyncSession, user_id: str, thread_id: str, body: TutorActionResumeIn
+) -> dict:
+    """Approve or reject a paused study-plan proposal. Does not spend a message."""
+    require_rag()
+    thread = await _owned_thread(session, user_id, thread_id)
+    message, action_result = await _resume_graph(session, thread, body)
+    return {
+        "ok": True,
+        "approved": body.approved,
+        "assistantMessage": message,
+        "actionResult": action_result,
+    }
+
+
+async def stream_resume_tutor_action(
+    user_id: str, thread_id: str, body: TutorActionResumeIn
+) -> AsyncIterator[dict]:
+    async with async_session() as session:
+        require_rag()
+        thread = await _owned_thread(session, user_id, thread_id)
+        message, action_result = await _resume_graph(session, thread, body)
+        await session.commit()
+        event = "actionExecuted" if body.approved else "actionRejected"
+        yield {"event": event, "data": action_result or {"approved": body.approved}}
+        yield {"event": "assistantMessage", "data": message}
+        yield {
+            "event": "done",
+            "data": {
+                "ok": True,
+                "cancelled": False,
+                "paused": False,
+                "approved": body.approved,
+            },
+        }

@@ -18,6 +18,7 @@ from app.api.responses import (
     TutorTimeTravelOut,
 )
 from app.api.schemas import (
+    TutorActionResumeIn,
     TutorFeedbackIn,
     TutorForkIn,
     TutorMessageIn,
@@ -35,8 +36,10 @@ from app.services.rag.service import (
     PostTutorMessageService,
     TutorFeedbackService,
     prepare_new_thread_stream,
-    stream_new_tutor_thread,
+    resume_tutor_action,
     stop_tutor_stream,
+    stream_new_tutor_thread,
+    stream_resume_tutor_action,
     stream_tutor_reply,
 )
 from app.services.rag.sse import sse_response
@@ -162,6 +165,21 @@ async def stop_message_stream(
     """Stop the in-flight SSE reply so the student can ask a different question."""
     stream_id = body.streamId if body is not None else None
     return await stop_tutor_stream(session, student.id, thread_id, stream_id=stream_id)
+
+
+@router.post("/threads/{thread_id}/actions/resume")
+async def resume_action(
+    thread_id: str,
+    body: TutorActionResumeIn,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    """Approve or reject a pending study-plan card. Optional SSE when stream=true."""
+    if body.stream:
+        return await sse_response(
+            stream_resume_tutor_action(student.id, thread_id, body)
+        )
+    return await resume_tutor_action(session, student.id, thread_id, body)
 
 
 @router.get(

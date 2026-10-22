@@ -200,6 +200,7 @@ type TutorCheckpoint = {
 | `DELETE` | `/api/tutor/threads/{id}` | Soft-archive (`archived: true`) |
 | `POST` | `/api/tutor/threads/{id}/messages` | Sync turn (wait for full reply) |
 | `POST` | `/api/tutor/threads/{id}/messages/stream` | SSE turn (preferred for chat UX) |
+| `POST` | `/api/tutor/threads/{id}/actions/resume` | Approve or reject a paused action card |
 | `GET` | `/api/tutor/threads/{id}/history` | LangGraph checkpoints |
 | `POST` | `/api/tutor/threads/{id}/replay` | Re-run from checkpoint |
 | `POST` | `/api/tutor/threads/{id}/fork` | Branch from checkpoint |
@@ -217,6 +218,35 @@ All JSON request/response bodies use **camelCase**.
 - Do not reuse a cursor across different `orderBy` values.
 - Body: `TutorMessagesPage` (`messages`, `nextPage`, `previousPage`, …). Thread id is only in the path.
 - For a one-shot full transcript (small threads), `GET /api/tutor/threads/{id}` still returns all `messages[]`.
+
+### Action confirmation (study plan)
+
+When Astra proposes a study-plan change, the turn **pauses** until the student approves.
+
+SSE:
+
+| event | data |
+|-------|------|
+| `actionProposal` | `{ actionId, checkpointId, tool, args, summary, destructive }` |
+| `done` | `{ ok: true, paused: true, pendingAction }` |
+
+The assistant message stored for that turn has `groundedOn[0].kind === "actionProposal"` with the same fields, so a reload can redraw the card.
+
+```http
+POST /api/tutor/threads/{id}/actions/resume
+```
+
+```json
+{ "approved": true, "actionId": "...", "args": null, "stream": false }
+```
+
+- `approved: false` dismisses the card.
+- Optional `args` replaces the proposed payload (re-validated) before execution.
+- Does **not** count as a new chat message.
+- While a proposal is pending, another message returns **409** until resume.
+- `stream: true` returns SSE: `actionExecuted` or `actionRejected`, then `assistantMessage`, then `done`.
+
+v1 mutating tools: `create_study_plan`, `update_study_plan`, `delete_study_plan`, `set_study_plan_positions`, `set_study_plan_item_status`. Reads (`get_study_plan`, `list_subjects`, `get_dashboard_summary`, `get_performance_summary`) run without a card. Assessments and flashcards are not executable tools yet.
 
 ---
 

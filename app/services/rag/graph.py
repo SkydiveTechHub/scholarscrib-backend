@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict, cast
 from uuid import uuid4
 
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
@@ -38,6 +39,17 @@ from app.services.rag.rerank import rerank_documents
 from app.services.rag.schemas import GroundedCitation, citation_from_metadata
 from app.services.rag.sql_agent import run_sql_agent
 from app.services.rag.store import get_memory_store, memory_namespace
+from app.services.rag.tools import tutor_action_tools
+from app.services.rag.tools.agent import (
+    action_agent_node,
+    action_outcome_node,
+    await_action_approval,
+    execute_action_node,
+    inspect_action_tools,
+    route_after_action_agent,
+    route_after_approval,
+    route_after_inspect,
+)
 from app.services.rag.vectorstore import similarity_search_with_score
 
 
@@ -46,7 +58,9 @@ class GradeDocuments(BaseModel):
 
 
 class IntentRoute(BaseModel):
-    route: Literal["chitchat", "sql", "rag"] = Field(description="chitchat | sql | rag")
+    route: Literal["chitchat", "sql", "rag", "action"] = Field(
+        description="chitchat | sql | rag | action"
+    )
 
 
 def _append_trace(
@@ -75,6 +89,9 @@ class TutorState(TypedDict):
     skip_rewrite: bool
     # Noul relevance scores aligned with ``documents`` after grading (for Jev rerank).
     document_scores: list[float]
+    pending_action: dict[str, Any] | None
+    action_decision: dict[str, Any] | None
+    action_result: dict[str, Any] | None
 
 
 def _milvus_expr(state: TutorState) -> str | None:
@@ -125,6 +142,17 @@ def _heuristic_route(question: str) -> str | None:
     )
     if is_chitchat and len(text) < 80:
         return "chitchat"
+    action_cues = (
+        "study plan",
+        "my plan",
+        "today's plan",
+        "todays plan",
+        "study schedule",
+        "create a plan",
+        "make a plan",
+    )
+    if any(cue in text for cue in action_cues):
+        return "action"
     sql_cues = (
         "what subjects",
         "which subjects",
@@ -155,7 +183,7 @@ def _llm_intent_route(question: str) -> str:
         )
     except Exception:  # noqa: BLE001
         route = "rag"
-    if route not in ("chitchat", "sql", "rag"):
+    if route not in ("chitchat", "sql", "rag", "action"):
         route = "rag"
     return route
 
@@ -236,12 +264,14 @@ async def classify_intent_node(state: TutorState) -> dict[str, Any]:
 
 def route_after_intent(
     state: TutorState,
-) -> Literal["chitchat", "sql_agent", "load_memory"]:
+) -> Literal["chitchat", "sql_agent", "load_memory", "action_agent"]:
     route = state.get("route") or "rag"
     if route == "chitchat":
         return "chitchat"
     if route == "sql":
         return "sql_agent"
+    if route == "action":
+        return "action_agent"
     return "load_memory"
 
 
@@ -644,11 +674,23 @@ def build_tutor_graph(checkpointer=None, store=None):
     graph.add_node("generate_answer", generate_answer_node)
     graph.add_node("ground_answer", ground_answer_node)
     graph.add_node("remember", remember_node)
+    graph.add_node("action_agent", cast(Any, action_agent_node))
+    graph.add_node("action_tools", ToolNode(tutor_action_tools()))
+    graph.add_node("inspect_action_tools", cast(Any, inspect_action_tools))
+    graph.add_node("await_action_approval", cast(Any, await_action_approval))
+    graph.add_node("execute_action", cast(Any, execute_action_node))
+    graph.add_node("action_outcome", cast(Any, action_outcome_node))
 
     graph.add_edge(START, "classify_intent")
     graph.add_conditional_edges("classify_intent", route_after_intent)
     graph.add_edge("chitchat", "remember")
     graph.add_edge("sql_agent", "remember")
+    graph.add_conditional_edges("action_agent", route_after_action_agent)
+    graph.add_edge("action_tools", "inspect_action_tools")
+    graph.add_conditional_edges("inspect_action_tools", route_after_inspect)
+    graph.add_conditional_edges("await_action_approval", route_after_approval)
+    graph.add_edge("execute_action", "action_outcome")
+    graph.add_edge("action_outcome", "remember")
     graph.add_edge("load_memory", "summarize")
     graph.add_edge("summarize", "retrieve")
     graph.add_edge("retrieve", "grade_documents")

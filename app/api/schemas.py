@@ -549,6 +549,15 @@ class TutorStreamStopIn(BaseModel):
     streamId: str | None = Field(default=None, min_length=1)
 
 
+class TutorActionResumeIn(BaseModel):
+    """Approve or reject a paused tutor action. Does not send a new chat message."""
+
+    approved: bool
+    actionId: str | None = Field(default=None, min_length=1)
+    args: dict | None = None
+    stream: bool = False
+
+
 class TutorFeedbackIn(BaseModel):
     rating: Literal["up", "down"]
     comment: str | None = Field(default=None, max_length=1000)

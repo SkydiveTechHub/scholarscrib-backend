@@ -151,6 +151,10 @@ INTENT_CRITERIA = {
         "lesson help, study skills, or subject content — with or without "
         "indexed materials."
     ),
+    "action": (
+        "The student wants to view or change their study plan, today's "
+        "sessions, dashboard, or performance — not a content explanation."
+    ),
 }
 
 
@@ -164,7 +168,7 @@ async def decide_intent(
         question_id="intent",
         instructions=(
             "Route this student message for an exam-prep tutor. "
-            "Pick exactly one of chitchat, sql, or rag."
+            "Pick exactly one of chitchat, sql, rag, or action."
         ),
         criteria=INTENT_CRITERIA,
     )
@@ -179,7 +183,7 @@ async def decide_intent(
     if confidence < settings.jev_confidence_threshold:
         meta["source"] = "jev_low_confidence"
         return None, confidence, meta
-    if choice not in ("chitchat", "sql", "rag"):
+    if choice not in ("chitchat", "sql", "rag", "action"):
         return None, confidence, meta
     return choice, confidence, meta
 

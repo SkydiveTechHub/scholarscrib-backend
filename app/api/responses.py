@@ -888,6 +888,22 @@ class TutorStreamStopOut(ApiOut):
     streamId: str | None = None
 
 
+class TutorActionProposalOut(ApiOut):
+    actionId: str
+    checkpointId: str | None = None
+    tool: str
+    args: dict = Field(default_factory=dict)
+    summary: str
+    destructive: bool = False
+
+
+class TutorActionResumeOut(ApiOut):
+    ok: bool = True
+    approved: bool
+    assistantMessage: TutorMessageOut | None = None
+    actionResult: dict | None = None
+
+
 class RagJobOut(ApiOut):
     id: str
     source: str
