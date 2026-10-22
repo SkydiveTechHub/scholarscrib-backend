@@ -13,9 +13,10 @@ Date: 2026-10-20
 ## Thread lifecycle
 
 1. `POST /api/tutor/threads` with optional scope + `firstMessage`.
-2. Render `messages[]`; each assistant message has `groundedOn[]`.
-3. Follow-ups: `POST /api/tutor/threads/{id}/messages` **or** SSE stream.
-4. Archive: `DELETE /api/tutor/threads/{id}`.
+2. Load transcript: `GET /api/tutor/threads/{id}/messages` (or `GET /api/tutor/threads/{id}` which includes `messages[]`).
+3. Each assistant message has `groundedOn[]`.
+4. Follow-ups: `POST /api/tutor/threads/{id}/messages` **or** SSE stream.
+5. Archive: `DELETE /api/tutor/threads/{id}`.
 
 ### Practice deep-link
 

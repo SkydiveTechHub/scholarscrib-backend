@@ -149,7 +149,7 @@ def test_csv_starts_with_bom_header_and_json_encoded_options():
 def test_csv_prefixes_cells_that_a_spreadsheet_would_run():
     for danger in ["=1+1", "+cmd", "-2+3", "@SUM(A1)", "\tx", "\rx"]:
         assert safe_cell(danger) == "'" + danger
-    rows = [export_row(_q(question_text="=HYPERLINK(\"x\")", explanation="@a"), "-t")]
+    rows = [export_row(_q(question_text='=HYPERLINK("x")', explanation="@a"), "-t")]
     _, first = _parse_csv(to_csv(rows))
     assert first[EXPORT_FIELDS.index("questionText")].startswith("'=")
     assert first[EXPORT_FIELDS.index("explanation")] == "'@a"
@@ -404,7 +404,9 @@ def build_coverage(counts, statuses) -> list[dict]:
                 "examType": exam_type,
                 "examYear": exam_year,
                 "count": count,
-                "fetchStatus": latest.get((subject_id, exam_type, exam_year), (None, None))[1],
+                "fetchStatus": latest.get(
+                    (subject_id, exam_type, exam_year), (None, None)
+                )[1],
             }
         )
     for entry in subjects.values():
@@ -562,22 +564,23 @@ def export_statement(
 Add methods inside `QuestionRepository` (after `list_filtered`):
 
 ```python
-    async def coverage_counts(self, session: AsyncSession) -> list[tuple]:
-        result = await session.execute(coverage_statement())
-        return [tuple(row) for row in result.all()]
+async def coverage_counts(self, session: AsyncSession) -> list[tuple]:
+    result = await session.execute(coverage_statement())
+    return [tuple(row) for row in result.all()]
 
-    async def for_export(
-        self,
-        session: AsyncSession,
-        subject_id: str,
-        exam_type: str | None,
-        exam_year: int | None,
-        limit: int,
-    ) -> list[tuple[Question, str | None]]:
-        result = await session.execute(
-            export_statement(subject_id, exam_type, exam_year, limit)
-        )
-        return [(row[0], row[1]) for row in result.all()]
+
+async def for_export(
+    self,
+    session: AsyncSession,
+    subject_id: str,
+    exam_type: str | None,
+    exam_year: int | None,
+    limit: int,
+) -> list[tuple[Question, str | None]]:
+    result = await session.execute(
+        export_statement(subject_id, exam_type, exam_year, limit)
+    )
+    return [(row[0], row[1]) for row in result.all()]
 ```
 
 In `app/database/repositories/provider.py` add above `class ProviderFetchRepository`:
@@ -968,14 +971,16 @@ async def export_questions(
 In `main.py`, change line 45:
 
 ```python
-        # pdf.js reads the first three cross-origin to decide whether it can
-        # range-load; the admin export download reads the filename from the last.
-        expose_headers=[
-            "Accept-Ranges",
-            "Content-Range",
-            "Content-Length",
-            "Content-Disposition",
-        ],
+# pdf.js reads the first three cross-origin to decide whether it can
+# range-load; the admin export download reads the filename from the last.
+expose_headers = (
+    [
+        "Accept-Ranges",
+        "Content-Range",
+        "Content-Length",
+        "Content-Disposition",
+    ],
+)
 ```
 
 - [ ] **Step 9: Run the backend tests**

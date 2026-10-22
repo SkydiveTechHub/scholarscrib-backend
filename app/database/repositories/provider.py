@@ -35,9 +35,7 @@ def paper_status_statement(provider: str):
 class ProviderFetchRepository(BaseRepository[ProviderFetch]):
     model = ProviderFetch
 
-    async def paper_statuses(
-        self, session: AsyncSession, provider: str
-    ) -> list[tuple]:
+    async def paper_statuses(self, session: AsyncSession, provider: str) -> list[tuple]:
         result = await session.execute(paper_status_statement(provider))
         return [tuple(row) for row in result.all()]
 

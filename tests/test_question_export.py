@@ -2,7 +2,7 @@ import csv
 import io
 import json
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 from app.services.question_export import (
@@ -159,7 +159,7 @@ def test_zip_has_one_file_per_paper_in_the_chosen_format():
         assert json.loads(archive.read("mathematics-JAMB-2018.json"))[0]["marks"] == 1
 
 
-NOW = datetime(2026, 10, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def test_coverage_groups_counts_and_orders_papers():

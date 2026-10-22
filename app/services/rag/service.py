@@ -82,9 +82,21 @@ async def _auto_title(text: str) -> str:
         )
         content = response.content
         title = content if isinstance(content, str) else str(content)
-        return title.strip().strip('"')[:80] or text[:60]
+        cleaned = visible_assistant_text(title).strip().strip('"')[:80]
+        return cleaned or (text or "New chat")[:60]
     except Exception:  # noqa: BLE001
         return (text or "New chat")[:60]
+
+
+async def _ensure_thread_title(
+    session: AsyncSession, thread: ChatThread, text: str
+) -> None:
+    """Replace the placeholder title and flush so list views see it immediately."""
+    if thread.title and thread.title.strip() and thread.title.strip() != "New chat":
+        return
+    thread.title = await _auto_title(text)
+    thread.updated_at = utcnow()
+    await session.flush()
 
 
 class LessonTutorService:
@@ -234,6 +246,22 @@ class GetTutorThreadService:
         return _thread_out(thread, messages)
 
 
+class ListTutorMessagesService:
+    def __init__(self, session: AsyncSession, user_id: str, thread_id: str) -> None:
+        self.session = session
+        self.user_id = user_id
+        self.thread_id = thread_id
+
+    async def process(self) -> dict:
+        require_rag()
+        thread = await _owned_thread(self.session, self.user_id, self.thread_id)
+        messages = await chat_messages_repository.for_thread(self.session, thread.id)
+        return {
+            "threadId": thread.id,
+            "messages": [_message_out(message) for message in messages],
+        }
+
+
 class DeleteTutorThreadService:
     def __init__(self, session: AsyncSession, user_id: str, thread_id: str) -> None:
         self.session = session
@@ -276,8 +304,7 @@ class PostTutorMessageService:
             content=content,
         )
         await chat_messages_repository.add(self.session, user_msg, flush=True)
-        if not thread.title or thread.title == "New chat":
-            thread.title = await _auto_title(content)
+        await _ensure_thread_title(self.session, thread, content)
         assistant = await _run_graph_and_persist(self.session, thread, content)
         return {
             "userMessage": _message_out(user_msg),
@@ -413,6 +440,7 @@ async def stream_tutor_reply(
         content=text,
     )
     await chat_messages_repository.add(session, user_msg, flush=True)
+    await _ensure_thread_title(session, thread, text)
     begin_stream(thread.id, stream_id)
     yield {
         "event": "streamStarted",
@@ -420,6 +448,7 @@ async def stream_tutor_reply(
             "streamId": stream_id,
             "threadId": thread.id,
             "userMessageId": user_msg.id,
+            "threadTitle": thread.title,
         },
     }
     user_payload = _message_out(user_msg)

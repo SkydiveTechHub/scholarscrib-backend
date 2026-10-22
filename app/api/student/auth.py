@@ -143,9 +143,7 @@ async def forgot_password(body: ForgotPasswordIn, request: Request, session: AnS
 
 
 @router.post("/reset-password", response_model=MessageOut)
-async def reset_password(
-    body: ResetPasswordIn, request: Request, session: AnSession
-):
+async def reset_password(body: ResetPasswordIn, request: Request, session: AnSession):
     return await StudentResetPasswordService(
         session, body.email, body.token, body.newPassword, _ip(request)
     ).process()

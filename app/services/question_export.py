@@ -5,7 +5,7 @@ import io
 import json
 import re
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 EXPORT_ROW_CAP = 20_000
 EXPORT_FORMATS = ("csv", "json")
@@ -29,7 +29,7 @@ MEDIA_TYPES = {"csv": "text/csv; charset=utf-8", "json": "application/json"}
 # A spreadsheet runs a cell that starts with one of these as a formula.
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 _UNSAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
-_EARLIEST = datetime.min.replace(tzinfo=timezone.utc)
+_EARLIEST = datetime.min.replace(tzinfo=UTC)
 
 
 def export_row(question, topic_title: str | None) -> dict:
@@ -53,9 +53,9 @@ def export_row(question, topic_title: str | None) -> dict:
 def safe_cell(value) -> str:
     if value is None:
         return ""
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
+    if isinstance(value, int | float) and not isinstance(value, bool):
         return str(value)
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         text = json.dumps(value, ensure_ascii=False)
     else:
         text = str(value)

@@ -10,6 +10,7 @@ from app.api.deps import StudentPrincipal, require_feature, require_student
 from app.api.responses import (
     OkOut,
     TutorCheckpointHistoryOut,
+    TutorMessagesOut,
     TutorPostMessageOut,
     TutorStreamStopOut,
     TutorThreadOut,
@@ -29,6 +30,7 @@ from app.services.rag.service import (
     CreateTutorThreadService,
     DeleteTutorThreadService,
     GetTutorThreadService,
+    ListTutorMessagesService,
     ListTutorThreadsService,
     PostTutorMessageService,
     TutorFeedbackService,
@@ -82,6 +84,18 @@ async def delete_thread(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     return await DeleteTutorThreadService(session, student.id, thread_id).process()
+
+
+@router.get(
+    "/threads/{thread_id}/messages",
+    response_model=TutorMessagesOut,
+)
+async def list_messages(
+    thread_id: str,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    return await ListTutorMessagesService(session, student.id, thread_id).process()
 
 
 @router.post(

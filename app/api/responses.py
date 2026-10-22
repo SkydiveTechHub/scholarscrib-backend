@@ -853,6 +853,11 @@ class TutorPostMessageOut(ApiOut):
     assistantMessage: TutorMessageOut
 
 
+class TutorMessagesOut(ApiOut):
+    threadId: str
+    messages: list[TutorMessageOut]
+
+
 class TutorStreamStopOut(ApiOut):
     ok: bool = True
     cancelled: bool = True
