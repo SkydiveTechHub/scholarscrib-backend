@@ -6,10 +6,11 @@ import asyncio
 import time
 from collections.abc import AsyncIterator
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import update
 
 from app.core.logger import logger
 from app.core.timeutil import utcnow
+from app.database.db import async_session
 from app.database.models.chat import ChatThread
 from app.services.rag.stream_events import cursor_after, is_stale_run
 
@@ -59,13 +60,15 @@ class TutorRun:
 
 
 class RunLog:
-    """Copy the live frames onto the thread so another worker can rejoin."""
+    """Copy the live frames onto the thread so another worker can rejoin.
 
-    def __init__(
-        self, session: AsyncSession, thread: ChatThread, run: TutorRun
-    ) -> None:
-        self.session = session
-        self.thread = thread
+    Writes go through a fresh session. The graph session is also used by
+    read tools, and committing it while a tool is querying raises inside
+    the tool.
+    """
+
+    def __init__(self, thread_id: str, run: TutorRun) -> None:
+        self.thread_id = thread_id
         self.run = run
         self._last = 0.0
         self._dirty = 0
@@ -85,26 +88,30 @@ class RunLog:
             return
         await self.flush()
 
+    async def _write(self, *, active_run: dict | None, run_events: list | None) -> None:
+        async with async_session() as session:
+            await session.execute(
+                update(ChatThread)
+                .where(ChatThread.id == self.thread_id)
+                .values(active_run=active_run, run_events=run_events)
+            )
+            await session.commit()
+
     async def flush(self) -> None:
-        self.thread.active_run = self._active()
-        self.thread.run_events = [dict(frame) for frame in self.run.events]
+        events = [dict(frame) for frame in self.run.events]
         try:
-            await self.session.commit()
+            await self._write(active_run=self._active(), run_events=events)
         except Exception:
             logger.exception("tutor run log flush failed")
-            await self.session.rollback()
             return
         self._last = time.monotonic()
         self._dirty = 0
 
     async def clear(self) -> None:
-        self.thread.active_run = None
-        self.thread.run_events = None
         try:
-            await self.session.commit()
+            await self._write(active_run=None, run_events=None)
         except Exception:
             logger.exception("tutor run log clear failed")
-            await self.session.rollback()
 
 
 class RunHub:

@@ -882,7 +882,7 @@ async def _produce_tutor_run(
             await chat_messages_repository.add(session, user_msg, flush=True)
             await _ensure_thread_title(session, thread, text_value)
             await session.commit()
-            log = RunLog(session, thread, run)
+            log = RunLog(thread.id, run)
             begin_stream(thread.id, run.run_id)
             begun = True
             heartbeat = asyncio.create_task(_beat_loop(thread.id, run))
