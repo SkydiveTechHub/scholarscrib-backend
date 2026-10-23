@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
 
 from app.api.deps import StudentPrincipal, require_feature, require_student
 from app.api.responses import (
@@ -35,12 +35,13 @@ from app.services.rag.service import (
     ListTutorThreadsService,
     PostTutorMessageService,
     TutorFeedbackService,
+    open_run_replay,
     prepare_new_thread_stream,
     resume_tutor_action,
+    start_message_run,
+    start_new_thread_run,
     stop_tutor_stream,
-    stream_new_tutor_thread,
     stream_resume_tutor_action,
-    stream_tutor_reply,
 )
 from app.services.rag.sse import sse_response
 from app.services.rag.time_travel import (
@@ -77,7 +78,8 @@ async def create_thread_stream(
     event carries the new ``threadId``.
     """
     prepared = await prepare_new_thread_stream(session, student.id, body)
-    return await sse_response(stream_new_tutor_thread(prepared, student.id))
+    run = start_new_thread_run(prepared, student.id)
+    return await sse_response(run.iter_after(0))
 
 
 @router.get("/threads", response_model=TutorThreadsOut)
@@ -147,9 +149,8 @@ async def post_message_stream(
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
-    return await sse_response(
-        stream_tutor_reply(session, student.id, thread_id, body.content)
-    )
+    run = await start_message_run(session, student.id, thread_id, body.content)
+    return await sse_response(run.iter_after(0))
 
 
 @router.post(
@@ -165,6 +166,24 @@ async def stop_message_stream(
     """Stop the in-flight SSE reply so the student can ask a different question."""
     stream_id = body.streamId if body is not None else None
     return await stop_tutor_stream(session, student.id, thread_id, stream_id=stream_id)
+
+
+@router.get("/threads/{thread_id}/runs/{run_id}/stream")
+async def rejoin_run_stream(
+    thread_id: str,
+    run_id: str,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+    last_event_id: Annotated[str | None, Header()] = None,
+):
+    """Replay this run after ``Last-Event-ID``, then follow it live.
+
+    A finished run is 404. Load the thread instead.
+    """
+    events = await open_run_replay(
+        session, student.id, thread_id, run_id, last_event_id
+    )
+    return await sse_response(events)
 
 
 @router.post("/threads/{thread_id}/actions/resume")

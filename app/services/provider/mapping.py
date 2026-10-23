@@ -128,10 +128,10 @@ TOPIC_MAP: dict[str, dict[str, str]] = {
     },
     "chemistry": {
         "states-of-matter": "particulate-nature-of-matter",
-        "stoichiometry": "chemical-reactions-and-equations",
-        "inorganic-chemistry/oxidation-reduction": "oxidation-and-reduction",
+        "stoichiometry": "mass-volume-relationships",
+        "inorganic-chemistry/oxidation-reduction": "redox-reactions",
         "inorganic-chemistry/acids-bases-salts": "acids-bases-and-salts",
-        "atomic-structure/electron-configuration": "atomic-structure",
+        "atomic-structure/electron-configuration": "periodic-table",
         "separation-and-purification": "separation-techniques",
     },
     "biology": {
@@ -178,17 +178,18 @@ TOPIC_MAP: dict[str, dict[str, str]] = {
         "international-relations/un": "international-organizations",
     },
     "commerce": {
-        "financial-economics/banking": "banking-and-finance",
-        "african-politics/ecowas": "economic-integration",
-        "international-relations/regional-integration": "economic-integration",
-        "international-relations/ecowas": "economic-integration",
-        "international-trade/regional-integration": "economic-integration",
-        "accounting": "accounting-basics",
-        "financial-accounting": "accounting-basics",
+        "financial-economics/banking": "money",
+        "african-politics/ecowas": "economic-groupings-in-west-africa",
+        "international-relations/regional-integration": (
+            "economic-groupings-in-west-africa"
+        ),
+        "international-relations/ecowas": "economic-groupings-in-west-africa",
+        "international-trade/regional-integration": (
+            "economic-groupings-in-west-africa"
+        ),
     },
     "geography": {
         "map-work": "map-reading",
-        "nigeria-geography": "nigeria-physical-and-human-geography",
     },
     "history": {
         "african-politics/decolonisation": "independence-movements",

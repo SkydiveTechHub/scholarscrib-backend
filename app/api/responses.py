@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import Literal, TypeVar
 
 from fastapi import Query
 from fastapi_pagination.cursor import CursorPage as BaseCursorPage
@@ -853,7 +853,14 @@ class TutorMessageOut(ApiOut):
     role: str
     content: str
     groundedOn: list = Field(default_factory=list)
+    ui: list = Field(default_factory=list)
+    tools: list = Field(default_factory=list)
     createdAt: str | None = None
+
+
+class TutorActiveRunOut(ApiOut):
+    runId: str
+    status: Literal["running", "paused"]
 
 
 class TutorThreadOut(ApiOut):
@@ -864,6 +871,7 @@ class TutorThreadOut(ApiOut):
     questionId: str | None = None
     lessonId: str | None = None
     archived: bool = False
+    activeRun: TutorActiveRunOut | None = None
     createdAt: str | None = None
     updatedAt: str | None = None
     messages: list[TutorMessageOut] | None = None
@@ -895,6 +903,7 @@ class TutorActionProposalOut(ApiOut):
     args: dict = Field(default_factory=dict)
     summary: str
     destructive: bool = False
+    fields: list | None = None
 
 
 class TutorActionResumeOut(ApiOut):
@@ -903,6 +912,21 @@ class TutorActionResumeOut(ApiOut):
     assistantMessage: TutorMessageOut | None = None
     proposalMessage: TutorMessageOut | None = None
     actionResult: dict | None = None
+
+
+class AdminAstraThreadOut(ApiOut):
+    id: str
+    title: str | None = None
+    archived: bool = False
+    activeRun: TutorActiveRunOut | None = None
+    createdAt: str | None = None
+    updatedAt: str | None = None
+    messages: list[TutorMessageOut] | None = None
+    assistantMessage: TutorMessageOut | None = None
+
+
+class AdminAstraThreadsOut(ApiOut):
+    threads: list[AdminAstraThreadOut]
 
 
 class RagJobOut(ApiOut):

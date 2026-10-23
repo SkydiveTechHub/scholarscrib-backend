@@ -9,6 +9,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
 
 from app.core.errors import ApiError
+from app.core.logger import logger
 from app.services.catalogue import ListSubjectsService
 from app.services.pages import GetDashboardService, GetPerformanceService
 from app.services.planner.service import GetStudyPlanService
@@ -23,6 +24,7 @@ def _json(payload: Any) -> str:
 def _error(exc: Exception) -> str:
     if isinstance(exc, ApiError):
         return _json({"ok": False, "error": str(exc)})
+    logger.exception("tutor read tool failed")
     return _json({"ok": False, "error": "Could not load that right now."})
 
 

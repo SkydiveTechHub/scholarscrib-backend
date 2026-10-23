@@ -252,7 +252,7 @@ async def test_changing_scope_drops_positions_outside_it(monkeypatch):
     monkeypatch.setattr(service.curriculum_levels_repository, "by_id", level_by_id)
 
     plan = NS(id="p1", scope_class_level="SS2", scope_term="SECOND")
-    await service._drop_positions_outside_scope(None, "p1", plan)
+    await service._drop_positions_outside_scope(None, plan)
 
     assert removed == [outside]
 
@@ -289,7 +289,7 @@ async def test_position_outside_the_plans_term_is_rejected(monkeypatch, level):
     monkeypatch.setattr(service.curriculum_levels_repository, "by_id", level_by_id)
 
     plan = NS(id="p1", scope_class_level="SS1", scope_term="FIRST")
-    svc = service.SetStudyPlanPositionsService(None, "s1", "SS1", "p1", [])
+    svc = service.SetStudyPlanPositionsService(None, "s1", "SS1", [])
     with pytest.raises(ApiError) as caught:
         await svc._apply_position(
             plan, {"maths"}, PositionIn(subjectId="maths", topicId="t9")
@@ -305,21 +305,21 @@ async def test_delete_deactivates_the_active_plan_and_keeps_it(monkeypatch):
 
     from app.services.planner import service
 
-    plan = NS(id="p1", is_active=True)
+    plan = NS(id="p1", is_active=True, student_id="s1")
     locked = []
 
-    async def active(_, student_id):
-        return plan
+    async def by_id(_, plan_id):
+        return plan if plan_id == "p1" else None
 
     async def lock(_, *conditions):
         locked.append(conditions)
 
-    monkeypatch.setattr(service.plans_repository, "active", active)
+    monkeypatch.setattr(service.plans_repository, "by_id", by_id)
     monkeypatch.setattr(service.plans_repository, "lock", lock)
 
     result = await service.DeleteStudyPlanService(None, "s1", "p1").process()
 
-    assert result == {"ok": True}
+    assert result == {"planId": "p1"}
     assert plan.is_active is False
     assert len(locked) == 1
 
@@ -330,10 +330,10 @@ async def test_delete_without_an_active_plan_is_a_404(monkeypatch):
     from app.core.errors import ApiError
     from app.services.planner import service
 
-    async def active(_, student_id):
+    async def by_id(_, plan_id):
         return None
 
-    monkeypatch.setattr(service.plans_repository, "active", active)
+    monkeypatch.setattr(service.plans_repository, "by_id", by_id)
 
     with pytest.raises(ApiError) as raised:
         await service.DeleteStudyPlanService(None, "s1", "p1").process()

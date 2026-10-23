@@ -3,7 +3,7 @@
 Date: 2026-10-21  
 Audience: Next.js / student app engineers wiring the chat UI to the ScholarsCrib API.
 
-This guide is the implementation reference for the student tutor surface. The shorter contract note lives in [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md).
+This guide is the implementation reference for the student tutor surface. The shorter contract note lives in [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md). Admin console chat is a separate API: [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md).
 
 ---
 
@@ -120,11 +120,45 @@ type GroundedOn = {
   excerpt?: string; // truncated ~280 chars
 };
 
+type TutorActiveRun = {
+  runId: string;
+  status: "running" | "paused";
+} | null;
+
+type TutorToolEvent = {
+  id: string;
+  name: string;
+  phase: "running" | "done" | "failed";
+  summary: string;
+};
+
+type TutorUiBlock =
+  | {
+      id: string;
+      component: "worked_example";
+      props: { problem: string; steps: string[] };
+    }
+  | {
+      id: string;
+      component: "practice_question";
+      props: { prompt: string; choices?: string[] };
+    };
+
+type TutorProposalField = {
+  key: string;
+  label: string;
+  type: "string" | "number";
+  required: boolean;
+  maxLength?: number;
+};
+
 type TutorMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   groundedOn: GroundedOn[];
+  ui: TutorUiBlock[];
+  tools: TutorToolEvent[];
   createdAt: string | null;
 };
 
@@ -146,6 +180,8 @@ type TutorThread = {
   questionId: string | null;
   lessonId: string | null;
   archived: boolean;
+  /** `null` when the last turn is already on `messages`. */
+  activeRun: TutorActiveRun;
   createdAt: string | null;
   updatedAt: string | null;
   messages?: TutorMessage[];
@@ -200,6 +236,7 @@ type TutorCheckpoint = {
 | `DELETE` | `/api/tutor/threads/{id}` | Soft-archive (`archived: true`) |
 | `POST` | `/api/tutor/threads/{id}/messages` | Sync turn (wait for full reply) |
 | `POST` | `/api/tutor/threads/{id}/messages/stream` | SSE turn (preferred for chat UX) |
+| `GET` | `/api/tutor/threads/{id}/runs/{runId}/stream` | Rejoin an in-flight or paused run (`Last-Event-ID`) |
 | `POST` | `/api/tutor/threads/{id}/actions/resume` | Approve or reject a paused action card |
 | `GET` | `/api/tutor/threads/{id}/history` | LangGraph checkpoints |
 | `POST` | `/api/tutor/threads/{id}/replay` | Re-run from checkpoint |
@@ -227,10 +264,12 @@ SSE:
 
 | event | data |
 |-------|------|
-| `actionProposal` | `{ actionId, checkpointId, tool, args, summary, destructive }` |
+| `actionProposal` | `{ actionId, checkpointId, tool, args, summary, destructive, fields? }` |
 | `done` | `{ ok: true, paused: true, pendingAction }` |
 
 `summary` is the plan Astra wrote for the card. Show it in full and keep the line breaks. `args` is the payload that runs on approve, without that text.
+
+`fields` lists the editable scalars. Each `fields[].key` exists in `args`. Keys that are not listed are kept when resume sends only the edited keys. `type` is `string` or `number`. Destructive tools such as `delete_study_plan` omit `fields`. A resume whose `args` fail that schema, add a key, or change a non-editable key returns `400` `{ "error": "..." }` and leaves the proposal `pending`. `approved: false` ignores `args`. Omitted or `null` `args` runs the stored payload.
 
 The assistant message stored for that turn keeps the summary in `content`. While it is waiting, `groundedOn` includes `{ kind: "actionProposal", status: "pending", ... }`. **Redraw the card only for that pending shape.**
 
@@ -424,8 +463,8 @@ Suggested labels (keep casual; do not expose “Jev” to students):
 1. **Final text = `assistantMessage.content`**, not the concatenation of tokens.  
    After generation, a groundedness check may **replace** the streamed draft with a soft-refuse string (“I do not have enough grounded material…”). If you only keep tokens, the UI will lie.
 2. Chitchat / SQL turns may emit **`assistantMessage` with no `token` events**. Always handle that path.
-3. If the stream dies mid-way, `GET /api/tutor/threads/{id}` and reconcile from persisted messages (user message is saved at stream start).
-4. Support `AbortController` on the fetch; do not leave the composer locked if the user cancels.
+3. If the socket drops, the run keeps going. Rejoin with `GET .../runs/{runId}/stream` and `Last-Event-ID` (see 6.3). `GET /api/tutor/threads/{id}` is the fallback when that rejoin is `404`.
+4. Closing the panel does not cancel the turn. `POST .../messages/stream/stop` is the only cancel. Stop keeps the user message and any partial assistant text already produced.
 5. Create-with-`firstMessage` does **not** stream — use empty create + stream for first-turn typing UX.
 
 #### Minimal browser client sketch
@@ -484,6 +523,51 @@ async function streamTutorMessage(
   }
 }
 ```
+
+---
+
+### 6.3 Runs, rejoin, tools, and study cards
+
+Every SSE frame on the message stream and the rejoin stream has an `id` line that increases for the life of that run (`id: 1`, `id: 2`, …). `streamStarted.runId` is the same value as `streamId`.
+
+`GET /api/tutor/threads/{id}` includes `activeRun`:
+
+| `activeRun` | Meaning |
+|-------------|---------|
+| `{ runId, status: "running" }` | The graph is still producing this turn |
+| `{ runId, status: "paused" }` | An `actionProposal` is waiting |
+| `null` | The turn is on `messages` |
+
+Disconnect without stop leaves `activeRun` running. Stop sets it `null`.
+
+```http
+GET /api/tutor/threads/{threadId}/runs/{runId}/stream
+Last-Event-ID: 4
+Authorization: Bearer <studentJwt>
+```
+
+The response replays frames after that id, then continues live. A missing or unknown id replays from the start. Dedupe by id. `404` `{ "error": "Run not found" }` when the run is already finished (or not this student's). Load the thread: the assistant message includes `groundedOn`, `tools`, `ui`, and any pending proposal.
+
+While a tool runs, the stream emits `tool` beside `token` and `status`:
+
+```json
+{ "id": "tool_1", "name": "grade_documents", "phase": "running", "summary": "Checking lesson notes…" }
+```
+
+`phase` is `running`, `done`, or `failed`. `summary` is one short student-facing line. The event does not include chain-of-thought, SQL, or document text. Every `running` is closed with `done` or `failed` before `done` on the turn. `status` is unchanged (`node`, and sometimes `route`, `confidence`, `source`).
+
+When Astra wants a fixed card, the stream emits `ui` and the same block is stored on the assistant message (`ui`):
+
+```json
+{ "id": "ui_1", "component": "worked_example", "props": { "problem": "…", "steps": ["…"] } }
+```
+
+| `component` | `props` |
+|-------------|---------|
+| `worked_example` | `problem` string, `steps` string array, at most 8 steps |
+| `practice_question` | `prompt` string, optional `choices` string array, at most 4 choices. No answer and no mark scheme |
+
+Any other component is dropped. Markdown in `token` / `content` is still the reply. The API does not send HTML.
 
 ---
 
@@ -680,7 +764,7 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 
 ## 14. What not to build against
 
-- Do **not** call admin `/admin/api/rag/*` from the student app.  
+- Do **not** call admin `/admin/api/rag/*` or `/admin/api/astra/*` from the student app. Admin chat is [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md).  
 - Do **not** depend on LangSmith, Jev, or Milvus from the browser.  
 - Do **not** treat token concatenation as final.  
 - Do **not** assume every turn has citations.  
@@ -708,6 +792,7 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 
 ## Related docs
 
+- [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md) — admin console chat  
 - [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md) — short contract  
 - [`2026-10-20-ai-tutor-rag-design.md`](./2026-10-20-ai-tutor-rag-design.md) — backend design  
 - Routes: `app/api/student/tutor.py`, `app/api/student/lessons.py`  

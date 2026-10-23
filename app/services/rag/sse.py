@@ -15,12 +15,17 @@ SSE_HEADERS = {
 }
 
 
-def format_sse(event: str, data: Mapping[str, Any] | list | str | None) -> str:
+def format_sse(
+    event: str,
+    data: Mapping[str, Any] | list | str | None,
+    event_id: str | None = None,
+) -> str:
     if isinstance(data, str):
         payload = data
     else:
         payload = json.dumps(data if data is not None else {}, default=str)
-    return f"event: {event}\ndata: {payload}\n\n"
+    prefix = f"id: {event_id}\n" if event_id is not None else ""
+    return f"{prefix}event: {event}\ndata: {payload}\n\n"
 
 
 async def sse_response(
@@ -28,7 +33,7 @@ async def sse_response(
 ) -> StreamingResponse:
     async def body():
         async for item in events:
-            yield format_sse(item["event"], item.get("data"))
+            yield format_sse(item["event"], item.get("data"), item.get("id"))
 
     return StreamingResponse(
         body(),

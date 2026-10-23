@@ -32,6 +32,12 @@ class ChatThread(Base):
         "lessonId", ForeignKey("Lesson.id", ondelete="SET NULL")
     )
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    active_run: Mapped[dict | None] = mapped_column(
+        "activeRun", JSONB, nullable=True, default=None
+    )
+    run_events: Mapped[list | None] = mapped_column(
+        "runEvents", JSONB, nullable=True, default=None
+    )
     created_at: Mapped[datetime] = timestamp_column("createdAt")
     updated_at: Mapped[datetime] = timestamp_column("updatedAt", onupdate=True)
 
@@ -49,6 +55,10 @@ class ChatMessage(Base):
     role: Mapped[str] = mapped_column(String)  # user | assistant | system
     content: Mapped[str] = mapped_column(Text)
     grounded_on: Mapped[list | None] = mapped_column("groundedOn", JSONB)
+    ui: Mapped[list | None] = mapped_column("ui", JSONB, nullable=True, default=None)
+    tools: Mapped[list | None] = mapped_column(
+        "tools", JSONB, nullable=True, default=None
+    )
     created_at: Mapped[datetime] = timestamp_column("createdAt")
 
 

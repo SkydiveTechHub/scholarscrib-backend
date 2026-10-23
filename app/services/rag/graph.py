@@ -24,7 +24,10 @@ from app.services.rag.decisions import (
     order_by_noul_scores,
 )
 from app.services.rag.llm import get_chat_model, get_grader_model
-from app.services.rag.message_text import visible_assistant_text
+from app.services.rag.message_text import (
+    dialogue_without_tool_calls,
+    visible_assistant_text,
+)
 from app.services.rag.prompts import (
     CHITCHAT_SYSTEM,
     GRADE_PROMPT,
@@ -277,9 +280,7 @@ def route_after_intent(
 
 def chitchat_node(state: TutorState) -> dict[str, Any]:
     model = get_chat_model()
-    history = [
-        msg for msg in state["messages"] if isinstance(msg, HumanMessage | AIMessage)
-    ][-6:]
+    history = dialogue_without_tool_calls(state["messages"], limit=6)
     response = model.invoke([SystemMessage(content=CHITCHAT_SYSTEM), *history])
     return {
         "messages": [response],
@@ -529,9 +530,7 @@ def generate_answer_node(state: TutorState) -> dict[str, Any]:
     summary = (state.get("summary") or "").strip()
     model = get_chat_model()
     keep = settings.rag_keep_recent_messages
-    history = [
-        msg for msg in state["messages"] if isinstance(msg, HumanMessage | AIMessage)
-    ]
+    history = dialogue_without_tool_calls(state["messages"])
     if summary and len(history) > keep:
         history = history[-keep:]
     system_bits = [TUTOR_SYSTEM]

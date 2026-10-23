@@ -73,12 +73,13 @@ class ExportQuestionsService:
         if not pairs:
             raise ApiError(404, "No questions to export")
         rows = [export_row(question, topic) for question, topic in pairs]
+        exam_type = self.exam_type
         if self.exam_year is not None:
+            if exam_type is None:
+                raise ApiError(400, "Choose an exam type to export a single year")
             content = render(rows, self.fmt)
             media_type = MEDIA_TYPES[self.fmt]
-            filename = paper_filename(
-                subject.slug, self.exam_type, self.exam_year, self.fmt
-            )
+            filename = paper_filename(subject.slug, exam_type, self.exam_year, self.fmt)
         else:
             content = build_zip(subject.slug, group_papers(rows), self.fmt)
             media_type = "application/zip"
