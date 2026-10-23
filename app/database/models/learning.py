@@ -142,6 +142,7 @@ class Achievement(Base):
     description: Mapped[str | None] = mapped_column(Text)
     criteria_type: Mapped[str] = mapped_column("criteriaType", String)
     criteria_value: Mapped[int] = mapped_column("criteriaValue", Integer)
+    icon_url: Mapped[str | None] = mapped_column("iconUrl", String)
 
 
 class StudentAchievement(Base):

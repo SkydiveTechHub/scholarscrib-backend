@@ -41,6 +41,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("criteriaType", sa.String(), nullable=False),
         sa.Column("criteriaValue", sa.Integer(), nullable=False),
+        sa.Column("iconUrl", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("title"),
     )

@@ -235,6 +235,7 @@ class GetAchievementsService:
                     "description": item.description,
                     "criteriaType": item.criteria_type,
                     "criteriaValue": item.criteria_value,
+                    "iconUrl": item.icon_url,
                     "earned": item.id in earned,
                     "earnedAt": (
                         earned[item.id].isoformat() if item.id in earned else None
