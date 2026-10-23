@@ -77,5 +77,28 @@ class CoverageQuestionRepository(BaseRepository[CoverageQuestion]):
         )
         return [tuple(row) for row in result.all()], int(total or 0)
 
+    async def coverage_counts(self, session: AsyncSession) -> list[tuple]:
+        """Question counts per subject, exam type and year, dated papers only."""
+        result = await session.execute(
+            select(
+                CoverageQuestion.subject_id,
+                Subject.name,
+                Subject.code,
+                CoverageQuestion.exam_type,
+                CoverageQuestion.exam_year,
+                func.count(),
+            )
+            .join(Subject, Subject.id == CoverageQuestion.subject_id)
+            .where(CoverageQuestion.exam_year.is_not(None))
+            .group_by(
+                CoverageQuestion.subject_id,
+                Subject.name,
+                Subject.code,
+                CoverageQuestion.exam_type,
+                CoverageQuestion.exam_year,
+            )
+        )
+        return [tuple(row) for row in result.all()]
+
 
 coverage_questions_repository = CoverageQuestionRepository()

@@ -10,6 +10,7 @@ from app.database.repositories.coverage import coverage_questions_repository
 from app.database.repositories.curriculum import subjects_repository, topics_repository
 from app.services.admin import RecordAuditService
 from app.services.provider.rules import objective_ok
+from app.services.question_export import build_coverage
 
 EXAM_TYPES = {"WAEC", "JAMB", "NECO", "CUSTOM"}
 QUESTION_TYPES = {"OBJECTIVE", "THEORY", "FILL_IN_BLANK"}
@@ -163,6 +164,9 @@ def coverage_row(question, subject, topic) -> dict:
         "questionNumber": question.question_number,
         "questionText": question.question_text,
         "questionType": question.question_type,
+        "options": question.options,
+        "correctAnswer": question.correct_answer,
+        "explanation": question.explanation,
         "examType": question.exam_type,
         "examYear": question.exam_year,
         "country": question.country,
@@ -171,3 +175,14 @@ def coverage_row(question, subject, topic) -> dict:
         "subject": {"name": subject.name, "code": subject.code},
         "topic": {"title": topic.title, "slug": topic.slug} if topic else None,
     }
+
+
+class GetCoverageOverviewService:
+    """What the coverage table holds, per subject and paper. No provider status."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def process(self) -> dict:
+        counts = await coverage_questions_repository.coverage_counts(self.session)
+        return {"subjects": build_coverage(counts, [])}

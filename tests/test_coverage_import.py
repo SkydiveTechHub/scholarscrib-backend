@@ -114,3 +114,18 @@ async def test_empty_payload_rejected(env):
         await mod.ImportCoverageQuestionsService(
             object(), "a1", ImportCoverageQuestionsIn(questions=[])
         ).process()
+
+
+async def test_overview_groups_counts_by_subject_and_paper(monkeypatch):
+    async def counts(session):
+        return [
+            ("s1", "Biology", "BIO", "JAMB", 2012, 3),
+            ("s1", "Biology", "BIO", "JAMB", 2014, 2),
+        ]
+
+    monkeypatch.setattr(mod.coverage_questions_repository, "coverage_counts", counts)
+    result = await mod.GetCoverageOverviewService(object()).process()
+    subject = result["subjects"][0]
+    assert subject["total"] == 5
+    assert [p["examYear"] for p in subject["papers"]] == [2014, 2012]
+    assert all(p["fetchStatus"] is None for p in subject["papers"])

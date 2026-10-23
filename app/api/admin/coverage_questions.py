@@ -3,11 +3,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.deps import require_admin
-from app.api.responses import AdminQuestionsOut, ImportQuestionsOut
+from app.api.responses import (
+    AdminQuestionsOut,
+    ImportQuestionsOut,
+    QuestionCoverageOut,
+)
 from app.api.schemas import ExamType, ImportCoverageQuestionsIn
 from app.database.db import AnSession
 from app.database.models import Admin
 from app.services.coverage_import import (
+    GetCoverageOverviewService,
     ImportCoverageQuestionsService,
     ListCoverageQuestionsService,
 )
@@ -37,6 +42,13 @@ async def list_coverage_questions(
             "search": search,
         },
     ).process()
+
+
+@router.get("/coverage", response_model=QuestionCoverageOut)
+async def coverage_overview(
+    session: AnSession, admin: Annotated[Admin, Depends(require_admin)]
+):
+    return await GetCoverageOverviewService(session).process()
 
 
 @router.post("/import", response_model=ImportQuestionsOut)
