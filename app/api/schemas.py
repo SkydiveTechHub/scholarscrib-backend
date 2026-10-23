@@ -389,6 +389,33 @@ class ImportQuestionsIn(BaseModel):
     skipDuplicates: bool = True
 
 
+class CoverageImportQuestionIn(BaseModel):
+    questionNumber: int | None = None
+    subjectCode: str | None = None
+    topicSlug: str | None = None
+    examType: str | None = None
+    examYear: int | None = None
+    country: str | None = None
+    questionType: str | None = None
+    hasPassage: bool = False
+    passage: str | None = None
+    questionText: str | None = None
+    questionImage: str | None = None
+    options: dict | None = None
+    correctAnswer: str | None = None
+    explanation: str | None = None
+    detailedExplanation: str | None = None
+    possibleMistakes: list[str] | None = None
+    solutionImage: str | None = None
+    difficulty: str | None = None
+    marks: int | None = None
+
+
+class ImportCoverageQuestionsIn(BaseModel):
+    questions: list[CoverageImportQuestionIn] | None = None
+    skipDuplicates: bool = True
+
+
 class DeleteQuestionsIn(BaseModel):
     ids: list[str] = Field(default_factory=list)
 

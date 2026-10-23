@@ -14,6 +14,7 @@ from app.database.models.chat import (
     ChatThread,
     RagIndexJob,
 )
+from app.database.models.coverage import CoverageQuestion
 from app.database.models.curriculum import (
     CurriculumLevel,
     Lesson,
@@ -88,6 +89,7 @@ __all__ = [
     "ChatFeedback",
     "ChatMessage",
     "ChatThread",
+    "CoverageQuestion",
     "CurriculumLevel",
     "DailySession",
     "Flashcard",

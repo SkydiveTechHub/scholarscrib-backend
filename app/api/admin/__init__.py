@@ -9,6 +9,7 @@ from app.api.admin.catalogue import (
     subjects_router,
     topics_router,
 )
+from app.api.admin.coverage_questions import router as coverage_questions_router
 from app.api.admin.lessons import browse_router, tree_router
 from app.api.admin.lessons import router as lessons_router
 from app.api.admin.materials import router as materials_router
@@ -28,6 +29,7 @@ router.include_router(curriculums_router)
 router.include_router(topics_router)
 router.include_router(students_router)
 router.include_router(questions_router)
+router.include_router(coverage_questions_router)
 router.include_router(materials_router)
 router.include_router(terms_router)
 router.include_router(provider_router)
