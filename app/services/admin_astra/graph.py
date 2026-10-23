@@ -251,12 +251,16 @@ async def execute_action_node(state: AdminAstraState) -> dict[str, Any]:
         result: dict[str, Any] = {"ok": False, "error": "Missing action", "tool": name}
     else:
         result = await execute_admin_action(ctx, name, args)
-    if result.get("ok") and not result.get("message"):
-        result["message"] = str(pending.get("summary") or "Done.")
     return {"action_result": result, "pending_action": None}
 
 
 def action_outcome_node(state: AdminAstraState) -> dict[str, Any]:
+    """Speak only after an approval. A normal answer already lives on the agent turn.
+
+    Reads finish in ``action_agent`` and then route here because there is no
+    tool call left. Inventing ``Done.`` at that point replaces the reply the
+    stream just produced.
+    """
     result = state.get("action_result")
     decision = state.get("action_decision") or {}
     if isinstance(result, dict):
@@ -267,7 +271,7 @@ def action_outcome_node(state: AdminAstraState) -> dict[str, Any]:
     elif decision.get("approved") is False:
         text = "Okay — I won't make that change."
     else:
-        text = "Done."
+        return {}
     return {
         "messages": [AIMessage(content=text)],
         "pending_action": None,

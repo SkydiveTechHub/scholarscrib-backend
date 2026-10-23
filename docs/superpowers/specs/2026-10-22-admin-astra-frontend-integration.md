@@ -390,7 +390,7 @@ Send only the keys the admin changed. Identity ids (`userId`, `questionId`, `ids
 
 Approve-only tools include deletes, imports, tier changes, announcements, provider backfill, reindex, catalogue writes, team changes, and force sign-out.
 
-On approve, `actionResult.result` is a compact JSON snapshot (ids and labels, capped lists). Show the outcome sentence in `assistantMessage.content`. Keep the raw result behind a disclosure. It never includes a password, token, or upload signature.
+On approve, `assistantMessage.content` is a short result sentence, such as “Deleted that student.” The card summary stays on `proposalMessage` and is not repeated. `actionResult.result` is a compact JSON snapshot (ids and labels, capped lists). Show the sentence, and keep the raw result behind a disclosure. It never includes a password, token, or upload signature.
 
 Creating an admin emails a reset link. The card names the email only. `actionResult.result.resetEmailSent` tells you whether that mail went out. There is no password to display.
 

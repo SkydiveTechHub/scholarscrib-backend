@@ -17,8 +17,9 @@ from app.services.admin_astra.context import (
     reset_admin_tool_context,
     set_admin_tool_context,
 )
-from app.services.admin_astra.execute import execute_admin_action
+from app.services.admin_astra.execute import execute_admin_action, outcome_message
 from app.services.admin_astra.graph import (
+    action_outcome_node,
     build_admin_graph,
     classify_route,
     pick_domains,
@@ -68,6 +69,44 @@ def test_domain_pack_hides_other_domains_and_owner_tools():
     assert "delete_student" in owner
     assert "create_admin" in owner
     assert "list_questions" not in owner
+
+
+def _last_ai(snapshot) -> str:
+    for message in reversed(snapshot.values["messages"]):
+        if isinstance(message, AIMessage):
+            content = message.content
+            return content if isinstance(content, str) else str(content)
+    return ""
+
+
+def test_approval_follow_up_is_a_result_sentence():
+    assert outcome_message("delete_student", {"userId": "user-1"}, {"ok": True}) == (
+        "Deleted that student."
+    )
+    assert outcome_message("set_student_status", {"isActive": False}, {}) == (
+        "Suspended that student."
+    )
+    assert outcome_message("set_student_status", {"isActive": True}, {}) == (
+        "Reactivated that student."
+    )
+    assert (
+        outcome_message("create_admin", {"identifier": "ada@example.com"}, {})
+        == "Created that admin and sent a reset link."
+    )
+
+
+def test_outcome_speaks_only_after_an_approval():
+    assert action_outcome_node({}) == {}
+    rejected = action_outcome_node({"action_decision": {"approved": False}})
+    assert rejected["messages"][0].content == "Okay — I won't make that change."
+    done = action_outcome_node(
+        {"action_result": {"ok": True, "message": "Deleted Ada."}}
+    )
+    assert done["messages"][0].content == "Deleted Ada."
+    failed = action_outcome_node(
+        {"action_result": {"ok": False, "error": "Owner access required"}}
+    )
+    assert failed["messages"][0].content == "Owner access required"
 
 
 def test_classify_and_domain_picker_skip_the_model_when_the_wording_is_clear():
@@ -195,6 +234,7 @@ async def test_read_tool_runs_and_does_not_interrupt(monkeypatch):
     assert "search_students" in model.bound
     assert "delete_student" not in model.bound
     assert "list_questions" not in model.bound
+    assert _last_ai(snapshot) == "Ada is an SS2 student."
 
 
 async def _delete_turn(monkeypatch, thread_id: str):
@@ -246,6 +286,9 @@ async def test_mutation_interrupts_and_reject_writes_nothing(monkeypatch):
         assert called["n"] == 0
         await graph.ainvoke(Command(resume={"approved": False}), config=config)
         assert called["n"] == 0
+        assert _last_ai(await graph.aget_state(config)) == (
+            "Okay — I won't make that change."
+        )
     finally:
         reset_admin_tool_context(token)
 
@@ -261,6 +304,7 @@ async def test_mutation_approve_calls_the_service_once(monkeypatch):
         assert called["n"] == 1
         assert called["actor"] == "admin-1"
         assert called["user"] == "user-1"
+        assert _last_ai(await graph.aget_state(config)) == "Deleted that student."
     finally:
         reset_admin_tool_context(token)
 

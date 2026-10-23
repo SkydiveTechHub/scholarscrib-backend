@@ -248,11 +248,15 @@ def _tool_snapshot(tools: ToolTracker) -> list[dict]:
 
 
 def _last_assistant_text(snapshot: Any) -> str:
+    """Last assistant sentence, skipping a tool call whose content is empty."""
     values = getattr(snapshot, "values", None) or {}
     messages = values.get("messages") or []
     for message in reversed(messages):
-        if isinstance(message, AIMessage):
-            return visible_assistant_text(getattr(message, "content", ""))
+        if not isinstance(message, AIMessage):
+            continue
+        text = visible_assistant_text(getattr(message, "content", "")).strip()
+        if text:
+            return text
     return ""
 
 
@@ -749,7 +753,7 @@ async def _produce_run(
             message = await _commit_assistant(
                 session,
                 thread,
-                content=full or "Done.",
+                content=full or "I couldn't put that into a reply.",
                 grounded_on=[],
                 tools=_tool_snapshot(tools),
             )
