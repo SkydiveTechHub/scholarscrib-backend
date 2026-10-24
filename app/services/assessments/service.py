@@ -30,6 +30,7 @@ from app.database.repositories.assessment import (
     attempts_repository,
     responses_repository,
 )
+from app.database.repositories.coverage import coverage_questions_repository
 from app.database.repositories.curriculum import (
     curriculum_levels_repository,
     subjects_repository,
@@ -45,6 +46,7 @@ from app.domain import (
     SUBMIT_GRACE_SECONDS,
     UNTIMED_STALE_HOURS,
 )
+from app.services.assessments.coverage_paper import as_paper_question, is_coverage
 from app.services.assessments.grading import (
     round_percentage,
     score_jamb_paper,
@@ -138,6 +140,8 @@ async def reap_stale(session: AsyncSession, student_id: str) -> None:
             continue
         topic_ids = await questions_repository.topic_ids_for_assessment(
             session, assessment.id
+        ) + await coverage_questions_repository.topic_ids_for_assessment(
+            session, assessment.id
         )
         for topic_id in set(topic_ids):
             topic = await topics_repository.by_id(session, topic_id)
@@ -153,8 +157,38 @@ async def reap_stale(session: AsyncSession, student_id: str) -> None:
             )
 
 
-async def _paper_questions(session: AsyncSession, assessment_id: str) -> list[Question]:
-    return await questions_repository.for_assessment(session, assessment_id)
+async def _paper_questions(session: AsyncSession, assessment_id: str) -> list:
+    """A paper's questions in order: bank questions, or coverage ones for a mock."""
+    links = await assessment_questions_repository.list_where(
+        session,
+        AssessmentQuestion.assessment_id == assessment_id,
+        order_by=[AssessmentQuestion.order_index],
+    )
+    if not any(link.coverage_question_id for link in links):
+        return await questions_repository.for_assessment(session, assessment_id)
+    bank = {
+        question.id: question
+        for question in await questions_repository.for_assessment(
+            session, assessment_id
+        )
+    }
+    coverage = {
+        question.id: as_paper_question(question)
+        for question in await coverage_questions_repository.by_ids(
+            session,
+            [link.coverage_question_id for link in links if link.coverage_question_id],
+        )
+    }
+    paper = []
+    for link in links:
+        question = (
+            coverage.get(link.coverage_question_id)
+            if link.coverage_question_id
+            else bank.get(link.question_id)
+        )
+        if question is not None:
+            paper.append(question)
+    return paper
 
 
 def _payload(
@@ -189,7 +223,7 @@ async def _persist(
     *,
     student_id: str,
     subject: Subject,
-    questions: list[Question],
+    questions: list,
     assessment_type: str,
     exam_type: str | None,
     exam_year: int | None,
@@ -230,7 +264,8 @@ async def _persist(
             AssessmentQuestion(
                 id=cuid(),
                 assessment_id=assessment.id,
-                question_id=question.id,
+                question_id=None if is_coverage(question) else question.id,
+                coverage_question_id=question.id if is_coverage(question) else None,
                 order_index=index,
             ),
         )
@@ -591,7 +626,12 @@ class SubmitAttemptService:
                 QuestionResponse(
                     id=cuid(),
                     attempt_id=attempt.id,
-                    question_id=item["question"].id,
+                    question_id=None
+                    if is_coverage(item["question"])
+                    else item["question"].id,
+                    coverage_question_id=item["question"].id
+                    if is_coverage(item["question"])
+                    else None,
                     selected_answer=None
                     if item["selected"] is None
                     else str(item["selected"]),
@@ -626,7 +666,9 @@ class GetAttemptResultService:
         attempt, assessment = await self._load()
         paper = await _paper_questions(self.session, assessment.id)
         stored = await responses_repository.for_attempt(self.session, attempt.id)
-        by_question = {row.question_id: row for row in stored}
+        by_question = {
+            row.question_id or row.coverage_question_id: row for row in stored
+        }
         results, breakdown, correct_count = await self._build_results(
             paper, by_question
         )
@@ -634,7 +676,10 @@ class GetAttemptResultService:
         grade, remark, credit = waec_grade(attempt.percentage or 0)
         jamb = None
         if assessment.assessment_type == "CBT_PRACTICE":
-            selected = {row.question_id: row.selected_answer for row in stored}
+            selected = {
+                row.question_id or row.coverage_question_id: row.selected_answer
+                for row in stored
+            }
             jamb = _jamb_payload(
                 score_jamb_paper(await _jamb_sections(self.session, paper, selected))
             )
@@ -767,12 +812,18 @@ class GetBoardReadinessService:
 
 
 class GetMockOptionsService:
-    def __init__(self, session: AsyncSession, exam_type: str) -> None:
+    def __init__(
+        self, session: AsyncSession, exam_type: str | None, track: str | None = None
+    ) -> None:
         self.session = session
         self.exam_type = exam_type
+        self.track = track
 
     async def process(self) -> dict:
         subject_rows = await subjects_repository.ordered(self.session)
+        if self.track:
+            allowed = {"CORE", self.track.strip().upper()}
+            subject_rows = [s for s in subject_rows if s.track_category in allowed]
         payload = []
         for subject in subject_rows:
             levels = await curriculum_levels_repository.list_where(
@@ -780,7 +831,7 @@ class GetMockOptionsService:
             )
             scopes = []
             for level in levels:
-                count = await questions_repository.count_for_level(
+                count = await coverage_questions_repository.count_for_level(
                     self.session,
                     subject_id=subject.id,
                     exam_type=self.exam_type,
@@ -816,13 +867,17 @@ class GenerateScopedMockService:
         subject = await self._load_subject()
         scopes = self._scope_range()
         count = self.body.count or 40
-        picked = await _pick(
-            self.session,
-            subject_id=subject.id,
-            count=count,
-            exam_type=self.body.examType,
-            class_levels=scopes,
-        )
+        # Mock exams sit the coverage questions, not the provider-backed bank.
+        picked = [
+            as_paper_question(question)
+            for question in await coverage_questions_repository.pick_objective(
+                self.session,
+                subject_id=subject.id,
+                count=count,
+                exam_type=self.body.examType,
+                class_levels=scopes,
+            )
+        ]
         if not picked:
             raise ApiError(
                 422,
@@ -841,7 +896,9 @@ class GenerateScopedMockService:
             assessment_type="MOCK_EXAM",
             exam_type=self.body.examType,
             exam_year=None,
-            title=f"{subject.name} {self.body.examType} mock",
+            title=" ".join(
+                part for part in (subject.name, self.body.examType, "mock") if part
+            ),
             untimed=False,
         )
         paper["scope"] = {

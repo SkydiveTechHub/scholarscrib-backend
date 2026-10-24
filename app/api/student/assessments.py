@@ -218,13 +218,18 @@ async def mock_boards(
 @router.get("/mock-exam/options", response_model=MockOptionsOut)
 async def mock_options(
     session: AnSession,
-    examType: str,
     student: Annotated[StudentPrincipal, Depends(require_student)],
+    examType: str | None = None,
 ):
-    examType = examType.strip().upper()
-    if examType not in {"WAEC", "JAMB", "NECO"}:
-        raise ApiError(400, "examType must be WAEC, JAMB, or NECO")
-    return await GetMockOptionsService(session, examType).process()
+    """Subjects in the student's track, with question counts per class and term.
+
+    Without an examType the counts span every board.
+    """
+    if examType:
+        examType = examType.strip().upper()
+        if examType not in {"WAEC", "JAMB", "NECO"}:
+            raise ApiError(400, "examType must be WAEC, JAMB, or NECO")
+    return await GetMockOptionsService(session, examType, student.track).process()
 
 
 @router.post("/mock-exam/scoped", response_model=QuizOut)

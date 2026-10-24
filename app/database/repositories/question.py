@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import (
     AssessmentAttempt,
     AssessmentQuestion,
+    CoverageQuestion,
     CurriculumLevel,
     Question,
     QuestionResponse,
@@ -286,21 +287,22 @@ class QuestionRepository(BaseRepository[Question]):
         session: AsyncSession,
         *,
         subject_id: str,
-        exam_type: str,
+        exam_type: str | None,
         curriculum_level_id: str,
     ) -> int:
-        value = await session.scalar(
+        statement = (
             select(func.count())
             .select_from(Question)
             .join(Topic, Topic.id == Question.topic_id)
             .where(
                 Question.subject_id == subject_id,
-                Question.exam_type == exam_type,
                 Question.question_type == "OBJECTIVE",
                 Topic.curriculum_level_id == curriculum_level_id,
             )
         )
-        return int(value or 0)
+        if exam_type:
+            statement = statement.where(Question.exam_type == exam_type)
+        return int(await session.scalar(statement) or 0)
 
     async def exam_years(
         self, session: AsyncSession, subject_id: str, exam_type: str
@@ -335,15 +337,30 @@ class QuestionRepository(BaseRepository[Question]):
         """Distinct questions in the topic the student has answered in an attempt."""
         return (
             await session.scalar(
-                select(func.count(func.distinct(QuestionResponse.question_id)))
-                .join(Question, Question.id == QuestionResponse.question_id)
+                select(
+                    func.count(
+                        func.distinct(
+                            func.coalesce(
+                                QuestionResponse.question_id,
+                                QuestionResponse.coverage_question_id,
+                            )
+                        )
+                    )
+                )
+                .select_from(QuestionResponse)
+                .outerjoin(Question, Question.id == QuestionResponse.question_id)
+                .outerjoin(
+                    CoverageQuestion,
+                    CoverageQuestion.id == QuestionResponse.coverage_question_id,
+                )
                 .join(
                     AssessmentAttempt,
                     AssessmentAttempt.id == QuestionResponse.attempt_id,
                 )
                 .where(
                     AssessmentAttempt.student_id == student_id,
-                    Question.topic_id == topic_id,
+                    func.coalesce(Question.topic_id, CoverageQuestion.topic_id)
+                    == topic_id,
                     QuestionResponse.selected_answer.is_not(None),
                 )
             )

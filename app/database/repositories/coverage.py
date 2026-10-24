@@ -3,7 +3,13 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import CoverageQuestion, Subject, Topic
+from app.database.models import (
+    AssessmentQuestion,
+    CoverageQuestion,
+    CurriculumLevel,
+    Subject,
+    Topic,
+)
 from app.database.repositories.base import BaseRepository
 
 
@@ -99,6 +105,94 @@ class CoverageQuestionRepository(BaseRepository[CoverageQuestion]):
             )
         )
         return [tuple(row) for row in result.all()]
+
+    async def count_for_level(
+        self,
+        session: AsyncSession,
+        *,
+        subject_id: str,
+        exam_type: str | None,
+        curriculum_level_id: str,
+    ) -> int:
+        statement = (
+            select(func.count())
+            .select_from(CoverageQuestion)
+            .join(Topic, Topic.id == CoverageQuestion.topic_id)
+            .where(
+                CoverageQuestion.subject_id == subject_id,
+                CoverageQuestion.question_type == "OBJECTIVE",
+                Topic.curriculum_level_id == curriculum_level_id,
+            )
+        )
+        if exam_type:
+            statement = statement.where(CoverageQuestion.exam_type == exam_type)
+        return int(await session.scalar(statement) or 0)
+
+    async def pick_objective(
+        self,
+        session: AsyncSession,
+        *,
+        subject_id: str,
+        count: int,
+        exam_type: str | None,
+        class_levels: list[tuple[str, str]],
+    ) -> list[CoverageQuestion]:
+        """Random objective questions for a subject within the class/term slots."""
+        level_ids: list[str] = []
+        for class_level, term in class_levels:
+            level_ids.extend(
+                (
+                    await session.scalars(
+                        select(CurriculumLevel.id).where(
+                            CurriculumLevel.subject_id == subject_id,
+                            CurriculumLevel.class_level == class_level,
+                            CurriculumLevel.term == term,
+                        )
+                    )
+                ).all()
+            )
+        if not level_ids:
+            return []
+        statement = (
+            select(CoverageQuestion)
+            .join(Topic, Topic.id == CoverageQuestion.topic_id)
+            .where(
+                CoverageQuestion.subject_id == subject_id,
+                CoverageQuestion.question_type == "OBJECTIVE",
+                Topic.curriculum_level_id.in_(level_ids),
+            )
+        )
+        if exam_type:
+            statement = statement.where(CoverageQuestion.exam_type == exam_type)
+        return await self.many(session, statement.order_by(func.random()).limit(count))
+
+    async def by_ids(
+        self, session: AsyncSession, ids: list[str]
+    ) -> list[CoverageQuestion]:
+        if not ids:
+            return []
+        return await self.many(
+            session, select(CoverageQuestion).where(CoverageQuestion.id.in_(ids))
+        )
+
+    async def topic_ids_for_assessment(
+        self, session: AsyncSession, assessment_id: str
+    ) -> list[str]:
+        return list(
+            (
+                await session.scalars(
+                    select(CoverageQuestion.topic_id)
+                    .join(
+                        AssessmentQuestion,
+                        AssessmentQuestion.coverage_question_id == CoverageQuestion.id,
+                    )
+                    .where(
+                        AssessmentQuestion.assessment_id == assessment_id,
+                        CoverageQuestion.topic_id.is_not(None),
+                    )
+                )
+            ).all()
+        )
 
 
 coverage_questions_repository = CoverageQuestionRepository()

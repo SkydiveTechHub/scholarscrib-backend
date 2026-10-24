@@ -199,7 +199,8 @@ class ScopePoint(BaseModel):
 
 
 class ScopedMockIn(BaseModel):
-    examType: Board
+    # Omitted for a mock drawn from every board.
+    examType: Board | None = None
     subjectId: str
     from_: ScopePoint = Field(alias="from")
     to: ScopePoint

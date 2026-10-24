@@ -46,13 +46,22 @@ class Assessment(Base):
 
 class AssessmentQuestion(Base):
     __tablename__ = "AssessmentQuestion"
-    __table_args__ = (UniqueConstraint("assessmentId", "questionId"),)
+    __table_args__ = (
+        UniqueConstraint("assessmentId", "questionId"),
+        UniqueConstraint("assessmentId", "coverageQuestionId"),
+    )
 
     id: Mapped[str] = id_column()
     assessment_id: Mapped[str] = mapped_column(
         "assessmentId", ForeignKey("Assessment.id", ondelete="CASCADE")
     )
-    question_id: Mapped[str] = mapped_column("questionId", ForeignKey("Question.id"))
+    # Exactly one of the two is set: a bank question or a coverage question.
+    question_id: Mapped[str | None] = mapped_column(
+        "questionId", ForeignKey("Question.id")
+    )
+    coverage_question_id: Mapped[str | None] = mapped_column(
+        "coverageQuestionId", ForeignKey("CoverageQuestion.id")
+    )
     order_index: Mapped[int] = mapped_column("orderIndex", Integer)
 
 
@@ -93,13 +102,22 @@ class AssessmentAttempt(Base):
 
 class QuestionResponse(Base):
     __tablename__ = "QuestionResponse"
-    __table_args__ = (UniqueConstraint("attemptId", "questionId"),)
+    __table_args__ = (
+        UniqueConstraint("attemptId", "questionId"),
+        UniqueConstraint("attemptId", "coverageQuestionId"),
+    )
 
     id: Mapped[str] = id_column()
     attempt_id: Mapped[str] = mapped_column(
         "attemptId", ForeignKey("AssessmentAttempt.id", ondelete="CASCADE")
     )
-    question_id: Mapped[str] = mapped_column("questionId", ForeignKey("Question.id"))
+    # Exactly one of the two is set: a bank question or a coverage question.
+    question_id: Mapped[str | None] = mapped_column(
+        "questionId", ForeignKey("Question.id")
+    )
+    coverage_question_id: Mapped[str | None] = mapped_column(
+        "coverageQuestionId", ForeignKey("CoverageQuestion.id")
+    )
     selected_answer: Mapped[str | None] = mapped_column("selectedAnswer", String)
     is_correct: Mapped[bool] = mapped_column("isCorrect", Boolean, default=False)
     time_spent_seconds: Mapped[int | None] = mapped_column("timeSpentSeconds", Integer)

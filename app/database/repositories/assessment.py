@@ -9,6 +9,7 @@ from app.database.models import (
     Assessment,
     AssessmentAttempt,
     AssessmentQuestion,
+    CoverageQuestion,
     Question,
     QuestionResponse,
 )
@@ -17,6 +18,24 @@ from app.database.repositories.base import BaseRepository
 
 class AssessmentRepository(BaseRepository[Assessment]):
     model = Assessment
+
+
+# A response or paper slot points at a bank question or a coverage question, so
+# stats read whichever side is set. Coverage questions carry no time estimate;
+# they use the default the bank applies.
+COVERAGE_TIME_ESTIMATE_SECONDS = 90
+
+
+def response_subject_id():
+    return func.coalesce(Question.subject_id, CoverageQuestion.subject_id)
+
+
+def response_topic_id():
+    return func.coalesce(Question.topic_id, CoverageQuestion.topic_id)
+
+
+def response_time_estimate():
+    return func.coalesce(Question.time_estimate_seconds, COVERAGE_TIME_ESTIMATE_SECONDS)
 
 
 class AssessmentQuestionRepository(BaseRepository[AssessmentQuestion]):
@@ -30,8 +49,16 @@ class AssessmentQuestionRepository(BaseRepository[AssessmentQuestion]):
             return {}
         result = await self.rows(
             session,
-            select(AssessmentQuestion.assessment_id, Question.subject_id)
-            .join(Question, Question.id == AssessmentQuestion.question_id)
+            select(
+                AssessmentQuestion.assessment_id,
+                func.coalesce(Question.subject_id, CoverageQuestion.subject_id),
+            )
+            .select_from(AssessmentQuestion)
+            .outerjoin(Question, Question.id == AssessmentQuestion.question_id)
+            .outerjoin(
+                CoverageQuestion,
+                CoverageQuestion.id == AssessmentQuestion.coverage_question_id,
+            )
             .where(AssessmentQuestion.assessment_id.in_(assessment_ids))
             .distinct(),
         )
@@ -250,6 +277,7 @@ class QuestionResponseRepository(BaseRepository[QuestionResponse]):
                 AssessmentAttempt.id == QuestionResponse.attempt_id,
             )
             .where(
+                QuestionResponse.question_id.is_not(None),
                 AssessmentAttempt.student_id == student_id,
                 AssessmentAttempt.status == "COMPLETED",
                 AssessmentAttempt.completed_at >= since,
@@ -288,14 +316,18 @@ class QuestionResponseRepository(BaseRepository[QuestionResponse]):
                     func.count(QuestionResponse.id).filter(
                         QuestionResponse.is_correct.is_(True)
                     ),
-                    func.count(func.distinct(Question.topic_id)),
+                    func.count(func.distinct(response_topic_id())),
                 )
                 .select_from(QuestionResponse)
                 .join(
                     AssessmentAttempt,
                     AssessmentAttempt.id == QuestionResponse.attempt_id,
                 )
-                .join(Question, Question.id == QuestionResponse.question_id)
+                .outerjoin(Question, Question.id == QuestionResponse.question_id)
+                .outerjoin(
+                    CoverageQuestion,
+                    CoverageQuestion.id == QuestionResponse.coverage_question_id,
+                )
                 .where(AssessmentAttempt.student_id == student_id),
             )
         ).one()
@@ -308,7 +340,7 @@ class QuestionResponseRepository(BaseRepository[QuestionResponse]):
         result = await self.rows(
             session,
             select(
-                Question.subject_id,
+                response_subject_id(),
                 func.count(QuestionResponse.id),
                 func.count(QuestionResponse.id).filter(
                     QuestionResponse.is_correct.is_(True)
@@ -319,9 +351,13 @@ class QuestionResponseRepository(BaseRepository[QuestionResponse]):
                 AssessmentAttempt,
                 AssessmentAttempt.id == QuestionResponse.attempt_id,
             )
-            .join(Question, Question.id == QuestionResponse.question_id)
+            .outerjoin(Question, Question.id == QuestionResponse.question_id)
+            .outerjoin(
+                CoverageQuestion,
+                CoverageQuestion.id == QuestionResponse.coverage_question_id,
+            )
             .where(AssessmentAttempt.student_id == student_id)
-            .group_by(Question.subject_id),
+            .group_by(response_subject_id()),
         )
         return {row[0]: (int(row[1] or 0), int(row[2] or 0)) for row in result.all()}
 
@@ -332,16 +368,21 @@ class QuestionResponseRepository(BaseRepository[QuestionResponse]):
             session,
             select(
                 QuestionResponse.time_spent_seconds,
-                Question.time_estimate_seconds,
+                response_time_estimate(),
             )
-            .join(Question, Question.id == QuestionResponse.question_id)
+            .select_from(QuestionResponse)
+            .outerjoin(Question, Question.id == QuestionResponse.question_id)
+            .outerjoin(
+                CoverageQuestion,
+                CoverageQuestion.id == QuestionResponse.coverage_question_id,
+            )
             .join(
                 AssessmentAttempt,
                 AssessmentAttempt.id == QuestionResponse.attempt_id,
             )
             .where(
                 AssessmentAttempt.student_id == student_id,
-                Question.subject_id == subject_id,
+                response_subject_id() == subject_id,
             ),
         )
         return [(row[0], row[1]) for row in result.all()]
