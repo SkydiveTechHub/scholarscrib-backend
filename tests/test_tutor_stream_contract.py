@@ -8,18 +8,18 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.core.errors import ApiError
-from app.services.rag.proposals import fields_for, public_proposal, resume_command
-from app.services.rag.runs import hub
-from app.services.rag.sse import format_sse
-from app.services.rag.stream_events import (
+from app.ai.core.sse import format_sse
+from app.ai.core.stream_events import (
     ToolTracker,
     cursor_after,
     interpret_graph_event,
     is_stale_run,
     partial_from_events,
 )
-from app.services.rag.ui_blocks import UiStreamFilter, split_ui, validate_ui_block
+from app.ai.tutor.proposals import fields_for, public_proposal, resume_command
+from app.ai.tutor.runs import hub
+from app.ai.tutor.ui_blocks import UiStreamFilter, split_ui, validate_ui_block
+from app.core.errors import ApiError
 
 
 def _plan_args() -> dict:

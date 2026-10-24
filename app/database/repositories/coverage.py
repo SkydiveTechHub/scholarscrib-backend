@@ -178,21 +178,21 @@ class CoverageQuestionRepository(BaseRepository[CoverageQuestion]):
     async def topic_ids_for_assessment(
         self, session: AsyncSession, assessment_id: str
     ) -> list[str]:
-        return list(
-            (
-                await session.scalars(
-                    select(CoverageQuestion.topic_id)
-                    .join(
-                        AssessmentQuestion,
-                        AssessmentQuestion.coverage_question_id == CoverageQuestion.id,
-                    )
-                    .where(
-                        AssessmentQuestion.assessment_id == assessment_id,
-                        CoverageQuestion.topic_id.is_not(None),
-                    )
+        rows = (
+            await session.scalars(
+                select(CoverageQuestion.topic_id)
+                .join(
+                    AssessmentQuestion,
+                    AssessmentQuestion.coverage_question_id == CoverageQuestion.id,
                 )
-            ).all()
-        )
+                .where(
+                    AssessmentQuestion.assessment_id == assessment_id,
+                    CoverageQuestion.topic_id.is_not(None),
+                )
+            )
+        ).all()
+        # Column is nullable; the WHERE filter is not visible to the type checker.
+        return [topic_id for topic_id in rows if topic_id is not None]
 
 
 coverage_questions_repository = CoverageQuestionRepository()

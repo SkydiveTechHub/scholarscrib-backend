@@ -417,6 +417,8 @@ The model is bound to one or two domains per turn. Reads return immediately. Mut
 
 `get_student_topic_standings` needs a `userId` from `search_students` (or `get_student`). Optional args: `status` (`all` \| `strong` \| `weak` \| `normal`), `subjectIds`, `limit` (default 30, max 100). Same bands as the student `GET /api/performance/topics` endpoint. Use it when an admin asks what a student is strong or weak at; do not invent mastery numbers from `get_student` alone (`masteredTopicCount` is only a count).
 
+Jev guardrails also screen admin chat input, assistant output, and tool args/results (same batteries as the student tutor). Blocked turns are ordinary assistant messages; tool blocks surface as failed tool events. No new SSE event type.
+
 Question export is a count plus a five-row preview. The CSV and ZIP stay on the existing export route. Lesson reads return a title and a block count, not the full markdown. Material upload signing stays a browser call to `/admin/api/materials/sign`; `create_material` needs a URL that already exists. Login, logout, forgot password, and reset password are not tools.
 
 A non-owner who asks for an owner-only area gets a normal assistant message: “That area is limited to the owner account.” Hide owner prompts in the composer when the signed-in admin is not the owner.
@@ -510,6 +512,7 @@ GET /admin/api/astra/threads/{id}/runs/{runId}/stream
 - [ ] `streamStarted.runId` is what rejoin and stop use
 - [ ] Tokens fill a draft; `assistantMessage` replaces it
 - [ ] A read (`search_students`, `get_student_topic_standings`, `admin_stats`) finishes with no card
+- [ ] Jailbreak / unsafe prompts still return a normal assistant message (canned refuse); no new SSE event
 - [ ] A mutation opens a card and locks the composer (`409` on a second send)
 - [ ] Reject writes nothing and the card becomes `rejected`
 - [ ] Approve calls through once; the audit row matches the console action
@@ -528,5 +531,5 @@ GET /admin/api/astra/threads/{id}/runs/{runId}/stream
 - Admin HTTP map: [`../../backend-port/05-admin-api.md`](../../backend-port/05-admin-api.md)
 - Routes: `app/api/admin/astra.py`
 - Shapes: `app/api/schemas.py` (`AdminAstra*`), `app/api/responses.py` (`AdminAstraThreadOut`)
-- Cards: `app/services/admin_astra/proposals.py`
-- Tools: `app/services/admin_astra/tools/`
+- Cards: `app/ai/admin/proposals.py`
+- Tools: `app/ai/admin/tools/`

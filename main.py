@@ -18,8 +18,8 @@ from app.core.logger import logger
 
 @asynccontextmanager
 async def lifespan(api: FastAPI):
-    from app.services.rag.checkpointer import open_checkpointer
-    from app.services.rag.store import open_memory_store
+    from app.ai.core.checkpointer import open_checkpointer
+    from app.ai.core.memory import open_memory_store
 
     logger.info("Starting %s", settings.service_name)
     # Open for the duration of the server (LangGraph custom-checkpointer /

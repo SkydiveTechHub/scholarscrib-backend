@@ -6,18 +6,18 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
-from app.services.rag.graph import _heuristic_route, build_tutor_graph
-from app.services.rag.message_text import dialogue_without_tool_calls
-from app.services.rag.service import _settled_grounding
-from app.services.rag.tools import ensure_tools
-from app.services.rag.tools.agent import _action_history
-from app.services.rag.tools.context import (
+from app.ai.core.hitl import PROPOSAL_KEY, decode_proposal
+from app.ai.core.message_text import dialogue_without_tool_calls
+from app.ai.tutor.graph import _heuristic_route, build_tutor_graph
+from app.ai.tutor.service import _settled_grounding
+from app.ai.tutor.tools import ensure_tools
+from app.ai.tutor.tools.agent import _action_history
+from app.ai.tutor.tools.context import (
     TutorToolContext,
     reset_tool_context,
     set_tool_context,
 )
-from app.services.rag.tools.hitl import PROPOSAL_KEY, decode_proposal
-from app.services.rag.tools.study_plan import _create_study_plan
+from app.ai.tutor.tools.study_plan import _create_study_plan
 
 
 def _plan_args() -> dict:
@@ -154,9 +154,7 @@ async def test_create_tool_proposes_without_executing(monkeypatch):
         async def process(self):
             called["n"] += 1
 
-    monkeypatch.setattr(
-        "app.services.rag.tools.study_plan.CreateStudyPlanService", Boom
-    )
+    monkeypatch.setattr("app.ai.tutor.tools.study_plan.CreateStudyPlanService", Boom)
     ensure_tools()
     raw = await _create_study_plan(**_plan_args(), summary=_PLAN)
     proposal = decode_proposal(raw)
@@ -202,7 +200,7 @@ class _ScriptedModel:
 
 async def test_interrupt_then_approve_creates_plan(monkeypatch):
     monkeypatch.setattr(
-        "app.services.rag.tools.agent.get_chat_model", lambda: _ScriptedModel()
+        "app.ai.tutor.tools.agent.get_chat_model", lambda: _ScriptedModel()
     )
     created: dict = {}
 
@@ -215,7 +213,7 @@ async def test_interrupt_then_approve_creates_plan(monkeypatch):
             return {"planId": "plan-1"}
 
     monkeypatch.setattr(
-        "app.services.rag.tools.study_plan.CreateStudyPlanService", FakeCreate
+        "app.ai.tutor.tools.study_plan.CreateStudyPlanService", FakeCreate
     )
     ctx = TutorToolContext(
         session=object(),  # type: ignore[arg-type]

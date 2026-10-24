@@ -6,6 +6,20 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, Query
 
+from app.ai.admin.service import (
+    CreateAdminAstraThreadService,
+    DeleteAdminAstraThreadService,
+    GetAdminAstraThreadService,
+    ListAdminAstraMessagesService,
+    ListAdminAstraThreadsService,
+    PostAdminAstraMessageService,
+    open_run_replay,
+    resume_admin_astra_action,
+    start_message_run,
+    stop_admin_astra_stream,
+    stream_resume_admin_astra_action,
+)
+from app.ai.core.sse import sse_response
 from app.api.deps import require_admin
 from app.api.responses import (
     AdminAstraThreadOut,
@@ -23,20 +37,6 @@ from app.api.schemas import (
 )
 from app.database.db import AnSession
 from app.database.models import Admin
-from app.services.admin_astra.service import (
-    CreateAdminAstraThreadService,
-    DeleteAdminAstraThreadService,
-    GetAdminAstraThreadService,
-    ListAdminAstraMessagesService,
-    ListAdminAstraThreadsService,
-    PostAdminAstraMessageService,
-    open_run_replay,
-    resume_admin_astra_action,
-    start_message_run,
-    stop_admin_astra_stream,
-    stream_resume_admin_astra_action,
-)
-from app.services.rag.sse import sse_response
 
 router = APIRouter(prefix="/astra", tags=["Admin / Astra"])
 

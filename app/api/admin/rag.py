@@ -6,6 +6,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 
+from app.ai.rag.ingest import (
+    index_lesson,
+    index_material,
+    index_question,
+    reindex_all,
+    schedule_index,
+)
+from app.ai.rag.vectorstore import rag_ready
 from app.api.deps import require_admin
 from app.api.responses import OkOut, RagJobsOut, RagReindexOut
 from app.api.schemas import RagReindexIn
@@ -13,14 +21,6 @@ from app.core.errors import ApiError
 from app.database.db import AnSession
 from app.database.models import Admin
 from app.database.repositories.chat import rag_index_jobs_repository
-from app.services.rag.ingest import (
-    index_lesson,
-    index_material,
-    index_question,
-    reindex_all,
-    schedule_index,
-)
-from app.services.rag.vectorstore import rag_ready
 
 router = APIRouter(prefix="/rag", tags=["Admin / RAG"])
 

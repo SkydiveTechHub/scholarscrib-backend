@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 
+from app.ai.rag.ingest import schedule_index
 from app.api.deps import require_admin
 from app.api.responses import MaterialOut, MaterialSubjectsOut, OkOut, SignUploadOut
 from app.api.schemas import MaterialCreateIn, MaterialPatchIn, SignMaterialIn
@@ -15,7 +16,6 @@ from app.services.console import (
     ListMaterialsService,
     UpdateMaterialService,
 )
-from app.services.rag.ingest import schedule_index
 
 router = APIRouter(prefix="/materials", tags=["Admin / Materials"])
 

@@ -1,6 +1,6 @@
 """Visible assistant text strips thinking / reasoning content."""
 
-from app.services.rag.message_text import visible_assistant_text
+from app.ai.core.message_text import visible_assistant_text
 
 
 def test_plain_string():

@@ -2,8 +2,8 @@
 
 from langchain_core.documents import Document
 
-from app.services.rag.graph import _heuristic_route
-from app.services.rag.rerank import _parse_reranker, rerank_documents
+from app.ai.rag.rerank import _parse_reranker, rerank_documents
+from app.ai.tutor.graph import _heuristic_route
 
 
 def test_heuristic_chitchat_routes():

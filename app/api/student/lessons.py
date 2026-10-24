@@ -2,12 +2,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
+from app.ai.tutor.service import LessonTutorService
 from app.api.deps import StudentPrincipal, require_feature, require_student
 from app.api.responses import ProgressOut, TutorThreadOut
 from app.api.schemas import ProgressIn, TutorThreadCreateIn
 from app.database.db import AnSession
 from app.services.learning import SaveLessonProgressService
-from app.services.rag.service import LessonTutorService
 
 router = APIRouter(prefix="/lessons", tags=["Student / Lessons"])
 

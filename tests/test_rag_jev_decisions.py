@@ -9,9 +9,9 @@ import pytest
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, HumanMessage
 
-from app.services.rag import decisions as decisions_mod
-from app.services.rag.decisions import order_by_noul_scores
-from app.services.rag.graph import (
+from app.ai.core import decisions as decisions_mod
+from app.ai.core.decisions import order_by_noul_scores
+from app.ai.tutor.graph import (
     classify_intent_node,
     grade_documents_node,
     ground_answer_node,
@@ -82,7 +82,7 @@ async def test_intent_choice_maps_to_route(mock_classifier):
 @pytest.mark.asyncio
 async def test_intent_low_confidence_falls_back_to_llm(mock_classifier, monkeypatch):
     mock_classifier.ainvoke.return_value = _choice_response("chitchat", 0.4)
-    monkeypatch.setattr("app.services.rag.graph._llm_intent_route", lambda _q: "rag")
+    monkeypatch.setattr("app.ai.tutor.graph._llm_intent_route", lambda _q: "rag")
     out = await classify_intent_node(
         {
             "messages": [],
@@ -209,11 +209,11 @@ async def test_remember_skipped_when_noul_low(mock_classifier, monkeypatch):
     store = MagicMock()
     store.aput = AsyncMock()
     monkeypatch.setattr(
-        "app.services.rag.graph.get_memory_store",
+        "app.ai.tutor.graph.get_memory_store",
         lambda: store,
     )
     grader = MagicMock()
-    monkeypatch.setattr("app.services.rag.graph.get_grader_model", lambda: grader)
+    monkeypatch.setattr("app.ai.tutor.graph.get_grader_model", lambda: grader)
     out = await remember_node(
         {
             "user_id": "user-1",

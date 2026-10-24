@@ -181,11 +181,12 @@ async def _paper_questions(session: AsyncSession, assessment_id: str) -> list:
     }
     paper = []
     for link in links:
-        question = (
-            coverage.get(link.coverage_question_id)
-            if link.coverage_question_id
-            else bank.get(link.question_id)
-        )
+        if link.coverage_question_id:
+            question = coverage.get(link.coverage_question_id)
+        elif link.question_id:
+            question = bank.get(link.question_id)
+        else:
+            question = None
         if question is not None:
             paper.append(question)
     return paper
@@ -677,8 +678,9 @@ class GetAttemptResultService:
         jamb = None
         if assessment.assessment_type == "CBT_PRACTICE":
             selected = {
-                row.question_id or row.coverage_question_id: row.selected_answer
+                key: row.selected_answer
                 for row in stored
+                if (key := row.question_id or row.coverage_question_id)
             }
             jamb = _jamb_payload(
                 score_jamb_paper(await _jamb_sections(self.session, paper, selected))
