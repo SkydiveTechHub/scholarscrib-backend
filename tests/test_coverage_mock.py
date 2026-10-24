@@ -91,3 +91,10 @@ async def test_persist_links_coverage_questions_to_their_own_column(monkeypatch)
     link = next(item for item in added if isinstance(item, AssessmentQuestion))
     assert link.question_id is None
     assert link.coverage_question_id == "c1"
+
+
+def test_mock_options_response_allows_no_board():
+    from app.api.responses import MockOptionsOut
+
+    out = MockOptionsOut.model_validate({"examType": None, "subjects": []})
+    assert out.examType is None

@@ -305,7 +305,7 @@ class BoardsOut(ApiOut):
 
 
 class MockOptionsOut(ApiOut):
-    examType: str
+    examType: str | None = None
     subjects: list[dict]
 
 
