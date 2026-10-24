@@ -52,25 +52,86 @@ SUBJECT_NAME_ALIASES = {
     "Basic Electricity (Electronics)": "BEL",
 }
 
-# (title, description, criteriaType, criteriaValue); criteria are defined in
+# (title, description, criteriaType, criteriaValue, iconUrl); criteria are defined in
 # app/services/learning/achievement_progress.py.
 ACHIEVEMENTS = [
-    ("First Steps", "Answer your first 10 questions.", "questions_answered", 10),
-    ("Century Club", "Answer 100 questions.", "questions_answered", 100),
-    ("Question Machine", "Answer 500 questions.", "questions_answered", 500),
-    ("Perfectionist", "Score 100% on a practice or exam attempt.", "perfect_score", 1),
-    ("On a Roll", "Study 3 days in a row.", "streak_days", 3),
-    ("Week Warrior", "Study 7 days in a row.", "streak_days", 7),
-    ("Unstoppable", "Study 30 days in a row.", "streak_days", 30),
+    (
+        "First Steps",
+        "Answer your first 10 questions.",
+        "questions_answered",
+        10,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "Century Club",
+        "Answer 100 questions.",
+        "questions_answered",
+        100,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "Question Machine",
+        "Answer 500 questions.",
+        "questions_answered",
+        500,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "Perfectionist",
+        "Score 100% on a practice or exam attempt.",
+        "perfect_score",
+        1,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "On a Roll",
+        "Study 3 days in a row.",
+        "streak_days",
+        3,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "Week Warrior",
+        "Study 7 days in a row.",
+        "streak_days",
+        7,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "Unstoppable",
+        "Study 30 days in a row.",
+        "streak_days",
+        30,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
     ("Eager Learner", "Complete 5 lessons.", "lessons_completed", 5),
-    ("Bookworm", "Complete 25 lessons.", "lessons_completed", 25),
-    ("Subject Master", "Reach strong mastery in 1 subject.", "subject_mastery", 1),
-    ("All-Rounder", "Reach strong mastery in 3 subjects.", "subject_mastery", 3),
+    (
+        "Bookworm",
+        "Complete 25 lessons.",
+        "lessons_completed",
+        25,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "Subject Master",
+        "Reach strong mastery in 1 subject.",
+        "subject_mastery",
+        1,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
+    (
+        "All-Rounder",
+        "Reach strong mastery in 3 subjects.",
+        "subject_mastery",
+        3,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+    ),
     (
         "Mock Ace",
         "Score 70% or more in a mock exam or CBT practice.",
         "mock_score_70",
         1,
+        "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
     ),
 ]
 
@@ -218,11 +279,12 @@ async def seed_curriculum(
 async def seed_achievements(session) -> None:
     existing = {row.title: row for row in await achievements_repository.all(session)}
     created = updated = 0
-    for title, description, criteria_type, criteria_value in ACHIEVEMENTS:
+    for title, description, criteria_type, criteria_value, icon_url in ACHIEVEMENTS:
         values = {
             "description": description,
             "criteria_type": criteria_type,
             "criteria_value": criteria_value,
+            "icon_url": icon_url,
         }
         row = existing.get(title)
         if row is None:
