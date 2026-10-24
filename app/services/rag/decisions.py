@@ -153,7 +153,8 @@ INTENT_CRITERIA = {
     ),
     "action": (
         "The student wants to view or change their study plan, today's "
-        "sessions, dashboard, or performance — not a content explanation."
+        "sessions, dashboard, performance, or topic standings "
+        "(strong / weak topics) — not a content explanation."
     ),
 }
 

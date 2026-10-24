@@ -12,7 +12,8 @@ CLASSIFY_PROMPT = (
 DOMAIN_PROMPT = (
     "Pick one or two admin areas for this message. Only use these names: "
     "{domains}.\n"
-    "students: accounts, tiers, suspension, sign-out\n"
+    "students: accounts, tiers, suspension, sign-out, topic standings "
+    "(strong/weak topics)\n"
     "questions: past questions, import, coverage\n"
     "lessons: lesson tree and markdown import\n"
     "materials: subject resources\n"

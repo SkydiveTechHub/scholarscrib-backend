@@ -11,6 +11,11 @@ from app.services.learning.service import (
     SaveLessonProgressService,
     performance_letter,
 )
+from app.services.learning.topic_attribution import (
+    AttributeAttemptTopicsService,
+    attribute_attempt_topics_safe,
+)
+from app.services.learning.topic_standings import GetTopicStandingsService
 
 __all__ = [
     "STATUS_RANK",
@@ -22,4 +27,7 @@ __all__ = [
     "RecordTopicAnswersService",
     "performance_letter",
     "GetTopicMasteryService",
+    "AttributeAttemptTopicsService",
+    "attribute_attempt_topics_safe",
+    "GetTopicStandingsService",
 ]

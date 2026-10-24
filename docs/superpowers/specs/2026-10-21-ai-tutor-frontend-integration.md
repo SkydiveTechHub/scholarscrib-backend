@@ -289,7 +289,46 @@ POST /api/tutor/threads/{id}/actions/resume
 - While a proposal is pending, another message returns **409** until resume.
 - `stream: true` returns SSE: `actionExecuted` or `actionRejected`, then `proposalSettled`, then `assistantMessage`, then `done`.
 
-v1 mutating tools: `create_study_plan`, `update_study_plan`, `delete_study_plan`, `set_study_plan_positions`, `set_study_plan_item_status`. Reads (`get_study_plan`, `list_subjects`, `get_dashboard_summary`, `get_performance_summary`) run without a card. Assessments and flashcards are not executable tools yet.
+v1 mutating tools: `create_study_plan`, `update_study_plan`, `delete_study_plan`, `set_study_plan_positions`, `set_study_plan_item_status`. Reads (`get_study_plan`, `list_subjects`, `get_dashboard_summary`, `get_performance_summary`, `get_topic_standings`) run without a card. Assessments and flashcards are not executable tools yet.
+
+#### Topic standings (read tool + REST)
+
+Astra answers “what am I weak / strong at?” via `get_topic_standings`. The same data is available outside chat for the performance UI:
+
+```http
+GET /api/performance/topics?status=all&subjectId={id}&limit=50
+```
+
+| Query | Values |
+|-------|--------|
+| `status` | `all` (default) \| `strong` \| `weak` \| `normal` |
+| `subjectId` | Optional; repeatable (`?subjectId=a&subjectId=b`) |
+| `limit` | Default 50, max 100 |
+
+Response:
+
+```ts
+type TopicStandingsOut = {
+  topics: Array<{
+    topicId: string;
+    title: string;
+    slug: string;
+    subjectId: string;
+    subjectName: string;
+    subjectSlug: string;
+    mastery: number;
+    level: string;
+    status: "strong" | "weak" | "normal" | "emerging";
+    confidence: number;
+    observations: number;
+  }>;
+  status: "all" | "strong" | "weak" | "normal";
+};
+```
+
+Bands (only topics with evidence): `strong` mastery ≥ 85, `weak` &lt; 50, `normal` 50–84, once confidence is high enough. Low-confidence rows appear only under `status=all` as `emerging`. No advanced-analytics gate on this list.
+
+Tool stream copy for this read: “Checking your topic standings…”.
 
 ---
 
@@ -787,6 +826,8 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 - [ ] Feedback posts on assistant id  
 - [ ] 429 disables send  
 - [ ] Abort mid-stream recovers via GET thread  
+- [ ] “What am I weak at?” uses `get_topic_standings` (tool event, no approval card)  
+- [ ] Performance page can load `GET /api/performance/topics` with status / subject filters  
 
 ---
 

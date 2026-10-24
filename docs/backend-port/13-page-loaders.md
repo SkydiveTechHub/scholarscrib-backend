@@ -18,6 +18,15 @@ Includes, broadly: greeting name, streak (Lagos days of completed attempts), tie
 
 Subject drill-in uses `src/lib/analytics/subject-view.ts`, which runs the analytics engines in [07-learning.md](./07-learning.md). `advancedAnalytics` (PREMIUM) gates the richer subject view in the UI. Preserve that check on the endpoint, not only in the component.
 
+Topic standings (strong / weak / normal filters) are a dedicated read:
+
+| Route | Notes |
+|---|---|
+| `GET /api/performance` | Overview + optional premium subject drill-in (`subjectId`) |
+| `GET /api/performance/topics` | `status=all\|strong\|weak\|normal`, repeatable `subjectId`, `limit` (default 50, max 100). No advanced-analytics gate. |
+
+Each topic row includes `mastery`, `level`, `status` (`strong` \| `weak` \| `normal` \| `emerging`), `confidence`, and `observations`. Use this for weak/strong topic lists instead of recomputing bands in the client. After assessment submit, unmapped questions are attributed to curriculum topics in the background (Jev); standings update once that fold completes — a brief delay after submit is expected.
+
 ## Classroom
 
 | Function | Page | Proposed route |

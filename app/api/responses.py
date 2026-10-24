@@ -584,6 +584,11 @@ class PerformanceOut(ApiOut):
     subject: dict | None = None
 
 
+class TopicStandingsOut(ApiOut):
+    topics: list[dict]
+    status: str = "all"
+
+
 class ClassroomSubjectsOut(ApiOut):
     subjects: list[dict]
 

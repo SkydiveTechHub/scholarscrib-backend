@@ -35,6 +35,7 @@ _TOOL_SUMMARIES = {
     "list_subjects": "Checking subjects…",
     "get_dashboard_summary": "Checking your dashboard…",
     "get_performance_summary": "Checking your progress…",
+    "get_topic_standings": "Checking your topic standings…",
     "create_study_plan": "Preparing a study plan…",
     "update_study_plan": "Preparing a study plan change…",
     "delete_study_plan": "Preparing to archive a study plan…",

@@ -60,6 +60,7 @@ def test_admin_tools_stay_out_of_the_student_registry():
 def test_domain_pack_hides_other_domains_and_owner_tools():
     staff = {tool.name for tool in tools_for(["students"], is_owner=False)}
     assert "search_students" in staff
+    assert "get_student_topic_standings" in staff
     assert "set_student_tier" in staff
     assert "delete_student" not in staff
     assert "force_signout_student" not in staff
@@ -69,6 +70,12 @@ def test_domain_pack_hides_other_domains_and_owner_tools():
     assert "delete_student" in owner
     assert "create_admin" in owner
     assert "list_questions" not in owner
+
+
+def test_student_tutor_exposes_topic_standings():
+    names = {tool.name for tool in tutor_action_tools()}
+    assert "get_topic_standings" in names
+    assert "get_student_topic_standings" not in names
 
 
 def _last_ai(snapshot) -> str:

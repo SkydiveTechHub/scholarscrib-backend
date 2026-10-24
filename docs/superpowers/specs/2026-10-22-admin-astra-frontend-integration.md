@@ -402,7 +402,7 @@ The model is bound to one or two domains per turn. Reads return immediately. Mut
 
 | Domain | Reads | Mutations |
 |--------|-------|-----------|
-| `students` | `search_students`, `get_student`, `get_student_deletion_impact` | `update_student`, `set_student_status`, `set_student_tier`. Owner: `delete_student`, `force_signout_student` |
+| `students` | `search_students`, `get_student`, `get_student_topic_standings`, `get_student_deletion_impact` | `update_student`, `set_student_status`, `set_student_tier`. Owner: `delete_student`, `force_signout_student` |
 | `questions` | `list_questions`, `get_question`, `question_form_options`, `question_coverage`, `preview_question_export` | `create_question`, `update_question`, `delete_questions`, `import_questions` |
 | `lessons` | `lesson_tree`, `browse_lessons`, `get_topic_lesson` | `import_lesson` |
 | `materials` | `list_material_subjects`, `list_materials` | `create_material`, `update_material`, `delete_material` |
@@ -414,6 +414,8 @@ The model is bound to one or two domains per turn. Reads return immediately. Mut
 | `provider` | — | `provider_backfill` |
 | `rag` | `list_rag_jobs` | `reindex_content` |
 | `team` | Owner: `list_admins` | Owner: `create_admin`, `set_admin_status` |
+
+`get_student_topic_standings` needs a `userId` from `search_students` (or `get_student`). Optional args: `status` (`all` \| `strong` \| `weak` \| `normal`), `subjectIds`, `limit` (default 30, max 100). Same bands as the student `GET /api/performance/topics` endpoint. Use it when an admin asks what a student is strong or weak at; do not invent mastery numbers from `get_student` alone (`masteredTopicCount` is only a count).
 
 Question export is a count plus a five-row preview. The CSV and ZIP stay on the existing export route. Lesson reads return a title and a block count, not the full markdown. Material upload signing stays a browser call to `/admin/api/materials/sign`; `create_material` needs a URL that already exists. Login, logout, forgot password, and reset password are not tools.
 
@@ -507,7 +509,7 @@ GET /admin/api/astra/threads/{id}/runs/{runId}/stream
 - [ ] Create blank, then stream the first message
 - [ ] `streamStarted.runId` is what rejoin and stop use
 - [ ] Tokens fill a draft; `assistantMessage` replaces it
-- [ ] A read (`search_students`, `admin_stats`) finishes with no card
+- [ ] A read (`search_students`, `get_student_topic_standings`, `admin_stats`) finishes with no card
 - [ ] A mutation opens a card and locks the composer (`409` on a second send)
 - [ ] Reject writes nothing and the card becomes `rejected`
 - [ ] Approve calls through once; the audit row matches the console action

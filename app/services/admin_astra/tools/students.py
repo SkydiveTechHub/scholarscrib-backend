@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.api.schemas import StudentProfileIn, StudentStatusIn, StudentTierIn
@@ -16,6 +18,7 @@ from app.services.admin import (
 )
 from app.services.admin_astra.tools.factory import register_mutation, register_read
 from app.services.console import GetStudentDeletionImpactService
+from app.services.learning import GetTopicStandingsService
 
 
 class SearchStudentsArgs(BaseModel):
@@ -30,6 +33,16 @@ class SearchStudentsArgs(BaseModel):
 
 class UserIdArgs(BaseModel):
     userId: str = Field(min_length=1, max_length=64)
+
+
+class StudentTopicStandingsArgs(BaseModel):
+    userId: str = Field(min_length=1, max_length=64)
+    status: Literal["all", "strong", "weak", "normal"] = "all"
+    subjectIds: list[str] | None = Field(
+        default=None,
+        description="Optional subject ids. Omit for every subject with evidence.",
+    )
+    limit: int = Field(default=30, ge=1, le=100)
 
 
 class UpdateStudentArgs(StudentProfileIn):
@@ -64,6 +77,37 @@ async def _detail(ctx, args: UserIdArgs) -> dict:
     if isinstance(devices, list):
         data["devices"] = devices[:8]
     return data
+
+
+async def _topic_standings(ctx, args: StudentTopicStandingsArgs) -> dict:
+    data = await GetTopicStandingsService(
+        ctx.session,
+        args.userId,
+        status=args.status,
+        subject_ids=args.subjectIds,
+        limit=args.limit,
+    ).process()
+    topics = []
+    for row in data.get("topics") or []:
+        if not isinstance(row, dict):
+            continue
+        topics.append(
+            {
+                "topicId": row.get("topicId"),
+                "title": row.get("title"),
+                "subjectId": row.get("subjectId"),
+                "subjectName": row.get("subjectName"),
+                "mastery": row.get("mastery"),
+                "status": row.get("status"),
+                "level": row.get("level"),
+                "observations": row.get("observations"),
+            }
+        )
+    return {
+        "userId": args.userId,
+        "status": data.get("status"),
+        "topics": topics,
+    }
 
 
 async def _impact(ctx, args: UserIdArgs) -> dict:
@@ -115,6 +159,15 @@ def register_student_tools() -> None:
         "Requires a student id from search_students.",
         UserIdArgs,
         _detail,
+    )
+    register_read(
+        "get_student_topic_standings",
+        "students",
+        "Topic-level standing for one student: strong, weak, normal, or all. "
+        "Use after search_students / get_student when asking what they are "
+        "strong or weak at. Optional subjectIds and status filter.",
+        StudentTopicStandingsArgs,
+        _topic_standings,
     )
     register_read(
         "get_student_deletion_impact",

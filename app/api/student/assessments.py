@@ -44,7 +44,10 @@ from app.services.assessments import (
     SyncJambPaperService,
 )
 from app.services.assessments.past_paper import resolve_subject
-from app.services.learning import AwardAchievementsService
+from app.services.learning import (
+    AwardAchievementsService,
+    attribute_attempt_topics_safe,
+)
 from app.services.planner import MarkStudyPlanItemService
 from app.services.practice_exit import (
     CompletePracticeExitService,
@@ -172,13 +175,20 @@ async def submit_attempt(
         ).process()
     if created:
         background.add_task(
-            _after_submit, student.id, payload.get("assessmentType"), exit_passed
+            _after_submit,
+            student.id,
+            body.attemptId,
+            payload.get("assessmentType"),
+            exit_passed,
         )
     return payload
 
 
 async def _after_submit(
-    student_id: str, assessment_type: str | None, exit_passed: bool | None
+    student_id: str,
+    attempt_id: str,
+    assessment_type: str | None,
+    exit_passed: bool | None,
 ) -> None:
     async with get_session() as session:
         try:
@@ -194,6 +204,7 @@ async def _after_submit(
                 await MarkStudyPlanItemService(session, student_id, "LESSON").process()
             elif exit_passed is None:
                 await MarkStudyPlanItemService(session, student_id, activity).process()
+            await attribute_attempt_topics_safe(session, student_id, attempt_id)
             await session.commit()
         except Exception:
             await session.rollback()

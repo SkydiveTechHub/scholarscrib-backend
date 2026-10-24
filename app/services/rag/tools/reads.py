@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.errors import ApiError
 from app.core.logger import logger
 from app.services.catalogue import ListSubjectsService
+from app.services.learning import GetTopicStandingsService
 from app.services.pages import GetDashboardService, GetPerformanceService
 from app.services.planner.service import GetStudyPlanService
 from app.services.rag.tools.context import get_tool_context
@@ -84,6 +85,15 @@ def _compact_plan(page: dict) -> dict:
 
 class EmptyArgs(BaseModel):
     """No arguments."""
+
+
+class TopicStandingsArgs(BaseModel):
+    status: Literal["all", "strong", "weak", "normal"] = "all"
+    subjectIds: list[str] | None = Field(
+        default=None,
+        description="Optional subject ids from list_subjects. Omit for every subject.",
+    )
+    limit: int = Field(default=20, ge=1, le=50)
 
 
 async def _get_study_plan() -> str:
@@ -164,12 +174,46 @@ async def _performance() -> str:
     )
 
 
+async def _topic_standings(
+    status: Literal["all", "strong", "weak", "normal"] = "all",
+    subjectIds: list[str] | None = None,
+    limit: int = 20,
+) -> str:
+    ctx = get_tool_context()
+    try:
+        data = await GetTopicStandingsService(
+            ctx.session,
+            ctx.user_id,
+            status=status,
+            subject_ids=subjectIds,
+            limit=limit,
+        ).process()
+    except Exception as exc:  # noqa: BLE001
+        return _error(exc)
+    topics = []
+    for row in data.get("topics") or []:
+        if not isinstance(row, dict):
+            continue
+        topics.append(
+            {
+                "title": row.get("title"),
+                "subjectName": row.get("subjectName"),
+                "subjectId": row.get("subjectId"),
+                "mastery": row.get("mastery"),
+                "status": row.get("status"),
+                "level": row.get("level"),
+                "observations": row.get("observations"),
+            }
+        )
+    return _json({"status": data.get("status"), "topics": topics})
+
+
 def _noop_summary(_: dict) -> str:
     return ""
 
 
 def register_read_tools() -> None:
-    specs = [
+    empty_specs = [
         (
             "get_study_plan",
             "Load the student's study plan, subjects, and upcoming items. "
@@ -192,7 +236,7 @@ def register_read_tools() -> None:
             _performance,
         ),
     ]
-    for name, description, fn in specs:
+    for name, description, fn in empty_specs:
         tool = StructuredTool.from_function(
             coroutine=fn,
             name=name,
@@ -208,3 +252,22 @@ def register_read_tools() -> None:
                 summary_fn=_noop_summary,
             )
         )
+    standings = StructuredTool.from_function(
+        coroutine=_topic_standings,
+        name="get_topic_standings",
+        description=(
+            "Topic-level standing for this student: strong, weak, normal, or all. "
+            "Use for 'what am I bad at', weak topics, or strong topics. "
+            "Optional subjectIds from list_subjects; default status is all."
+        ),
+        args_schema=TopicStandingsArgs,
+    )
+    register_tool(
+        ToolSpec(
+            name="get_topic_standings",
+            mutating=False,
+            feature=None,
+            tool=standings,
+            summary_fn=_noop_summary,
+        )
+    )

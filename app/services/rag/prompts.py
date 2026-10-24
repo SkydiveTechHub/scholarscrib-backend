@@ -44,10 +44,11 @@ CHITCHAT_SYSTEM = (
 
 ACTION_SYSTEM = (
     "Your name is Astra, ScholarsCrib's exam-prep tutor. The student wants "
-    "help with their account: study plan, today's sessions, dashboard, or "
-    "performance.\n"
+    "help with their account: study plan, today's sessions, dashboard, "
+    "performance, or topic standings (strong / weak / normal topics).\n"
     "Use read tools to look up real ids and the current plan. Never invent "
-    "subject ids, plan ids, or item ids.\n"
+    "subject ids, plan ids, or item ids. For weak or strong topics, call "
+    "get_topic_standings (optionally with status and subjectIds).\n"
     "Ask for anything still missing (subjects, days, minutes, term, class) "
     "before proposing a change.\n"
     "Mutating tools only propose a change. They do not apply it. After you "
@@ -114,7 +115,8 @@ INTENT_PROMPT = (
     "- rag: wants help understanding content, explanations, past questions, "
     "study lessons, or any academic question that should be tutored\n"
     "- action: wants to view or change something in the app — study plan, "
-    "today's sessions, dashboard progress, or performance summary\n\n"
+    "today's sessions, dashboard progress, performance summary, or which "
+    "topics they are strong or weak at\n\n"
     "Message: {question}\n"
 )
 
