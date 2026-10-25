@@ -3,6 +3,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request, Response
 
+from app.ai.rag.ingest import schedule_index
+from app.ai.rag.vectorstore import delete_by_expr, rag_ready
 from app.api.deps import require_admin
 from app.api.responses import (
     AdminQuestionsOut,
@@ -42,8 +44,6 @@ from app.services.question_coverage import (
     ExportQuestionsService,
     GetQuestionCoverageService,
 )
-from app.services.rag.ingest import schedule_index
-from app.services.rag.vectorstore import delete_by_expr, rag_ready
 
 router = APIRouter(prefix="/questions", tags=["Admin / Questions"])
 

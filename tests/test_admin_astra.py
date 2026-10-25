@@ -10,30 +10,30 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
-from app.core.errors import ApiError
-from app.core.security import student_token
-from app.services.admin_astra.context import (
+from app.ai.admin.context import (
     AdminToolContext,
     reset_admin_tool_context,
     set_admin_tool_context,
 )
-from app.services.admin_astra.execute import execute_admin_action, outcome_message
-from app.services.admin_astra.graph import (
+from app.ai.admin.execute import execute_admin_action, outcome_message
+from app.ai.admin.graph import (
     action_outcome_node,
     build_admin_graph,
     classify_route,
     pick_domains,
     route_after_classify,
 )
-from app.services.admin_astra.proposals import resolve_resume_args
-from app.services.admin_astra.tools import (
+from app.ai.admin.proposals import resolve_resume_args
+from app.ai.admin.tools import (
     admin_tool_names,
     ensure_admin_tools,
     tools_for,
 )
-from app.services.admin_astra.tools.registry import admin_tool_spec
-from app.services.rag.tools import tutor_action_tools
-from app.services.rag.tools.hitl import decode_proposal
+from app.ai.admin.tools.registry import admin_tool_spec
+from app.ai.core.hitl import decode_proposal
+from app.ai.tutor.tools import tutor_action_tools
+from app.core.errors import ApiError
+from app.core.security import student_token
 
 
 def _state(question: str) -> dict:
@@ -102,15 +102,22 @@ def test_approval_follow_up_is_a_result_sentence():
     )
 
 
-def test_outcome_speaks_only_after_an_approval():
-    assert action_outcome_node({}) == {}
-    rejected = action_outcome_node({"action_decision": {"approved": False}})
+@pytest.mark.asyncio
+async def test_outcome_speaks_only_after_an_approval(monkeypatch):
+    async def pass_guard(text, *, audience="admin"):
+        from app.ai.core.guardrails import GuardDecision
+
+        return GuardDecision(action="pass", side="output", source="test")
+
+    monkeypatch.setattr("app.ai.admin.graph.guard_output", pass_guard)
+    assert await action_outcome_node({}) == {}
+    rejected = await action_outcome_node({"action_decision": {"approved": False}})
     assert rejected["messages"][0].content == "Okay — I won't make that change."
-    done = action_outcome_node(
+    done = await action_outcome_node(
         {"action_result": {"ok": True, "message": "Deleted Ada."}}
     )
     assert done["messages"][0].content == "Deleted Ada."
-    failed = action_outcome_node(
+    failed = await action_outcome_node(
         {"action_result": {"ok": False, "error": "Owner access required"}}
     )
     assert failed["messages"][0].content == "Owner access required"
@@ -163,9 +170,7 @@ async def test_delete_tool_proposes_without_calling_the_service(monkeypatch):
         async def process(self):
             called["n"] += 1
 
-    monkeypatch.setattr(
-        "app.services.admin_astra.tools.students.DeleteStudentService", Boom
-    )
+    monkeypatch.setattr("app.ai.admin.tools.students.DeleteStudentService", Boom)
     ensure_admin_tools()
     spec = admin_tool_spec("delete_student")
     assert spec is not None
@@ -214,9 +219,7 @@ async def test_read_tool_runs_and_does_not_interrupt(monkeypatch):
                 "pagination": {"total": 1},
             }
 
-    monkeypatch.setattr(
-        "app.services.admin_astra.tools.students.SearchStudentsService", FakeSearch
-    )
+    monkeypatch.setattr("app.ai.admin.tools.students.SearchStudentsService", FakeSearch)
     model = _Scripted(
         [
             {
@@ -227,7 +230,7 @@ async def test_read_tool_runs_and_does_not_interrupt(monkeypatch):
             }
         ]
     )
-    monkeypatch.setattr("app.services.admin_astra.graph.get_chat_model", lambda: model)
+    monkeypatch.setattr("app.ai.admin.graph.get_chat_model", lambda: model)
     token = set_admin_tool_context(_ctx(owner=False))
     graph = build_admin_graph(checkpointer=MemorySaver())
     config = {"configurable": {"thread_id": "read-1"}, "recursion_limit": 40}
@@ -256,9 +259,7 @@ async def _delete_turn(monkeypatch, thread_id: str):
             called["n"] += 1
             return {"ok": True}
 
-    monkeypatch.setattr(
-        "app.services.admin_astra.tools.students.DeleteStudentService", FakeDelete
-    )
+    monkeypatch.setattr("app.ai.admin.tools.students.DeleteStudentService", FakeDelete)
     model = _Scripted(
         [
             {
@@ -272,7 +273,7 @@ async def _delete_turn(monkeypatch, thread_id: str):
             }
         ]
     )
-    monkeypatch.setattr("app.services.admin_astra.graph.get_chat_model", lambda: model)
+    monkeypatch.setattr("app.ai.admin.graph.get_chat_model", lambda: model)
     token = set_admin_tool_context(_ctx(owner=True))
     graph = build_admin_graph(checkpointer=MemorySaver())
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 40}
@@ -326,9 +327,7 @@ async def test_non_owner_execute_does_not_call_the_service(monkeypatch):
         async def process(self):
             called["n"] += 1
 
-    monkeypatch.setattr(
-        "app.services.admin_astra.tools.students.DeleteStudentService", Boom
-    )
+    monkeypatch.setattr("app.ai.admin.tools.students.DeleteStudentService", Boom)
     ensure_admin_tools()
     result = await execute_admin_action(
         _ctx(owner=False), "delete_student", {"userId": "user-1"}

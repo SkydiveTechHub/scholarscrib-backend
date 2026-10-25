@@ -13,9 +13,8 @@ import asyncio
 
 from langchain_core.documents import Document
 
-from app.core.config import settings
-from app.services.rag.llm import get_embeddings
-from app.services.rag.vectorstore import (
+from app.ai.core.llm import get_embeddings
+from app.ai.rag.vectorstore import (
     clear_vectorstore_cache,
     delete_by_expr,
     get_vectorstore,
@@ -23,10 +22,11 @@ from app.services.rag.vectorstore import (
     similarity_search,
     upsert_documents,
 )
+from app.core.config import settings
 
 
 async def _smoke_jev() -> None:
-    from app.services.rag.decisions import (
+    from app.ai.core.decisions import (
         build_decision_state,
         clear_jev_cache,
         decide_intent,

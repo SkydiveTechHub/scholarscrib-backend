@@ -30,6 +30,15 @@ lesson) and receive grounded answers from indexed lessons, Q&A, and PDF material
 
 Citations returned as `groundedOn` on assistant messages.
 
+### Jev guardrails
+
+Shared module `app/ai/core/guardrails.py` (also used by Admin Astra):
+
+- **Input** — before graph invoke/stream: jailbreak, harmful request, self-harm, sensitive data + severity Score → `pass` / `block` / `support` (canned assistant; graph skipped).
+- **Output** — after user-facing answer nodes and again on commit: replace blocked replies (same soft-replace pattern as groundedness).
+- **Tools** — screen tool args before `ToolNode` and tool results after; blocked calls become error `ToolMessage`s.
+- Fail-open when Jev is off; `review` maps to `block` (no human-review queue). Config: `JEV_GUARDRAILS_*` in `.env.example`.
+
 ## Student API
 
 | Method | Path |

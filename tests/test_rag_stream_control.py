@@ -1,6 +1,6 @@
 """Unit tests for tutor stream cancel tokens."""
 
-from app.services.rag.stream_control import (
+from app.ai.core.stream_control import (
     begin_stream,
     end_stream,
     request_stop,

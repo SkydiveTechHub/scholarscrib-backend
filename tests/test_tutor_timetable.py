@@ -17,21 +17,19 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
 from app import domain
-from app.api.schemas import StudyPlanIn
-from app.core.errors import ApiError
-from app.services.rag.graph import build_tutor_graph
-from app.services.rag.prompts import ACTION_SYSTEM
-from app.services.rag.proposals import resolve_resume_args, resume_command
-from app.services.rag.tools import ensure_tools
-from app.services.rag.tools import study_plan as tool_module
-from app.services.rag.tools.context import (
+from app.ai.core.hitl import decode_proposal
+from app.ai.tutor.graph import build_tutor_graph
+from app.ai.tutor.prompts import ACTION_SYSTEM
+from app.ai.tutor.proposals import resolve_resume_args, resume_command
+from app.ai.tutor.tools import ensure_tools
+from app.ai.tutor.tools import study_plan as tool_module
+from app.ai.tutor.tools.context import (
     TutorToolContext,
     reset_tool_context,
     set_tool_context,
 )
-from app.services.rag.tools.hitl import decode_proposal
-from app.services.rag.tools.reads import _compact_plan
-from app.services.rag.tools.study_plan import (
+from app.ai.tutor.tools.reads import _compact_plan
+from app.ai.tutor.tools.study_plan import (
     CreateStudyPlanToolArgs,
     _create_study_plan,
     _update_study_plan,
@@ -39,6 +37,8 @@ from app.services.rag.tools.study_plan import (
     parse_validated_args,
     unmet_sentence,
 )
+from app.api.schemas import StudyPlanIn
+from app.core.errors import ApiError
 
 CARD = "Plan: Maths on Monday\n\nNothing changes until you approve."
 
@@ -390,7 +390,7 @@ def initial(question: str) -> dict:
 
 async def propose(monkeypatch, name: str, args: dict, tier="PREMIUM"):
     monkeypatch.setattr(
-        "app.services.rag.tools.agent.get_chat_model", lambda: Scripted(name, args)
+        "app.ai.tutor.tools.agent.get_chat_model", lambda: Scripted(name, args)
     )
     token = set_tool_context(ctx(tier))
     graph = build_tutor_graph(checkpointer=MemorySaver())

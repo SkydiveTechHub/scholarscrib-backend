@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 
+from app.ai.rag.ingest import schedule_index
 from app.api.deps import require_admin
 from app.api.responses import (
     LessonBrowseOut,
@@ -19,7 +20,6 @@ from app.services.console import (
     GetLessonTreeService,
     ImportLessonService,
 )
-from app.services.rag.ingest import schedule_index
 
 router = APIRouter(prefix="/lessons", tags=["Admin / Lessons"])
 tree_router = APIRouter(prefix="/lesson-tree", tags=["Admin / Lessons"])

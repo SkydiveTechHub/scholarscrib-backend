@@ -3,13 +3,13 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
+from app.ai.rag.ingest import reindex_all
+from app.ai.rag.vectorstore import rag_ready
 from app.api.responses import RagReindexOut
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.database.db import AnSession
 from app.services.auth.rules import cron_decision
-from app.services.rag.ingest import reindex_all
-from app.services.rag.vectorstore import rag_ready
 
 router = APIRouter(prefix="/rag", tags=["Cron"])
 

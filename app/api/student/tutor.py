@@ -6,6 +6,28 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, Query
 
+from app.ai.core.sse import sse_response
+from app.ai.tutor.service import (
+    CreateTutorThreadService,
+    DeleteTutorThreadService,
+    GetTutorThreadService,
+    ListTutorMessagesService,
+    ListTutorThreadsService,
+    PostTutorMessageService,
+    TutorFeedbackService,
+    open_run_replay,
+    prepare_new_thread_stream,
+    resume_tutor_action,
+    start_message_run,
+    start_new_thread_run,
+    stop_tutor_stream,
+    stream_resume_tutor_action,
+)
+from app.ai.tutor.time_travel import (
+    fork_from_checkpoint,
+    list_checkpoints,
+    replay_from_checkpoint,
+)
 from app.api.deps import StudentPrincipal, require_feature, require_student
 from app.api.responses import (
     OkOut,
@@ -27,28 +49,6 @@ from app.api.schemas import (
     TutorThreadCreateIn,
 )
 from app.database.db import AnSession
-from app.services.rag.service import (
-    CreateTutorThreadService,
-    DeleteTutorThreadService,
-    GetTutorThreadService,
-    ListTutorMessagesService,
-    ListTutorThreadsService,
-    PostTutorMessageService,
-    TutorFeedbackService,
-    open_run_replay,
-    prepare_new_thread_stream,
-    resume_tutor_action,
-    start_message_run,
-    start_new_thread_run,
-    stop_tutor_stream,
-    stream_resume_tutor_action,
-)
-from app.services.rag.sse import sse_response
-from app.services.rag.time_travel import (
-    fork_from_checkpoint,
-    list_checkpoints,
-    replay_from_checkpoint,
-)
 
 router = APIRouter(
     prefix="/tutor",

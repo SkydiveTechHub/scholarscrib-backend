@@ -2,11 +2,11 @@
 
 from langchain_core.documents import Document
 
+from app.ai.core.schemas import citation_from_metadata
+from app.ai.rag.chunking import content_hash, split_if_needed
+from app.ai.rag.loaders.lessons import lesson_documents
+from app.ai.rag.loaders.questions import question_documents
 from app.database.models import Lesson, Question
-from app.services.rag.chunking import content_hash, split_if_needed
-from app.services.rag.loaders.lessons import lesson_documents
-from app.services.rag.loaders.questions import question_documents
-from app.services.rag.schemas import citation_from_metadata
 
 
 def test_lesson_documents_from_blocks():

@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     jev_enabled: bool = True
     jev_confidence_threshold: float = 0.7
     jev_grade_noul_threshold: float = 0.55
+    jev_guardrails_enabled: bool = True
+    jev_guard_policy: str = "strict"
+    jev_guard_review_threshold: float = 0.35
+    jev_guard_action_threshold: float = 0.7
+    jev_guard_severity_block: float = 2.0
 
     @model_validator(mode="after")
     def secrets_must_differ(self) -> "Settings":
@@ -156,6 +161,11 @@ class Settings(BaseSettings):
     def jev_ready(self) -> bool:
         """True when Jev decisions should be attempted (kill switch + API key)."""
         return bool(self.jev_enabled and (self.typesafe_api_key or "").strip())
+
+    @property
+    def jev_guardrails_ready(self) -> bool:
+        """True when input/output/tool guardrails should run."""
+        return bool(self.jev_ready and self.jev_guardrails_enabled)
 
 
 settings = Settings()  # type: ignore

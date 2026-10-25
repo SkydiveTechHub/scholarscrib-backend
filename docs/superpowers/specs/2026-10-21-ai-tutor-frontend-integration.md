@@ -828,6 +828,12 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 - [ ] Abort mid-stream recovers via GET thread  
 - [ ] “What am I weak at?” uses `get_topic_standings` (tool event, no approval card)  
 - [ ] Performance page can load `GET /api/performance/topics` with status / subject filters  
+- [ ] Unsafe / jailbreak prompts still return a normal `assistantMessage` (canned refuse or support), no new SSE event type  
+- [ ] If a tool is blocked by safety checks, the stream may show a failed `tool` event; the turn still completes  
+
+### Guardrails (frontend note)
+
+Jev screens user input, assistant output, and tool calls. Blocked turns look like ordinary assistant replies (refusal or crisis-support copy). Streamed tokens may briefly appear before commit replaces the stored message with the safe text — treat `assistantMessage.content` as source of truth, same as groundedness soft-refuse.
 
 ---
 
@@ -837,4 +843,4 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 - [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md) — short contract  
 - [`2026-10-20-ai-tutor-rag-design.md`](./2026-10-20-ai-tutor-rag-design.md) — backend design  
 - Routes: `app/api/student/tutor.py`, `app/api/student/lessons.py`  
-- Shapes: `app/api/schemas.py`, `app/api/responses.py`, `app/services/rag/schemas.py`
+- Shapes: `app/api/schemas.py`, `app/api/responses.py`, `app/ai/core/schemas.py`

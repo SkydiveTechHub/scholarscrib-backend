@@ -358,9 +358,9 @@ def _tutor_args(**extra):
 
 
 async def test_a_tutor_proposal_without_a_timetable_never_carries_one():
-    from app.services.rag.tools import ensure_tools
-    from app.services.rag.tools.hitl import decode_proposal
-    from app.services.rag.tools.study_plan import (
+    from app.ai.core.hitl import decode_proposal
+    from app.ai.tutor.tools import ensure_tools
+    from app.ai.tutor.tools.study_plan import (
         _update_study_plan,
         parse_validated_args,
     )
@@ -380,9 +380,9 @@ async def test_a_tutor_proposal_without_a_timetable_never_carries_one():
 
 
 async def test_a_tutor_proposal_can_carry_a_valid_timetable_and_rejects_a_bad_one():
-    from app.services.rag.tools import ensure_tools
-    from app.services.rag.tools.hitl import decode_proposal
-    from app.services.rag.tools.study_plan import _create_study_plan
+    from app.ai.core.hitl import decode_proposal
+    from app.ai.tutor.tools import ensure_tools
+    from app.ai.tutor.tools.study_plan import _create_study_plan
 
     ensure_tools()
     good = {"mode": "CUSTOM", "allocations": [alloc(1, "maths")]}

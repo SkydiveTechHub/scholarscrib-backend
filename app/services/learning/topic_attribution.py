@@ -10,6 +10,7 @@ from langchain_typesafe.types import Question
 from pydantic import JsonValue
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.core.decisions import decide_batch
 from app.core.config import settings
 from app.core.logger import logger
 from app.database.models import CoverageQuestion, LearningEvent, Topic
@@ -23,7 +24,6 @@ from app.database.repositories.question import questions_repository
 from app.services.assessments.coverage_paper import is_coverage
 from app.services.assessments.service import _paper_questions
 from app.services.learning.mastery_store import GetTopicMasteryService
-from app.services.rag.decisions import decide_batch
 
 CHUNK_SIZE = 20
 MIN_CLASS_TOPICS = 5
