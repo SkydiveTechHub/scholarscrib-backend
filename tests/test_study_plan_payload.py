@@ -111,6 +111,8 @@ async def test_plan_payload_carries_every_field_the_page_reads(monkeypatch):
         planned_through=date(2026, 9, 28),
         outline=[],
         overload=None,
+        timetable=None,
+        unmet=None,
         created_at=datetime(2026, 9, 14, tzinfo=UTC),
         scope_class_level="SS1",
         scope_term="FIRST",
@@ -150,6 +152,8 @@ async def test_plan_payload_carries_every_field_the_page_reads(monkeypatch):
 
     assert payload["mode"] == "TERM"
     assert payload["runwayStart"] is None
+    assert payload["timetable"] is None  # a legacy plan is a Smart plan
+    assert payload["unmet"] == []
     assert payload["positions"] == {"maths": "t1"}
     assert payload["calendarPositions"] == {"maths": "t1"}
     assert payload["positionOptions"] == {
@@ -185,6 +189,8 @@ async def test_plan_for_another_class_does_not_follow_the_calendar(monkeypatch):
         planned_through=date(2026, 9, 28),
         outline=[],
         overload=None,
+        timetable=None,
+        unmet=None,
         created_at=datetime(2026, 9, 14, tzinfo=UTC),
         scope_class_level="SS2",
         scope_term="SECOND",
@@ -359,6 +365,8 @@ async def _follows_in_holiday(monkeypatch, scope_term):
         planned_through=date(2026, 12, 20),
         outline=[],
         overload=None,
+        timetable=None,
+        unmet=None,
         created_at=datetime(2026, 9, 14, tzinfo=UTC),
         scope_class_level="SS1",
         scope_term=scope_term,

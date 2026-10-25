@@ -1,5 +1,5 @@
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 
 from app.domain import CLASS_LEVELS, TERMS
 from app.services.planner.days import DayKey, add_days, days_between
@@ -63,6 +63,7 @@ class PlanSettingsCheck:
     weekday_minutes: int
     weekend_minutes: int
     today: DayKey
+    day_minutes: Mapping[int, int] = field(default_factory=dict)
 
 
 def plan_settings_problem(check: PlanSettingsCheck) -> str | None:
@@ -75,7 +76,10 @@ def plan_settings_problem(check: PlanSettingsCheck) -> str | None:
     if check.target_date and check.target_date <= check.today:
         return "The exam date must be in the future."
     has_time = any(
-        (check.weekend_minutes if day >= 6 else check.weekday_minutes) >= 30
+        check.day_minutes.get(
+            day, check.weekend_minutes if day >= 6 else check.weekday_minutes
+        )
+        >= 30
         for day in check.study_days
     )
     if not has_time:

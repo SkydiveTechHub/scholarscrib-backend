@@ -81,7 +81,7 @@ def plan_window(planner: PlannerInput) -> dict:
             planner.state,
         )
     )
-    items, overload = layout_window(
+    items, overload, unmet = layout_window(
         mode=planner.mode,
         slots=build_slots(planner.today, days, planner.availability),
         target_date=planner.target_date,
@@ -96,6 +96,7 @@ def plan_window(planner: PlannerInput) -> dict:
         revision_due=planner.revision_due,
         fixed=planner.fixed,
         lessons_done=planner.lessons_done,
+        allocations=planner.availability.allocations,
     )
     if exam_bound:
         until = planner.target_date
@@ -116,6 +117,16 @@ def plan_window(planner: PlannerInput) -> dict:
         "items": items,
         "outline": outline,
         "overload": overload,
+        "unmet": [
+            {
+                "date": u.date,
+                "subjectId": u.subject_id,
+                "strength": u.strength,
+                "minutes": u.minutes,
+                "reason": u.reason,
+            }
+            for u in unmet
+        ],
         "plannedThrough": planned_through,
         "runwayStart": runway_start,
     }

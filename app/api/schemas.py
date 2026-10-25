@@ -214,6 +214,29 @@ class JambIn(BaseModel):
     examYear: int = Field(ge=1978, le=2100)
 
 
+class AllocationIn(BaseModel):
+    """A subject the student wants on a weekday. `minutes` is a multiple of 30."""
+
+    day: Weekday
+    subjectId: str = Field(min_length=1)
+    minutes: int | None = Field(default=None, ge=30, le=600)
+    strength: Annotated[Literal["PREFERRED", "PINNED"], Caps] = "PREFERRED"
+
+
+class DayMinutesIn(BaseModel):
+    """Minutes for one study day, overriding the weekday/weekend default."""
+
+    day: Weekday
+    minutes: int = Field(ge=30, le=600)
+
+
+class TimetableIn(BaseModel):
+    version: Literal[1] = 1
+    mode: Annotated[Literal["SMART", "CUSTOM"], Caps] = "SMART"
+    dayMinutes: list[DayMinutesIn] = Field(default_factory=list, max_length=7)
+    allocations: list[AllocationIn] = Field(default_factory=list, max_length=60)
+
+
 class StudyPlanIn(BaseModel):
     classLevel: ClassLevel
     term: Term
@@ -224,6 +247,8 @@ class StudyPlanIn(BaseModel):
     targetExam: ExamType | None = None
     targetDate: date | None = None
     forceExamMode: bool = False
+    # Omitted keeps the plan's timetable; an explicit null returns it to Smart.
+    timetable: TimetableIn | None = None
 
     @model_validator(mode="after")
     def exam_pair(self):

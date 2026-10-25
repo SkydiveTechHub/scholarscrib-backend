@@ -20,6 +20,7 @@ from app.services.planner.service import (
     SetStudyPlanPositionsService,
     UpdateStudyPlanSettingsService,
 )
+from app.services.planner.timetable import day_minutes_overrides, timetable_problem
 from app.services.rag.tools.context import TutorToolContext
 from app.services.rag.tools.hitl import encode_proposal
 from app.services.rag.tools.registry import (
@@ -97,7 +98,17 @@ def _settings_error(body: StudyPlanIn) -> str | None:
             weekday_minutes=body.weekdayMinutes,
             weekend_minutes=body.weekendMinutes,
             today=lagos_day_key(),
+            day_minutes=day_minutes_overrides(body.timetable),
         )
+    )
+    if problem:
+        return problem
+    problem = timetable_problem(
+        body.timetable,
+        study_days=body.studyDays,
+        weekday_minutes=body.weekdayMinutes,
+        weekend_minutes=body.weekendMinutes,
+        subject_ids=body.subjectIds,
     )
     if problem:
         return problem
@@ -114,8 +125,17 @@ def _propose(name: str, args: dict[str, Any], summary: str | None = None) -> str
     return encode_proposal(proposal_from_args(name, args, summary=summary))
 
 
-def _split_summary(model: BaseModel) -> tuple[dict[str, Any], str]:
+def _dump(model: BaseModel) -> dict[str, Any]:
+    """`dump_model`, but an unset timetable stays unset. Dumping it as null would
+    tell the service to reset the plan to Smart and wipe the student's choices."""
     payload = dump_model(model)
+    if "timetable" in payload and "timetable" not in model.model_fields_set:
+        payload.pop("timetable")
+    return payload
+
+
+def _split_summary(model: BaseModel) -> tuple[dict[str, Any], str]:
+    payload = _dump(model)
     summary = str(payload.pop("summary", "")).strip()
     return payload, summary
 
@@ -250,13 +270,13 @@ def parse_validated_args(name: str, args: dict[str, Any]) -> dict[str, Any]:
             problem = _settings_error(body)
             if problem:
                 raise ApiError(400, problem)
-            return dump_model(body)
+            return _dump(body)
         if name == "update_study_plan":
             body = UpdateStudyPlanArgs.model_validate(args)
             problem = _settings_error(body)
             if problem:
                 raise ApiError(400, problem)
-            return dump_model(body)
+            return _dump(body)
         if name == "delete_study_plan":
             return dump_model(DeleteStudyPlanArgs.model_validate(args))
         if name == "set_study_plan_positions":

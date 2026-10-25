@@ -471,6 +471,21 @@ class PlanCreatedOut(ApiOut):
     planId: str
 
 
+class PlanIssueOut(ApiOut):
+    code: str
+    message: str
+    day: int | None = None
+    subjectId: str | None = None
+
+
+class PlanPreviewOut(ApiOut):
+    valid: bool
+    errors: list[PlanIssueOut] = []
+    warnings: list[PlanIssueOut] = []
+    summary: dict | None = None
+    window: dict | None = None
+
+
 class ItemStatusOut(ApiOut):
     status: str
 

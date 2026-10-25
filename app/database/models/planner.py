@@ -54,6 +54,11 @@ class StudyPlan(Base):
     )
     outline: Mapped[list | None] = mapped_column(JSONB)
     overload: Mapped[dict | None] = mapped_column(JSONB)
+    # The student's timetable intent (see planner/timetable.py). NULL is a Smart
+    # plan: the planner alone picks subjects within the study days and minutes.
+    timetable: Mapped[dict | None] = mapped_column(JSONB)
+    # Timetable sessions the last replan could not give to their subject.
+    unmet: Mapped[list | None] = mapped_column(JSONB)
     is_active: Mapped[bool] = mapped_column("isActive", Boolean, default=True)
     created_at: Mapped[datetime] = timestamp_column("createdAt")
 

@@ -5,7 +5,7 @@ from datetime import date, datetime
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import PositionIn, StudyPlanIn
+from app.api.schemas import PositionIn, StudyPlanIn, TimetableIn
 from app.core.errors import ApiError
 from app.core.ids import cuid
 from app.core.timeutil import lagos_day_key, utcnow
@@ -30,8 +30,8 @@ from app.database.repositories.planner import (
 from app.services.learning.graph import GraphEdge, GraphNode, build_graph
 from app.services.learning.mastery import graph_colour
 from app.services.learning.mastery_store import GetTopicMasteryService
-from app.services.planner.days import add_days
-from app.services.planner.layout import RevisionDue
+from app.services.planner.days import add_days, days_between
+from app.services.planner.layout import FixedItem, RevisionDue
 from app.services.planner.mode import (
     CARRY_OVER_DAYS,
     DEFAULT_MINUTES,
@@ -42,7 +42,7 @@ from app.services.planner.mode import (
     resolve_plan_mode,
     scope_ordinal,
 )
-from app.services.planner.slots import Availability
+from app.services.planner.slots import Availability, SlotAllocation
 from app.services.planner.term_context import (
     TermRange,
     default_term,
@@ -50,9 +50,46 @@ from app.services.planner.term_context import (
     term_header_label,
 )
 from app.services.planner.term_plan import PlannerInput, PlannerSubject, plan_window
+from app.services.planner.timetable import (
+    day_minutes_overrides,
+    load_timetable,
+    stored_timetable,
+    timetable_issues,
+    timetable_summary,
+    timetable_warnings,
+)
 from app.services.planner.topics import CarryOver, PlanTopic, calendar_topic_id
 
 logger = logging.getLogger(__name__)
+
+
+def _carry_over(pending, today: str) -> list[CarryOver]:
+    """Topics from pending sessions dated before today, in plan order."""
+    return [
+        CarryOver(item.topic_id, item.subject_id, _day(item.date))
+        for item in pending
+        if _day(item.date) < today and item.topic_id
+    ]
+
+
+def _availability(plan: StudyPlan) -> Availability:
+    """The plan's hours, plus the timetable when the student chose custom subjects."""
+    timetable = load_timetable(plan.timetable)
+    allocations = (
+        [
+            SlotAllocation(row.day, row.subjectId, row.minutes, row.strength)
+            for row in timetable.allocations
+        ]
+        if timetable is not None and timetable.mode == "CUSTOM"
+        else []
+    )
+    return Availability(
+        study_days=list(plan.study_days or []),
+        weekday_minutes=plan.weekday_minutes,
+        weekend_minutes=plan.weekend_minutes,
+        day_minutes=day_minutes_overrides(timetable),
+        allocations=allocations,
+    )
 
 
 def _day(value) -> str:
@@ -138,7 +175,18 @@ async def _term_context(session: AsyncSession, today: str) -> dict:
     return resolve_term_context(today, configured)
 
 
-def _check(body: StudyPlanIn) -> None:
+def _resolve_timetable(body: StudyPlanIn, stored: dict | None) -> TimetableIn | None:
+    """Omitted keeps the stored timetable, so older clients never wipe a student's
+    choices; an explicit null returns the plan to Smart."""
+    if "timetable" in body.model_fields_set:
+        return body.timetable
+    return load_timetable(stored)
+
+
+def _settings_problem(
+    body: StudyPlanIn, timetable: TimetableIn | None = None
+) -> str | None:
+    """The first problem with the plan's own settings, before any timetable."""
     target = body.targetDate.isoformat() if body.targetDate else None
     problem = plan_settings_problem(
         PlanSettingsCheck(
@@ -149,12 +197,41 @@ def _check(body: StudyPlanIn) -> None:
             weekday_minutes=body.weekdayMinutes,
             weekend_minutes=body.weekendMinutes,
             today=lagos_day_key(),
+            day_minutes=day_minutes_overrides(timetable),
         )
     )
     if problem:
-        raise ApiError(400, problem)
+        return problem
     if bool(body.targetExam) != bool(body.targetDate):
-        raise ApiError(400, "An exam target needs both an exam and a date")
+        return "An exam target needs both an exam and a date"
+    return None
+
+
+def _timetable_issues(body: StudyPlanIn, timetable: TimetableIn | None) -> list:
+    return timetable_issues(
+        timetable,
+        study_days=body.studyDays,
+        weekday_minutes=body.weekdayMinutes,
+        weekend_minutes=body.weekendMinutes,
+        subject_ids=body.subjectIds,
+    )
+
+
+def _check(
+    body: StudyPlanIn, timetable: TimetableIn | None = None, kept: bool = False
+) -> None:
+    problem = _settings_problem(body, timetable)
+    if problem:
+        raise ApiError(400, problem)
+    issues = _timetable_issues(body, timetable)
+    if issues:
+        message = issues[0].message
+        raise ApiError(
+            400,
+            f"Your saved timetable no longer fits these settings. {message}"
+            if kept
+            else message,
+        )
 
 
 async def _ensure_subjects(
@@ -333,6 +410,8 @@ class GetStudyPlanService:
             "runwayStart": runway_start,
             "outline": plan.outline,
             "overload": plan.overload,
+            "timetable": plan.timetable,
+            "unmet": plan.unmet or [],
             "items": [
                 {
                     "id": item.id,
@@ -396,7 +475,8 @@ class CreateStudyPlanService:
         self.track = track
 
     async def process(self) -> dict:
-        _check(self.body)
+        timetable = self.body.timetable
+        _check(self.body, timetable)
         previous = await plans_repository.list_active(self.session, self.student_id)
         await _ensure_subjects(
             self.session,
@@ -418,6 +498,7 @@ class CreateStudyPlanService:
             weekend_minutes=self.body.weekendMinutes,
             scope_class_level=self.body.classLevel,
             scope_term=self.body.term,
+            timetable=stored_timetable(timetable),
             is_active=True,
         )
         await plans_repository.add(self.session, plan, flush=True)
@@ -450,7 +531,8 @@ class UpdateStudyPlanSettingsService:
             raise ApiError(404, "Study plan not found")
         if plan.student_id != self.student_id:
             raise ApiError(404, "Study plan not found")
-        _check(self.body)
+        timetable = _resolve_timetable(self.body, plan.timetable)
+        _check(self.body, timetable, kept="timetable" not in self.body.model_fields_set)
         await _ensure_subjects(
             self.session, self.body.subjectIds, self.track, plan.subject_ids or []
         )
@@ -463,11 +545,191 @@ class UpdateStudyPlanSettingsService:
         plan.weekend_minutes = self.body.weekendMinutes
         plan.scope_class_level = self.body.classLevel
         plan.scope_term = self.body.term
+        plan.timetable = stored_timetable(timetable)
         await _drop_positions_outside_scope(self.session, plan)
         await ReplanStudyPlanService(
             self.session, plan, self.class_level or "SS1"
         ).process()
         return {"ok": True}
+
+
+class PreviewStudyPlanService:
+    """Dry run of a create or update: validate the settings and describe the week.
+
+    Nothing is written and nothing is replanned. It judges the body as sent, so an
+    omitted `timetable` means no timetable here (a save would keep the stored one).
+    The summary describes what the student asked for; the schedule the planner
+    will build from it is not part of the preview yet.
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        student_id: str,
+        class_level: str | None,
+        body: StudyPlanIn,
+        track: str | None = None,
+    ) -> None:
+        self.session = session
+        self.student_id = student_id
+        self.class_level = class_level
+        self.body = body
+        self.track = track
+
+    async def process(self) -> dict:
+        body = self.body
+        timetable = body.timetable
+        errors: list[dict] = []
+        problem = _settings_problem(body, timetable)
+        if problem:
+            errors.append(
+                {"code": "SETTINGS", "message": problem, "day": None, "subjectId": None}
+            )
+        previous = await plans_repository.list_active(self.session, self.student_id)
+        try:
+            await _ensure_subjects(
+                self.session,
+                body.subjectIds,
+                self.track,
+                [
+                    subject_id
+                    for row in previous
+                    for subject_id in row.subject_ids or []
+                ],
+            )
+        except ApiError as exc:
+            errors.append(
+                {
+                    "code": "SUBJECTS",
+                    "message": str(exc.payload["error"]),
+                    "day": None,
+                    "subjectId": None,
+                }
+            )
+        errors.extend(issue.as_dict() for issue in _timetable_issues(body, timetable))
+        if errors:
+            return {
+                "valid": False,
+                "errors": errors,
+                "warnings": [],
+                "summary": None,
+                "window": None,
+            }
+        names = await self._subject_names()
+        warnings = timetable_warnings(
+            timetable,
+            study_days=body.studyDays,
+            weekday_minutes=body.weekdayMinutes,
+            weekend_minutes=body.weekendMinutes,
+            subject_names=names,
+            runway_days=self._runway_days(previous),
+        )
+        summary = timetable_summary(
+            timetable,
+            study_days=body.studyDays,
+            weekday_minutes=body.weekdayMinutes,
+            weekend_minutes=body.weekendMinutes,
+            subject_ids=body.subjectIds,
+        )
+        return {
+            "valid": True,
+            "errors": [],
+            "warnings": [issue.as_dict() for issue in warnings],
+            "summary": summary,
+            "window": await self._window(previous, timetable, names),
+        }
+
+    async def _window(
+        self,
+        previous: list[StudyPlan],
+        timetable: TimetableIn | None,
+        names: dict[str, str],
+    ) -> dict:
+        """The first 14 days this plan would get, exactly as a replan builds them.
+
+        It reads the student's real progress (missed sessions, today's finished
+        work, lessons done) but changes nothing.
+        """
+        body = self.body
+        existing = previous[0] if previous else None
+        draft = StudyPlan(
+            id=existing.id if existing else "preview",
+            student_id=self.student_id,
+            subject_ids=body.subjectIds,
+            target_exam=body.targetExam,
+            target_date=_as_date(body.targetDate),
+            force_exam_mode=body.forceExamMode,
+            study_days=body.studyDays,
+            weekday_minutes=body.weekdayMinutes,
+            weekend_minutes=body.weekendMinutes,
+            scope_class_level=body.classLevel,
+            scope_term=body.term,
+            timetable=stored_timetable(timetable),
+            is_active=False,
+            created_at=existing.created_at if existing else None,
+        )
+        replanner = ReplanStudyPlanService(
+            self.session, draft, self.class_level or "SS1", read_only=True
+        )
+        today = lagos_day_key()
+        planner_input = await replanner.build_input(
+            today,
+            await replanner.pending_carry_over(today) if existing else [],
+            await replanner._settled_items(today) if existing else [],
+        )
+        output = plan_window(planner_input)
+        titles = {
+            topic.id: topic.title
+            for subject in planner_input.subjects
+            for topic in subject.topics
+        }
+        overload = output["overload"]
+        return {
+            "plannedThrough": output["plannedThrough"],
+            "items": [
+                {
+                    "date": item.date,
+                    "subjectId": item.subject_id,
+                    "subjectName": names.get(item.subject_id, item.subject_id),
+                    "topicId": item.topic_id,
+                    "topicTitle": titles.get(item.topic_id) if item.topic_id else None,
+                    "activityType": item.activity_type,
+                    "durationMinutes": item.duration_minutes,
+                    "notes": item.notes,
+                    "carriedFrom": item.carried_from,
+                }
+                for item in output["items"]
+            ],
+            "unmet": output["unmet"],
+            "overload": None
+            if overload is None
+            else {
+                "topicsBehind": overload.topics_behind,
+                "suggestedExtraMinutesPerWeek": (
+                    overload.suggested_extra_minutes_per_week
+                ),
+            },
+        }
+
+    async def _subject_names(self) -> dict[str, str]:
+        names: dict[str, str] = {}
+        for subject_id in self.body.subjectIds:
+            subject = await subjects_repository.by_id(self.session, subject_id)
+            names[subject_id] = subject.name if subject else subject_id
+        return names
+
+    def _runway_days(self, previous: list[StudyPlan]) -> int | None:
+        target = self.body.targetDate.isoformat() if self.body.targetDate else None
+        mode = resolve_plan_mode(self.body.classLevel, target, self.body.forceExamMode)
+        if not target or mode == "TERM":
+            return None
+        started = (
+            previous[0].created_at if previous and previous[0].created_at else None
+        )
+        runway_start = compute_runway_start(
+            _day(started) if started else lagos_day_key(), target
+        )
+        return days_between(runway_start, target) + 1
 
 
 class DeleteStudyPlanService:
@@ -646,16 +908,30 @@ def _scope_topic_ids(subjects: list[PlannerSubject], plan: StudyPlan) -> set[str
 
 class ReplanStudyPlanService:
     def __init__(
-        self, session: AsyncSession, plan: StudyPlan, class_level: str
+        self,
+        session: AsyncSession,
+        plan: StudyPlan,
+        class_level: str,
+        read_only: bool = False,
     ) -> None:
         self.session = session
         self.plan = plan
         self.class_level = class_level
+        # A preview builds the same planner input but must leave nothing behind.
+        self.read_only = read_only
 
     async def process(self) -> None:
         await plans_repository.lock(self.session, StudyPlan.id == self.plan.id)
         today = lagos_day_key()
+        # Work already settled today keeps its time; the rest is regenerated.
+        settled = await self._settled_items(today)
         carry = await self._miss_and_clear(today)
+        output = plan_window(await self.build_input(today, carry, settled))
+        await self._persist_output(output)
+
+    async def build_input(
+        self, today: str, carry: list[CarryOver], settled: list[FixedItem]
+    ) -> PlannerInput:
         planner_subjects, nodes = await self._build_subjects()
         edges = await self._edges(nodes)
         state, pretest_passed, revision_due = await self._learning_inputs(
@@ -668,34 +944,34 @@ class ReplanStudyPlanService:
         scope_class = self.plan.scope_class_level
         mode = resolve_plan_mode(scope_class, target, self.plan.force_exam_mode)
         ctx = await _term_context(self.session, today)
-        output = plan_window(
-            PlannerInput(
-                today=today,
-                plan_start=_day(self.plan.created_at)
-                if self.plan.created_at
-                else today,
-                mode=mode,
-                class_level=scope_class,
-                term=self.plan.scope_term,
-                home_class_level=self.class_level,
-                target_date=target,
-                term_context=ctx,
-                availability=Availability(
-                    study_days=list(self.plan.study_days or []),
-                    weekday_minutes=self.plan.weekday_minutes,
-                    weekend_minutes=self.plan.weekend_minutes,
-                ),
-                subjects=planner_subjects,
-                graph=build_graph(nodes, edges),
-                state=state,
-                pretest_passed=pretest_passed,
-                revision_due=revision_due,
-                positions={row.subject_id: row.topic_id for row in position_rows},
-                carry_over=carry,
-                lessons_done=await self._lessons_done(),
-            )
+        return PlannerInput(
+            today=today,
+            plan_start=_day(self.plan.created_at) if self.plan.created_at else today,
+            mode=mode,
+            class_level=scope_class,
+            term=self.plan.scope_term,
+            home_class_level=self.class_level,
+            target_date=target,
+            term_context=ctx,
+            availability=_availability(self.plan),
+            subjects=planner_subjects,
+            graph=build_graph(nodes, edges),
+            state=state,
+            pretest_passed=pretest_passed,
+            revision_due=revision_due,
+            positions={row.subject_id: row.topic_id for row in position_rows},
+            carry_over=carry,
+            fixed=settled,
+            lessons_done=await self._lessons_done(),
         )
-        await self._persist_output(output)
+
+    async def _settled_items(self, today: str) -> list[FixedItem]:
+        """Completed or skipped sessions from today on; they keep their time."""
+        return [
+            FixedItem(_day(item.date), item.subject_id, item.duration_minutes)
+            for item in await plan_items_repository.for_plan(self.session, self.plan.id)
+            if item.status in {"COMPLETED", "SKIPPED"} and _day(item.date) >= today
+        ]
 
     async def _learning_inputs(
         self, nodes: list[GraphNode], in_scope: set[str]
@@ -708,7 +984,7 @@ class ReplanStudyPlanService:
         if not topic_ids:
             return {}, set(), []
         try:
-            async with self.session.begin_nested():
+            async with self.session.begin_nested() as savepoint:
                 state = await GetTopicMasteryService(
                     self.session, self.plan.student_id, topic_ids
                 ).process()
@@ -717,6 +993,9 @@ class ReplanStudyPlanService:
                         self.session, self.plan.student_id, topic_ids
                     )
                 )
+                if self.read_only:
+                    # Mastery caches what it derives; a preview keeps none of it.
+                    await savepoint.rollback()
         except Exception:
             logger.exception(
                 "Could not load learning state for plan of student %s",
@@ -753,17 +1032,20 @@ class ReplanStudyPlanService:
         pending = await plan_items_repository.pending_for_plan(
             self.session, self.plan.id
         )
-        carry: list[CarryOver] = []
+        carry = _carry_over(pending, today)
         for item in pending:
             if _day(item.date) < today:
                 item.status = "MISSED"
-                if item.topic_id:
-                    carry.append(
-                        CarryOver(item.topic_id, item.subject_id, _day(item.date))
-                    )
             else:
                 await plan_items_repository.remove(self.session, item)
         return carry
+
+    async def pending_carry_over(self, today: str) -> list[CarryOver]:
+        """What a replan would carry over, without changing any item."""
+        return _carry_over(
+            await plan_items_repository.pending_for_plan(self.session, self.plan.id),
+            today,
+        )
 
     async def _build_subjects(
         self,
@@ -836,5 +1118,6 @@ class ReplanStudyPlanService:
                 ].suggested_extra_minutes_per_week,
             }
         )
+        self.plan.unmet = output["unmet"] or None
         self.plan.planned_through = _as_date(output["plannedThrough"])
         self.plan.last_replanned_at = utcnow()

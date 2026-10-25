@@ -3,13 +3,20 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.deps import StudentPrincipal, require_feature, require_student
-from app.api.responses import ItemStatusOut, OkOut, PlanCreatedOut, PlanPageOut
+from app.api.responses import (
+    ItemStatusOut,
+    OkOut,
+    PlanCreatedOut,
+    PlanPageOut,
+    PlanPreviewOut,
+)
 from app.api.schemas import ItemStatusIn, PositionsIn, StudyPlanIn
 from app.database.db import AnSession
 from app.services.planner import (
     CreateStudyPlanService,
     DeleteStudyPlanService,
     GetStudyPlanService,
+    PreviewStudyPlanService,
     SetStudyPlanItemStatusService,
     SetStudyPlanPositionsService,
     UpdateStudyPlanSettingsService,
@@ -43,6 +50,21 @@ async def create_plan(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     return await CreateStudyPlanService(
+        session, student.id, student.class_level, body, student.track
+    ).process()
+
+
+@router.post(
+    "/preview",
+    dependencies=[Depends(require_feature("studyPlanner"))],
+    response_model=PlanPreviewOut,
+)
+async def preview_plan(
+    body: StudyPlanIn,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    return await PreviewStudyPlanService(
         session, student.id, student.class_level, body, student.track
     ).process()
 

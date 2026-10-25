@@ -12,7 +12,12 @@ from app.services.planner.days import (
     monday_of,
 )
 from app.services.planner.mode import MOCK_COUNT, REVISION_OFFSETS, exam_share
-from app.services.planner.slots import SESSION_MINUTES, Slot
+from app.services.planner.slots import (
+    SESSION_MINUTES,
+    Slot,
+    SlotAllocation,
+    reserve_slots,
+)
 from app.services.planner.topics import SubjectSelection, TopicCandidate
 
 GAP_FILL_SHARE = 0.2
@@ -44,6 +49,17 @@ class RevisionDue:
     topic_id: str
     subject_id: str
     title: str
+    reason: str
+
+
+@dataclass
+class UnmetAllocation:
+    """A timetable session the planner could not give to its subject."""
+
+    date: DayKey
+    subject_id: str
+    strength: str
+    minutes: int
     reason: str
 
 
@@ -89,14 +105,20 @@ def _group_by_date(slots: list[Slot]) -> list[tuple[DayKey, list[Slot]]]:
 def _free_days(
     slots: list[Slot], fixed: list[FixedItem]
 ) -> list[tuple[DayKey, list[Slot]]]:
-    used: dict[DayKey, int] = {}
+    settled: dict[DayKey, list[FixedItem]] = {}
     for item in fixed:
-        used[item.date] = used.get(item.date, 0) + item.duration_minutes
+        settled.setdefault(item.date, []).append(item)
     result = []
     for date, day_slots in _group_by_date(slots):
-        remaining = used.get(date, 0)
-        while remaining > 0 and day_slots:
-            remaining -= day_slots.pop().minutes
+        for item in settled.get(date, []):
+            # A full session uses full slots; a shorter one used the short slot.
+            wanted = max(1, item.duration_minutes // SESSION_MINUTES)
+            for _ in range(wanted):
+                use = [s for s in day_slots if s.short == (item.duration_minutes < 30)]
+                if not use:
+                    use = day_slots
+                if use:
+                    day_slots.remove(use[-1])
         result.append((date, day_slots))
     return result
 
@@ -138,9 +160,29 @@ def layout_window(
     revision_due: list[RevisionDue],
     fixed: list[FixedItem],
     lessons_done: dict[str, int] | None = None,
-) -> tuple[list[WindowItemDraft], Overload | None]:
+    allocations: list[SlotAllocation] | None = None,
+) -> tuple[list[WindowItemDraft], Overload | None, list[UnmetAllocation]]:
     days = _free_days(slots, fixed)
     done = lessons_done or {}
+    settled: dict[tuple[DayKey, str], int] = {}
+    for item in fixed:
+        key = (item.date, item.subject_id)
+        settled[key] = settled.get(key, 0) + item.duration_minutes // SESSION_MINUTES
+    unmet: list[UnmetAllocation] = [
+        UnmetAllocation(
+            u.date, u.subject_id, u.strength, SESSION_MINUTES, "NO_CAPACITY"
+        )
+        for u in reserve_slots(days, allocations or [], settled)
+    ]
+    day_reserved: dict[DayKey, list[str]] = {
+        date: sorted({s.subject_id for s in day_slots if s.subject_id})
+        for date, day_slots in days
+    }
+
+    def cap_of(date: DayKey) -> int:
+        # A day never allows fewer subjects than the student put on it.
+        return max(subject_cap(date), len(day_reserved.get(date, ())))
+
     items: list[WindowItemDraft] = []
     day_subjects: dict[DayKey, set[str]] = {}
 
@@ -156,7 +198,7 @@ def layout_window(
 
     def allow_subject(date: DayKey, subject_id: str) -> bool:
         chosen = subjects_on(date)
-        return subject_id in chosen or len(chosen) < subject_cap(date)
+        return subject_id in chosen or len(chosen) < cap_of(date)
 
     def place(slot: Slot, draft: dict) -> None:
         subjects_on(slot.date).add(draft["subject_id"])
@@ -257,7 +299,9 @@ def layout_window(
     def uses_of(date: DayKey, subject_id: str) -> int:
         return week_uses.get(f"{monday_of(date)}:{subject_id}", 0)
 
-    catch_up_dates = {slot.date for slot in slots if slot.catch_up}
+    catch_up_dates = {
+        slot.date for _date, day_slots in days for slot in day_slots if slot.catch_up
+    }
 
     def catch_up_ahead(slot: Slot) -> bool:
         return (not slot.catch_up) and any(
@@ -265,11 +309,14 @@ def layout_window(
             for date in catch_up_dates
         )
 
-    def pick_topic(slot: Slot, exam: bool, only: str | None = None) -> _Queue | None:
+    def pick_topic(
+        slot: Slot, exam: bool, only: str | None = None, subject: str | None = None
+    ) -> _Queue | None:
         options = [
             queue
             for queue in queues.values()
             if queue.exam == exam
+            and (subject is None or queue.candidate.topic.subject_id == subject)
             and (
                 queue.candidate.reason == only
                 if only
@@ -299,11 +346,12 @@ def layout_window(
         pool_order += 1
     revised_on: set[str] = set()
 
-    def take_revision(date: DayKey) -> _PoolEntry | None:
+    def take_revision(date: DayKey, subject: str | None = None) -> _PoolEntry | None:
         options = [
             entry
             for entry in pool
-            if entry.due_on <= date
+            if (subject is None or entry.subject_id == subject)
+            and entry.due_on <= date
             and f"{date}:{entry.topic_id}" not in revised_on
             and allow_subject(date, entry.subject_id)
         ]
@@ -369,12 +417,14 @@ def layout_window(
 
     subject_turn = 0
 
-    def place_past_questions(slot: Slot) -> bool:
+    def place_past_questions(slot: Slot, only: str | None = None) -> bool:
         nonlocal subject_turn
         if not subject_ids:
             return False
         for offset in range(len(subject_ids)):
             subject_id = subject_ids[(subject_turn + offset) % len(subject_ids)]
+            if only is not None and subject_id != only:
+                continue
             if not allow_subject(slot.date, subject_id):
                 continue
             subject_turn = (subject_turn + offset + 1) % len(subject_ids)
@@ -415,31 +465,74 @@ def layout_window(
     exam_credit = 0.0
     exam_slots = 0
 
-    def place_work(slot: Slot, exam: bool) -> bool:
+    def place_work(slot: Slot, exam: bool, subject: str | None = None) -> bool:
         nonlocal exam_slots
         if exam:
             if mode == "TERM":
                 return False
             exam_slots += 1
-            if exam_slots % PAST_QUESTIONS_EVERY == 0 and place_past_questions(slot):
+            if exam_slots % PAST_QUESTIONS_EVERY == 0 and place_past_questions(
+                slot, subject
+            ):
                 return True
-            queue = pick_topic(slot, True)
+            queue = pick_topic(slot, True, subject=subject)
             if queue:
                 place_unit(slot, queue)
                 return True
-            return place_past_questions(slot)
+            return place_past_questions(slot, subject)
         week = monday_of(slot.date)
         revisions_so_far = week_revisions.get(week, 0)
         if revisions_so_far + 1 <= (week_slots.get(week, 0)) * REVISION_SHARE:
-            entry = take_revision(slot.date)
+            entry = take_revision(slot.date, subject)
             if entry:
                 place_revision(slot, entry)
                 return True
-        queue = pick_topic(slot, False)
+        queue = pick_topic(slot, False, subject=subject)
         if not queue:
             return False
         place_unit(slot, queue)
         return True
+
+    def serve(slot: Slot, subject: str, want_exam: bool) -> bool:
+        """Work for one subject in a reserved slot, revision last."""
+        if place_work(slot, want_exam, subject) or place_work(
+            slot, not want_exam, subject
+        ):
+            return True
+        entry = take_revision(slot.date, subject)
+        if entry:
+            place_revision(slot, entry)
+            return True
+        return False
+
+    def place_reserved(slot: Slot, want_exam: bool) -> None:
+        """Fill a slot the student reserved for a subject.
+
+        PINNED stays that subject's: with no eligible work it is left empty and
+        reported. PREFERRED tries the day's other chosen subjects, then lets the
+        planner choose. Either way an allocation that was not served is reported.
+        """
+        reserved = slot.subject_id or ""
+        order = [reserved]
+        if slot.strength != "PINNED":
+            order += [s for s in day_reserved[slot.date] if s != reserved]
+        served = next((s for s in order if serve(slot, s, want_exam)), None)
+        if served != reserved:
+            unmet.append(
+                UnmetAllocation(
+                    slot.date,
+                    reserved,
+                    slot.strength or "PREFERRED",
+                    slot.minutes,
+                    "NO_ELIGIBLE_WORK",
+                )
+            )
+        if served is None and slot.strength != "PINNED":
+            if place_work(slot, want_exam) or place_work(slot, not want_exam):
+                return
+            entry = take_revision(slot.date)
+            if entry:
+                place_revision(slot, entry)
 
     for date, day_slots in days:
         if not day_slots:
@@ -476,6 +569,12 @@ def layout_window(
                 continue
             week = monday_of(date)
             week_slots[week] = week_slots.get(week, 0) + 1
+            if slot.subject_id is not None:
+                nonlocal_credit = exam_credit + share_for(date)
+                want_exam = nonlocal_credit >= 1
+                exam_credit = nonlocal_credit - 1 if want_exam else nonlocal_credit
+                place_reserved(slot, want_exam)
+                continue
             if slot.catch_up:
                 carried = pick_topic(slot, False, "CARRY_OVER")
                 if carried:
@@ -511,4 +610,6 @@ def layout_window(
             )
             * SESSION_MINUTES,
         )
-    return items, overload
+    # The exam runway replaces the timetable, so nothing is owed on those days.
+    unmet = [u for u in unmet if not in_runway(u.date)]
+    return items, overload, unmet
