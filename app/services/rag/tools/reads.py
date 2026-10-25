@@ -43,6 +43,17 @@ def _compact_plan(page: dict) -> dict:
             "weekendMinutes": plan.get("weekendMinutes"),
             "targetExam": plan.get("targetExam"),
             "targetDate": plan.get("targetDate"),
+            # null means the smart timetable. Copy this when changing it.
+            "timetable": plan.get("timetable"),
+            "unmetTimetableSessions": [
+                {
+                    "date": row.get("date"),
+                    "subjectId": row.get("subjectId"),
+                    "strength": row.get("strength"),
+                }
+                for row in (plan.get("unmet") or [])[:10]
+                if isinstance(row, dict)
+            ],
             "classLevel": (plan.get("scope") or {}).get("classLevel")
             if isinstance(plan.get("scope"), dict)
             else None,

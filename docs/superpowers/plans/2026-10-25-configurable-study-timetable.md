@@ -352,3 +352,151 @@ Saving from the plan page is the same PATCH as before. The backend keeps complet
 - A session does not yet link back to the exact timetable row it came from; it is matched by weekday and subject, so a session that the planner moved to a different weekday shows no timetable mark (which is the correct reading, since it was moved).
 - The "why" for an unmet pinned session is generic (nothing was ready to study). The planner does not yet report whether the cause was a prerequisite or an empty subject.
 - No change to the backend outline (still approximate); no per-item "moved because" beyond the existing carry-over note.
+
+### Phase 6 addendum: first real run found a rollout hazard
+
+The first run of the new form showed "We could not check this plan" on the Review step. Cause: the frontend's `.env` points at the deployed backend, which does not yet have `POST /api/study-plan/preview` (it answers `405 {"detail":"Method Not Allowed"}`, whereas the existing create route answers `401 {"error":"Unauthorized"}`). The form was working as designed against a server that was one release behind.
+
+That exposed a worse problem. An older backend ignores request fields it does not know, so saving a **custom timetable would appear to succeed and be silently dropped**. The frontend now guards against it:
+
+- `lib/plan-preview-state.ts`: a 404 or 405 from the preview route means "unsupported server", with any other failure shown with its own message (or its status code when the body has none).
+- On an unsupported server the Review step says so, offers **Use the smart timetable**, and **disables Save while a timetable (custom subjects or per-day times) would be sent**. A plan with no timetable can still be saved.
+- Tests: `test-plan-preview-state.mts` (5) and two render tests for the new message. Frontend: 851 of 852 pass (the same existing flashcard failure).
+
+**Deployment order matters (feeds Phase 8):** deploy the backend and run its migrations (`d7a3f5c1e208`, `e2c5b8d1a7f3`) **before** the frontend ships, or the new form degrades to smart-only. The backend change is backward compatible with the old frontend (omitted `timetable` keeps the stored one), so backend first is always safe. The frontend guard above covers the opposite order.
+
+
+## 13. Phase 7 status (done, with one gap): AI tutor
+
+The tutor still never builds a schedule. It proposes settings, the student approves a card, and the same `Create/UpdateStudyPlanSettingsService` the REST API uses runs the deterministic planner.
+
+### How it flows now
+
+1. **Propose** (`rag/tools/study_plan.py`): arguments are validated by the same `StudyPlanIn` schema and the same timetable rules as REST (rest days, subjects in the plan, duplicates, 30-minute steps, day capacity). An invalid proposal never becomes a card: the tool returns the reason so the tutor can ask the student what to change. Nothing is written.
+2. **Approve or edit**: the card edits only the existing scalar fields (minutes, class, term, exam). `resolve_resume_args` merges the edit and `parse_validated_args` re-runs the full validation, so an edit that breaks the timetable (for example lowering Monday's minutes below its subjects) is refused. The timetable itself cannot be rewritten or added from the card. Rejecting drops any edit and runs nothing.
+3. **Execute**: entitlement is checked first (`_deny_feature`), arguments are re-validated, then the service runs. An `ApiError` from the service is shown to the student as the reply.
+4. **Report back**: after create, update or class-position changes, the reply now names timetable sessions the rebuilt plan could not give to their subject (`unmet_sentence`: grouped per subject, days, pinned marked). The result also carries `unmet` for clients. A failure to describe the outcome is logged and dropped, never reported as a failed change.
+
+### Two safety decisions
+
+- **A `null` timetable from the model is never a reset.** The service reads a present `timetable: null` as "return to smart". Models often fill optional fields with null, which would silently wipe a student's timetable on an unrelated update. For the tutor only a real object is a change: `{"mode": "SMART"}` resets, and omitting or nulling `timetable` keeps the saved one. REST keeps its own explicit-null meaning (section 8). The prompt says "Never send null".
+- **Propose-time check of the saved timetable.** An update that omits `timetable` keeps the saved one, which may no longer fit (a day was dropped). The tool now reads the student's plan (only if it belongs to them) and refuses the proposal with the reason, so the student never sees a card that would fail on approval. The service still enforces the same rule on execution.
+
+### What the tutor can read and is told
+
+- `get_study_plan` now returns `timetable` (null means smart) and `unmetTimetableSessions` (first 10; date, subject, strength).
+- `ACTION_SYSTEM` teaches: weekday numbering, 30-minute steps, preferred versus pinned, never use rest days or overfill a day, copy-and-change the whole timetable, leave it out to keep it, `{"mode": "SMART"}` to reset, never send null, never promise a topic, a Timetable section on the card, "upcoming sessions are rebuilt from today and finished sessions stay", and what to do when a timetable does not fit or sessions were unmet.
+- The tool schema now carries field descriptions (`AllocationIn`, `DayMinutesIn`, `TimetableIn`) that also appear in the API docs.
+
+### Verification
+
+- `uv run pytest`: **540 passed** (38 new in `tests/test_tutor_timetable.py`). `ruff check`, `ruff format --check` clean; `pyright` 0 errors on the planner, API and tutor-tools code.
+- Covered: invalid and malformed timetables refused with a reason; a valid proposal runs nothing; null versus `{"mode":"SMART"}`; saved timetable still fits or not (including another student's plan not being read into the proposal); edits that break the timetable refused, a timetable that cannot be rewritten from the card, rejection dropping edits; entitlement denial before and after approval; approval through the real graph running the service with the timetable; the unmet note, its absence, and its failure being swallowed; a service error reaching the student; what the tutor reads; and the prompt and schema wording.
+
+### Not verified
+
+**No real model was used.** The graph tests drive the approval flow with a scripted model, so they prove the rules the code enforces (what can be proposed, edited, approved and executed). They do not prove that a real LLM follows the new prompt well: that it asks before proposing, copies the saved timetable correctly, uses `{"mode": "SMART"}` to reset, or writes a good card. That needs a few real conversations. The frontend tutor UI was not changed and not exercised.
+
+
+## 14. Phase 8: regression, rollout and final report
+
+### 14.1 Regression run (final)
+
+| Check | Result |
+|---|---|
+| Backend `uv run pytest` | **540 passed** |
+| Backend `ruff check` / `ruff format --check` | clean / 367 files formatted |
+| Backend `pyright` on planner, API, tutor tools | 0 errors |
+| Backend `pyright` on the whole app | 3 errors, all in `assessments/service.py` and `repositories/coverage.py` (not touched by this work) |
+| Alembic | single head `e2c5b8d1a7f3` |
+| Frontend `npm test` | **851 of 852 pass**; the one failure is `intervalLabel is human-readable` (`'in now' !== 'now'`, flashcards), which fails identically without this work |
+| Frontend `tsc --noEmit` (src) | clean |
+| Frontend `tsc` on test scripts | 12 errors, all in other scripts and all pre-existing; 0 in study-plan files |
+| Frontend `eslint` on every file added or changed | clean |
+
+### 14.2 Real-database run (new in this phase)
+
+Everything before this phase stubbed the repositories. This phase ran the real migrations and the real services against a throwaway **PostgreSQL 16.2** on 127.0.0.1 (started with `pgserver`, installed for the run only; the project's dependencies were not changed). The harness refuses to run unless the database host is local; the backend `.env` points at a cloud database, which was not touched. **35 of 35 checks passed.**
+
+- **Fresh install:** an empty database upgrades to head; `StudyPlan` gains `timetable` and `unmet`, both `jsonb` and nullable.
+- **Upgrade with existing plans:** a database at the previous head holding a plan with completed and missed items upgrades with the plan still active, `timetable` and `unmet` NULL, and every item unchanged. Downgrade drops exactly the two columns and keeps every item; upgrading again works.
+- **Services on the migrated schema:** create with a custom timetable (stored as JSONB, pinned subject placed, no day past its minutes); replanning twice gives identical sessions with no duplicates; a completed session survives a settings change and still fits its day; an overdue pending session becomes MISSED and returns as a catch-up carrying its original date; an update that omits `timetable` keeps it and an explicit null resets it; an invalid timetable is a 400 and changes nothing; a planner failure rolled back leaves the plan exactly as it was; the page payload serialises.
+- **Preview writes nothing**, including the mastery cache: a control proves a normal mastery lookup does write a row, so the check could have failed.
+- **Daily replan and the Lagos day boundary:** opening the plan twice in a day replans once; the first open after the day rolls over replans; 00:30 Lagos (23:30 UTC the day before) replans; a replan stamped after UTC midnight is not repeated that Lagos day.
+
+Two bugs in the harness itself were found and fixed along the way (an SQL alias that collided with `Row.t`, and typed parameters); they were not product bugs. The harness is not part of the repository.
+
+### 14.3 Findings from this phase
+
+1. **Extra replan in one hour (harmless, left as is).** `last_replanned_at` is a UTC timestamp compared with the Lagos day key by its UTC date. Lagos is ahead of UTC, so the comparison can only replan one extra time (between 00:00 and 01:00 Lagos), never skip a needed replan. Replans are idempotent, so the cost is one repeated pass.
+2. **Duplicate element ids in the study-time editor** (a day with two problems repeated the same `id`). Fixed: one container with one id per day.
+3. **Automated accessibility audit:** axe-core run over 22 rendered component states (every state of the editor, availability, review, plan view, session rows, and the setup form's first three steps) found **no violations** across 457 rule checks; a deliberately broken control was flagged, so the audit can fail. Limits: it ran in jsdom, which cannot check colour contrast, focus order, keyboard behaviour, touch size or layout, so none of those were verified.
+
+### 14.4 Rollout
+
+**Feature flag: none added.** The project has no per-feature flag mechanism (only the tier gate `BETA_OPEN_FEATURES`). The change is already staged by design: the smart timetable is the default and the new options are opt-in; the backend accepts old and new clients; the new frontend degrades safely against an old backend (section 8, Phase 6 addendum). Adding a flag would add code for no extra safety.
+
+**Order (backend first, always):**
+1. Commit and deploy the **backend**. Migrations `d7a3f5c1e208` then `e2c5b8d1a7f3` must run. `deploy_script.sh` and `deployment_hook.sh` both run `alembic upgrade head(s)`, but the `Dockerfile` `CMD` does not. **Confirm which path your host uses**, and check afterwards with `alembic current` that it reports `e2c5b8d1a7f3`.
+2. Smoke-test with an existing account: open the study plan page (should look the same, with the new cards), then create a plan on the Review step (the check should now succeed instead of showing the unsupported-server message).
+3. Deploy the **frontend**. If it ships first, the form still works for smart plans and blocks saving a custom timetable it knows the server would drop.
+
+**Migration risk:** each migration is one nullable `ADD COLUMN` with no default and no backfill, a metadata-only change in PostgreSQL (no table rewrite, a momentary lock). Verified on 16.2; your hosted version was not checked.
+
+**Rollback:**
+- *Frontend:* redeploy the previous build. Safe at any time: an older client omits `timetable`, which keeps the stored one (verified on a real database).
+- *Backend code:* redeploy the previous build and **leave the columns in place**. The extra nullable columns are ignored by the old code (reasoned, not run). Custom timetables already saved stay stored but are not applied until the new code returns.
+- *Database:* `alembic downgrade c6d8e0f2a413` works (verified) but **permanently deletes every saved timetable and unmet record**. Only do this if it must be removed, and first save them: `select id, timetable, unmet from "StudyPlan" where timetable is not null`.
+
+**Behavior change for every plan, not only custom ones:** a replan on the same day now keeps completed and skipped sessions' time instead of re-booking it (section 10). Students will see their day no longer overfilled after a settings change.
+
+### 14.5 Definition of Done
+
+| Item | Status |
+|---|---|
+| Smart timetable behaves as before | Done: the 32 baseline tests pass unchanged; legacy plans upgrade and load on a real database |
+| Per-day availability | Done |
+| Subjects on preferred days | Done |
+| UI distinguishes preferred, pinned, unavailable | Built and rendered in tests; **not seen in a browser** |
+| Backend validates and persists | Done, including on a real database |
+| Planner respects the configuration | Done |
+| Existing academic rules tested | Done |
+| Capacity conflicts and unplaced work surfaced | Done (unmet sessions, overload guidance, review warnings) |
+| Replans keep completed history and pinned assignments | Done, verified on a real database |
+| TERM, BLENDED and EXAM covered | Done in unit tests; the long-range outline is not timetable-aware |
+| Outline compatible or documented as deferred | Documented as deferred and labelled "a rough projection" in the UI |
+| Tutor follows propose, approve, revalidate, entitlement, service | Done; tested with a scripted model, **not with a real LLM** |
+| Migrations and legacy plans tested | Done on PostgreSQL 16.2 |
+| Tests, type checks, lint, formatting | Done, with the pre-existing exceptions in 14.1 |
+| Responsive and accessibility checks | **Partial:** automated structural audit only; no real browser, keyboard, mobile, contrast or screen-reader check |
+| Documentation | Done (this document) |
+
+### 14.6 Final report
+
+**Summary.** Students can choose the days, the minutes for each day, and (optionally) which subjects go on which days, as preferred or pinned. The deterministic planner still picks the topics and activities, now inside that structure, and says plainly when a request cannot be met. The tutor can propose the same changes through the existing approval flow.
+
+**Architecture.** The timetable is the student's intent, stored in one JSONB column on the plan and kept apart from the generated sessions. The pipeline is unchanged: clear pending work, gather curriculum and mastery, select topics, lay out slots, persist, project the outline. The only change to scheduling is that slots can be reserved for a subject and the layout respects those reservations (section 10).
+
+**Files changed (by area).**
+- *Backend, migrations:* `alembic/versions/d7a3f5c1e208_add_study_plan_timetable.py`, `e2c5b8d1a7f3_add_study_plan_unmet.py`.
+- *Backend, domain and planner:* `app/database/models/planner.py`; `app/services/planner/{timetable (new), slots, layout, term_plan, mode, service, __init__}.py`.
+- *Backend, API:* `app/api/{schemas, responses}.py`, `app/api/student/study_plan.py`.
+- *Backend, tutor:* `app/services/rag/{prompts}.py`, `app/services/rag/tools/{study_plan, reads, context}.py`.
+- *Backend, tests:* `test_planner_baseline`, `test_planner_timetable`, `test_planner_timetable_layout`, `test_study_plan_preview_api`, `test_study_plan_replan`, `test_tutor_timetable` (new); `test_study_plan_payload` (fixtures).
+- *Frontend:* `lib/{study-timetable, study-plan-settings, plan-preview-state}.ts` (new); `lib/{study-plan, study-plan-route, study-plan-display, day-keys}.ts`, `lib/api/endpoints.ts`, `hooks/api/use-study-plan.ts`; components `timetable-editor`, `availability-editor`, `timetable-review`, `timetable-summary`, `unmet-notice`, `week-overview`, `minutes-field`, `chip` (new) and `plan-setup-form`, `plan-item-row`, `plan-schedule`, `study-plan-view` (changed); tests `test-study-timetable`, `test-study-timetable-ui`, `test-study-plan-page`, `test-plan-preview-state` (new) and `test-study-plan-display` (extended).
+- *Documentation:* this file.
+
+**Data and API changes.** `StudyPlan.timetable` and `StudyPlan.unmet` (JSONB, nullable). `StudyPlanIn.timetable` (optional; omitted keeps, explicit null resets for REST). `POST /api/study-plan/preview` returning `{valid, errors, warnings, summary, window}`. `GET /api/study-plan` returns `plan.timetable` and `plan.unmet`. Full shapes in sections 5, 8 and 9.
+
+**Scheduling rules and fallbacks.** Section 10. In short: rest days never get work; the exam run-up overrides the timetable; prerequisites and practice timing outrank pins; a pinned slot is only ever its subject's (empty and reported if nothing is ready); a preferred slot falls back to the day's other chosen subjects, then to the planner's normal choice; unplaced work is reported, never invented.
+
+**Safety.** Completed, skipped and missed sessions are never deleted or rewritten; only pending future sessions are regenerated, deterministically, so repeated replans give the same plan. Finished work keeps its time. A failed replan rolls back completely. An older client cannot erase a timetable; the tutor cannot erase one with a null; an update that would break a saved timetable is refused with a reason.
+
+**Known gaps (not done, or not verified).**
+1. **Not seen or used in a real browser:** layout, mobile, dark mode, keyboard operation, focus movement, the discard dialog and browser leave warning, and the buttons opening the form on the right step. The browser extension was never connected.
+2. **Not tried with a real LLM:** the tutor prompt may need tuning after a few real conversations.
+3. **Long-range outline is not timetable-aware** (deferred by the brief; labelled in the UI).
+4. **Unmet reasons are generic.** The planner does not say whether a prerequisite or an empty subject caused it.
+5. **Hosted database version and the hosted deploy path** (whether migrations run automatically) were not checked.
+6. **Pre-existing failures** left alone: one flashcard test, 12 test-script type errors, 3 whole-app pyright errors.
+7. **Nothing from Phase 7 onward, and none of the frontend, is committed** as of this writing.

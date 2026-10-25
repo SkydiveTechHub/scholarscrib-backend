@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+from datetime import date
 from typing import Any
 
 from langchain_core.tools import StructuredTool
@@ -11,6 +13,8 @@ from pydantic import BaseModel, Field, ValidationError
 from app.api.schemas import PositionIn, StudyPlanIn
 from app.core.errors import ApiError
 from app.core.timeutil import lagos_day_key
+from app.database.repositories.curriculum import subjects_repository
+from app.database.repositories.planner import plans_repository
 from app.domain import can, entitlement_denial
 from app.services.planner.mode import PlanSettingsCheck, plan_settings_problem
 from app.services.planner.service import (
@@ -20,8 +24,13 @@ from app.services.planner.service import (
     SetStudyPlanPositionsService,
     UpdateStudyPlanSettingsService,
 )
-from app.services.planner.timetable import day_minutes_overrides, timetable_problem
-from app.services.rag.tools.context import TutorToolContext
+from app.services.planner.timetable import (
+    day_minutes_overrides,
+    load_timetable,
+    timetable_issues,
+    timetable_problem,
+)
+from app.services.rag.tools.context import TutorToolContext, peek_tool_context
 from app.services.rag.tools.hitl import encode_proposal
 from app.services.rag.tools.registry import (
     ToolSpec,
@@ -29,6 +38,8 @@ from app.services.rag.tools.registry import (
     proposal_from_args,
     register_tool,
 )
+
+logger = logging.getLogger(__name__)
 
 _FEATURE = "studyPlanner"
 _SUMMARY = Field(
@@ -126,12 +137,47 @@ def _propose(name: str, args: dict[str, Any], summary: str | None = None) -> str
 
 
 def _dump(model: BaseModel) -> dict[str, Any]:
-    """`dump_model`, but an unset timetable stays unset. Dumping it as null would
-    tell the service to reset the plan to Smart and wipe the student's choices."""
+    """`dump_model`, but a timetable that is null or unset stays out of the payload.
+
+    The service reads a present `timetable: null` as "return to the smart
+    timetable", which would wipe the student's choices. A model filling in an
+    optional field with null must never do that, so for the tutor only an actual
+    timetable (`{"mode": "SMART"}` to reset) is a change.
+    """
     payload = dump_model(model)
-    if "timetable" in payload and "timetable" not in model.model_fields_set:
-        payload.pop("timetable")
+    if payload.get("timetable") is None:
+        payload.pop("timetable", None)
     return payload
+
+
+async def _kept_timetable_problem(parsed: StudyPlanIn, plan_id: str) -> str | None:
+    """Why the student's saved timetable would not survive these new settings.
+
+    Without a `timetable` in the proposal the saved one is kept, so it must still
+    fit. The service enforces this too; checking here lets the tutor fix the
+    proposal instead of showing a card that fails on approval.
+    """
+    if parsed.timetable is not None:
+        return None
+    ctx = peek_tool_context()
+    if ctx is None:
+        return None
+    plan = await plans_repository.by_id(ctx.session, plan_id)
+    if plan is None or plan.student_id != ctx.user_id:
+        return None
+    issues = timetable_issues(
+        load_timetable(plan.timetable),
+        study_days=parsed.studyDays,
+        weekday_minutes=parsed.weekdayMinutes,
+        weekend_minutes=parsed.weekendMinutes,
+        subject_ids=parsed.subjectIds,
+    )
+    if not issues:
+        return None
+    return (
+        "The student's saved timetable would no longer fit these settings: "
+        f"{issues[0].message} Propose a timetable that fits, or change the settings."
+    )
 
 
 def _split_summary(model: BaseModel) -> tuple[dict[str, Any], str]:
@@ -157,7 +203,9 @@ async def _update_study_plan(**kwargs: Any) -> str:
         parsed = UpdateStudyPlanToolArgs.model_validate(kwargs)
     except ValidationError as exc:
         return _fail(exc.errors()[0].get("msg", "Invalid study plan"))
-    problem = _settings_error(parsed)
+    problem = _settings_error(parsed) or await _kept_timetable_problem(
+        parsed, parsed.planId
+    )
     if problem:
         return _fail(problem)
     payload, summary = _split_summary(parsed)
@@ -195,6 +243,55 @@ async def _set_item_status(**kwargs: Any) -> str:
     return _propose("set_study_plan_item_status", payload, summary)
 
 
+def unmet_sentence(unmet: list[dict], names: dict[str, str]) -> str:
+    """One plain sentence about timetable sessions that could not be followed."""
+    groups: dict[tuple[str, str], list[str]] = {}
+    for row in unmet:
+        key = (str(row.get("subjectId")), str(row.get("strength") or "PREFERRED"))
+        day = date.fromisoformat(str(row.get("date"))[:10])
+        label = f"{day:%a} {day.day} {day:%b}"
+        if label not in groups.setdefault(key, []):
+            groups[key].append(label)
+    parts = [
+        f"{names.get(subject_id, 'A subject')}"
+        f"{' (pinned)' if strength == 'PINNED' else ''} on {', '.join(days)}"
+        for (subject_id, strength), days in list(groups.items())[:5]
+    ]
+    return (
+        "Some of your timetable could not be followed: "
+        + "; ".join(parts)
+        + ". Nothing was ready to study for those, so pinned sessions were left "
+        "empty and other sessions went to other work. You can change the "
+        "timetable on the Study Plan page."
+    )
+
+
+async def _timetable_outcome(ctx: TutorToolContext) -> dict[str, Any]:
+    """What the rebuilt plan could not honor, for the reply after an approval.
+
+    The change already happened, so a failure to describe it is logged and
+    dropped rather than reported as a failed action.
+    """
+    try:
+        plan = await plans_repository.active(ctx.session, ctx.user_id)
+        unmet = list(plan.unmet or []) if plan is not None else []
+        if not unmet:
+            return {}
+        names: dict[str, str] = {}
+        for subject_id in {str(row.get("subjectId")) for row in unmet}:
+            subject = await subjects_repository.by_id(ctx.session, subject_id)
+            names[subject_id] = subject.name if subject else "A subject"
+        return {"unmet": unmet, "note": unmet_sentence(unmet, names)}
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not describe unmet timetable sessions")
+        return {}
+
+
+def _with_outcome(message: str, outcome: dict[str, Any]) -> str:
+    note = outcome.get("note")
+    return f"{message} {note}" if note else message
+
+
 def _fallback_summary(_: dict[str, Any]) -> str:
     return "Please confirm this change."
 
@@ -205,6 +302,9 @@ def register_study_plan_tools() -> None:
             "create_study_plan",
             "Propose a new study plan. It is not created until the student "
             "approves. subjectIds must be real ids from a read tool. "
+            "Add timetable only when the student asks for particular subjects "
+            "on particular days, or a different time on a single day; weekdays "
+            "are numbered 1 (Monday) to 7 (Sunday). "
             "summary is the plan on the approval card.",
             _create_study_plan,
             CreateStudyPlanToolArgs,
@@ -213,7 +313,11 @@ def register_study_plan_tools() -> None:
         (
             "update_study_plan",
             "Propose new settings for an existing plan. planId comes from "
-            "get_study_plan. summary is the plan on the approval card.",
+            "get_study_plan. Leave timetable out to keep the saved one. To change "
+            "it, send the whole timetable: copy it from get_study_plan and change "
+            "only what the student asked for. To go back to the smart timetable "
+            'send {"mode": "SMART"}. '
+            "summary is the plan on the approval card.",
             _update_study_plan,
             UpdateStudyPlanToolArgs,
             False,
@@ -320,11 +424,13 @@ async def execute_study_plan_action(
             StudyPlanIn.model_validate(validated),
             ctx.track,
         ).process()
+        outcome = await _timetable_outcome(ctx)
         return {
             "ok": True,
-            "message": "Created your study plan.",
+            "message": _with_outcome("Created your study plan.", outcome),
             "planId": created.get("planId"),
             "tool": name,
+            **({"unmet": outcome["unmet"]} if outcome else {}),
         }
     if name == "update_study_plan":
         plan_id = validated.pop("planId")
@@ -336,11 +442,13 @@ async def execute_study_plan_action(
             StudyPlanIn.model_validate(validated),
             ctx.track,
         ).process()
+        outcome = await _timetable_outcome(ctx)
         return {
             "ok": True,
-            "message": "Updated your study plan.",
+            "message": _with_outcome("Updated your study plan.", outcome),
             "planId": plan_id,
             "tool": name,
+            **({"unmet": outcome["unmet"]} if outcome else {}),
         }
     if name == "delete_study_plan":
         await DeleteStudyPlanService(
@@ -357,10 +465,14 @@ async def execute_study_plan_action(
         await SetStudyPlanPositionsService(
             ctx.session, ctx.user_id, ctx.class_level, positions
         ).process()
+        outcome = await _timetable_outcome(ctx)
         return {
             "ok": True,
-            "message": "Updated where your class is and rebuilt the plan.",
+            "message": _with_outcome(
+                "Updated where your class is and rebuilt the plan.", outcome
+            ),
             "tool": name,
+            **({"unmet": outcome["unmet"]} if outcome else {}),
         }
     if name == "set_study_plan_item_status":
         await SetStudyPlanItemStatusService(

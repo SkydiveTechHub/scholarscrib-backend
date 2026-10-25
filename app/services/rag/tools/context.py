@@ -34,6 +34,11 @@ def reset_tool_context(token: Token) -> None:
     _tool_context.reset(token)
 
 
+def peek_tool_context() -> TutorToolContext | None:
+    """The context if a tutor turn set one, else None. Never raises."""
+    return _tool_context.get()
+
+
 def get_tool_context() -> TutorToolContext:
     ctx = _tool_context.get()
     if ctx is None:

@@ -217,24 +217,51 @@ class JambIn(BaseModel):
 class AllocationIn(BaseModel):
     """A subject the student wants on a weekday. `minutes` is a multiple of 30."""
 
-    day: Weekday
-    subjectId: str = Field(min_length=1)
-    minutes: int | None = Field(default=None, ge=30, le=600)
-    strength: Annotated[Literal["PREFERRED", "PINNED"], Caps] = "PREFERRED"
+    day: Weekday = Field(description="ISO weekday: 1 is Monday, 7 is Sunday.")
+    subjectId: str = Field(min_length=1, description="A subject id from the plan.")
+    minutes: int | None = Field(
+        default=None,
+        ge=30,
+        le=600,
+        description=(
+            "Minutes for this subject that day, in steps of 30. Omit for one session."
+        ),
+    )
+    strength: Annotated[Literal["PREFERRED", "PINNED"], Caps] = Field(
+        default="PREFERRED",
+        description=(
+            "PREFERRED can move if nothing is ready to study. "
+            "PINNED keeps the slot for this subject."
+        ),
+    )
 
 
 class DayMinutesIn(BaseModel):
     """Minutes for one study day, overriding the weekday/weekend default."""
 
-    day: Weekday
-    minutes: int = Field(ge=30, le=600)
+    day: Weekday = Field(description="ISO weekday: 1 is Monday, 7 is Sunday.")
+    minutes: int = Field(ge=30, le=600, description="Study minutes on that day.")
 
 
 class TimetableIn(BaseModel):
     version: Literal[1] = 1
-    mode: Annotated[Literal["SMART", "CUSTOM"], Caps] = "SMART"
-    dayMinutes: list[DayMinutesIn] = Field(default_factory=list, max_length=7)
-    allocations: list[AllocationIn] = Field(default_factory=list, max_length=60)
+    mode: Annotated[Literal["SMART", "CUSTOM"], Caps] = Field(
+        default="SMART",
+        description=(
+            "SMART: the planner picks subjects each day. "
+            "CUSTOM: the student puts subjects on days (allocations)."
+        ),
+    )
+    dayMinutes: list[DayMinutesIn] = Field(
+        default_factory=list,
+        max_length=7,
+        description="Study minutes for single days that differ from the usual.",
+    )
+    allocations: list[AllocationIn] = Field(
+        default_factory=list,
+        max_length=60,
+        description="Subjects on weekdays. Only used when mode is CUSTOM.",
+    )
 
 
 class StudyPlanIn(BaseModel):
