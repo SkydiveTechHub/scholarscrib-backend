@@ -11,6 +11,7 @@ from app.services.learning.evidence import (
     GAP_RETENTION,
     MASTERY_MIN_QUESTIONS,
     OBSERVATION_FLOOR,
+    PRIOR_OUTCOME,
     PRIOR_STRENGTH,
     SCORING_VERSION,
     TARGET,
@@ -154,6 +155,7 @@ class TopicState:
     acc_observations: int = 0
     lesson_observations: int = 0
     srs_observations: int = 0
+    score: float = PRIOR_OUTCOME
 
 
 def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState:
@@ -199,6 +201,7 @@ def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState
         acc_observations=aggregate.acc.observations,
         lesson_observations=aggregate.lesson.observations,
         srs_observations=aggregate.srs.observations,
+        score=min(1.0, max(0.0, composite)),
     )
 
 
