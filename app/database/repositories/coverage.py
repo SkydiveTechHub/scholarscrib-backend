@@ -166,6 +166,58 @@ class CoverageQuestionRepository(BaseRepository[CoverageQuestion]):
             statement = statement.where(CoverageQuestion.exam_type == exam_type)
         return await self.many(session, statement.order_by(func.random()).limit(count))
 
+    async def pick_for_topics(
+        self,
+        session: AsyncSession,
+        *,
+        subject_id: str,
+        count: int,
+        topic_ids: list[str] | None = None,
+        exam_type: str | None = None,
+        exam_year: int | None = None,
+        difficulty: str | None = None,
+        exclude: set[str] | None = None,
+    ) -> list[CoverageQuestion]:
+        """Random objective coverage questions, optionally within given topics."""
+        if count <= 0:
+            return []
+        statement = select(CoverageQuestion).where(
+            CoverageQuestion.subject_id == subject_id,
+            CoverageQuestion.question_type == "OBJECTIVE",
+        )
+        if topic_ids:
+            statement = statement.where(CoverageQuestion.topic_id.in_(topic_ids))
+        if exam_type:
+            statement = statement.where(CoverageQuestion.exam_type == exam_type)
+        if exam_year:
+            statement = statement.where(CoverageQuestion.exam_year == exam_year)
+        if difficulty:
+            statement = statement.where(CoverageQuestion.difficulty == difficulty)
+        if exclude:
+            statement = statement.where(CoverageQuestion.id.notin_(exclude))
+        return await self.many(session, statement.order_by(func.random()).limit(count))
+
+    async def count_for_subject(self, session: AsyncSession, subject_id: str) -> int:
+        return await self.count(session, CoverageQuestion.subject_id == subject_id)
+
+    async def count_for_topic(self, session: AsyncSession, topic_id: str) -> int:
+        return await self.count(session, CoverageQuestion.topic_id == topic_id)
+
+    async def board_subject_counts(
+        self, session: AsyncSession, exam_type: str
+    ) -> list[tuple[str, int]]:
+        result = await self.rows(
+            session,
+            select(CoverageQuestion.subject_id, func.count())
+            .where(
+                CoverageQuestion.exam_type == exam_type,
+                CoverageQuestion.topic_id.is_not(None),
+                CoverageQuestion.question_type == "OBJECTIVE",
+            )
+            .group_by(CoverageQuestion.subject_id),
+        )
+        return [(row[0], int(row[1])) for row in result.all()]
+
     async def by_ids(
         self, session: AsyncSession, ids: list[str]
     ) -> list[CoverageQuestion]:
