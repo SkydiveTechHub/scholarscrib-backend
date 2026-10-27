@@ -69,7 +69,13 @@ async def record_predictions(
     source: str,
     answered: list[AnsweredQuestion],
 ) -> None:
-    topic_ids = sorted({item.topic_id for item in answered if item.topic_id})
+    topic_ids = sorted(
+        {
+            item.topic_id
+            for item in answered
+            if item.topic_id and item.correct is not None
+        }
+    )
     if not topic_ids:
         return
     try:

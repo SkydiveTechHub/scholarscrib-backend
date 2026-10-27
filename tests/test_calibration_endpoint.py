@@ -1,6 +1,9 @@
 from datetime import UTC, datetime
 
+from fastapi import FastAPI
+
 from app.api.admin import calibration
+from app.api.admin import router as admin_router
 from app.api.deps import require_admin
 
 
@@ -18,6 +21,12 @@ def test_route_requires_an_admin():
 def test_route_accepts_the_documented_filters():
     names = {param.name for param in route().dependant.query_params}
     assert names == {"scoringVersion", "subjectId", "since", "source"}
+
+
+def test_calibration_router_is_mounted_in_the_admin_app():
+    api = FastAPI()
+    api.include_router(admin_router)
+    assert "/admin/api/calibration" in api.openapi()["paths"]
 
 
 async def test_handler_passes_filters_to_the_service(monkeypatch):
@@ -46,3 +55,21 @@ async def test_handler_passes_filters_to_the_service(monkeypatch):
         "since": since,
         "source": "LESSON_CHECK",
     }
+
+
+async def test_naive_since_reaches_the_service_as_utc(monkeypatch):
+    seen = {}
+
+    class FakeService:
+        def __init__(self, session, **filters):
+            seen.update(filters)
+
+        async def process(self):
+            return {}
+
+    monkeypatch.setattr(calibration, "GetCalibrationReportService", FakeService)
+    await calibration.admin_calibration(
+        session=object(), admin=object(), since=datetime(2026, 10, 1, 8, 30)
+    )
+    assert seen["since"] == datetime(2026, 10, 1, 8, 30, tzinfo=UTC)
+    assert seen["since"].tzinfo is not None

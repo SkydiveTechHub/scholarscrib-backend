@@ -33,7 +33,11 @@ def upgrade() -> None:
         sa.Column(
             "difficulty",
             postgresql.ENUM(
-                "BASIC", "INTERMEDIATE", "ADVANCED", name="Difficulty", create_type=False
+                "BASIC",
+                "INTERMEDIATE",
+                "ADVANCED",
+                name="Difficulty",
+                create_type=False,
             ),
             nullable=True,
         ),

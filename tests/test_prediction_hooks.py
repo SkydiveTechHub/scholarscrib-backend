@@ -102,7 +102,9 @@ async def test_unanswered_questions_are_not_logged(monkeypatch, recorder):
         },
     ]
     await submit_service()._persist_responses(SimpleNamespace(id="a1"), rows, NOW)
-    assert all(item.correct is None for _source, item in recorder.logged)
+    assert recorder.calls[0] == "predict"
+    assert len(recorder.logged) == 1
+    assert recorder.logged[0][1].correct is None
 
 
 async def test_unmapped_questions_are_passed_with_no_topic(monkeypatch, recorder):
@@ -185,3 +187,20 @@ async def test_lesson_predictions_are_logged_once_before_events_and_deduped(
     logged = {item.question_id: item.correct for _source, item in recorder.logged}
     assert logged == {"q1": True, "q2": False}
     assert {source for source, _item in recorder.logged} == {"LESSON_CHECK"}
+
+
+async def test_lesson_blank_answer_is_logged_unknown_but_event_is_unchanged(
+    monkeypatch, recorder
+):
+    patch_learning(monkeypatch, recorder, [question("q1")])
+    body = TopicAnswersIn(
+        subjectId="maths",
+        topic="algebra",
+        answers=[TopicAnswerIn(questionId="q1")],
+    )
+    result = await learning.RecordTopicAnswersService(
+        FlushSession(), "stu", body
+    ).process()
+    assert result == {"recorded": 1}
+    assert recorder.calls == ["predict", "event"]
+    assert [item.correct for _source, item in recorder.logged] == [None]

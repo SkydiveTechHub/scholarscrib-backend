@@ -465,7 +465,11 @@ class RecordTopicAnswersService:
                     subject_id=subject.id,
                     question_id=question.id,
                     difficulty=question.difficulty,
-                    correct=_bank_answer_correct(item, question),
+                    correct=(
+                        None
+                        if item.selectedAnswer is None and item.firstTry is None
+                        else _bank_answer_correct(item, question)
+                    ),
                     occurred_at=now,
                 )
             )

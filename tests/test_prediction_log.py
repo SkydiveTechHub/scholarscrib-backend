@@ -183,3 +183,15 @@ async def test_report_service_passes_filters_and_scores_rows(monkeypatch):
     }
     assert report["overall"]["n"] == 2
     assert set(report["byDifficulty"]) == {"BASIC", "UNKNOWN"}
+
+
+async def test_record_predictions_skips_topics_with_only_unknown_outcomes(
+    monkeypatch, repository
+):
+    calls = []
+    fake_mastery(monkeypatch, states=STATES, calls=calls)
+    await record_predictions(
+        FakeSession(), "stu", "ASSESSMENT", [answered(correct=None)]
+    )
+    assert calls == []
+    assert repository.added == []

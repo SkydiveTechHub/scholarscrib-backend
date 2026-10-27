@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.deps import require_admin
 from app.api.responses import CalibrationOut
+from app.core.timeutil import as_utc
 from app.database.db import AnSession
 from app.database.models import Admin
 from app.services.learning.prediction_log import GetCalibrationReportService
@@ -25,6 +26,6 @@ async def admin_calibration(
         session,
         scoring_version=scoringVersion,
         subject_id=subjectId,
-        since=since,
+        since=as_utc(since) if since else None,
         source=source,
     ).process()
