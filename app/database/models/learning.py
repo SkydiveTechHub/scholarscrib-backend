@@ -182,3 +182,36 @@ class DailySession(Base):
     generated_at: Mapped[datetime] = mapped_column(
         "generatedAt", DateTime(timezone=True), server_default=func.now()
     )
+
+
+class PredictionLog(Base):
+    """What the mastery engine believed just before a student answered.
+
+    Append-only. Never read by the mastery fold or any student-facing path.
+    """
+
+    __tablename__ = "PredictionLog"
+    __table_args__ = (
+        Index("PredictionLog_version_occurred_idx", "scoringVersion", "occurredAt"),
+        Index("PredictionLog_topic_idx", "topicId"),
+    )
+
+    id: Mapped[str] = id_column()
+    student_id: Mapped[str] = mapped_column(
+        "studentId", ForeignKey("User.id", ondelete="CASCADE")
+    )
+    subject_id: Mapped[str | None] = mapped_column(
+        "subjectId", ForeignKey("Subject.id")
+    )
+    topic_id: Mapped[str] = mapped_column("topicId", ForeignKey("Topic.id"))
+    question_id: Mapped[str] = mapped_column("questionId", String)
+    source: Mapped[str] = mapped_column(String)
+    predicted_p: Mapped[float] = mapped_column("predictedP", Float)
+    confidence: Mapped[float] = mapped_column(Float)
+    acc_observations: Mapped[int] = mapped_column("accObservations", Integer)
+    difficulty: Mapped[str | None] = mapped_column(Difficulty)
+    correct: Mapped[bool] = mapped_column(Boolean)
+    scoring_version: Mapped[int] = mapped_column("scoringVersion", Integer)
+    occurred_at: Mapped[datetime] = mapped_column(
+        "occurredAt", DateTime(timezone=True)
+    )

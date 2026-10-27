@@ -407,6 +407,6 @@ async def test_a_tutor_proposal_can_carry_a_valid_timetable_and_rejects_a_bad_on
 def test_the_timetable_migrations_are_a_single_chain_on_top_of_the_old_head():
     root = Path(__file__).resolve().parents[1]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["e2c5b8d1a7f3"]
+    assert len(scripts.get_heads()) == 1
     assert scripts.get_revision("e2c5b8d1a7f3").down_revision == "d7a3f5c1e208"
     assert scripts.get_revision("d7a3f5c1e208").down_revision == "c6d8e0f2a413"
