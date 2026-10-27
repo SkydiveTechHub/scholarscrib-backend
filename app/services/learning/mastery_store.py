@@ -95,6 +95,8 @@ class GetTopicMasteryService:
                     row.abandon_count = aggregate.abandon_count
                     row.decay_anchor = aggregate.decay_anchor
                     row.last_effort_at = aggregate.last_effort_at
+                    row.evidence_days = aggregate.evidence_days
+                    row.last_evidence_day = aggregate.last_evidence_day
                     row.cursor_seq = aggregate.cursor_seq
                     row.scoring_version = aggregate.scoring_version or SCORING_VERSION
                 await self.session.flush()
@@ -114,6 +116,8 @@ def _aggregate(student_id: str, row: TopicMastery) -> TopicAggregate:
         abandon_count=row.abandon_count,
         decay_anchor=row.decay_anchor,
         last_effort_at=row.last_effort_at,
+        evidence_days=row.evidence_days,
+        last_evidence_day=row.last_evidence_day,
         cursor_seq=row.cursor_seq,
         scoring_version=row.scoring_version,
     )

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+from app.database.models import TopicMastery
 from app.services.learning.evidence import MASTERY_MIN_DAYS, SCORING_VERSION
 from app.services.learning.mastery import (
     LearningEventView,
@@ -10,6 +11,7 @@ from app.services.learning.mastery import (
     is_mastered,
     state_from_aggregate,
 )
+from app.services.learning.mastery_store import _aggregate
 
 NOW = datetime(2026, 10, 27, 12, tzinfo=UTC)
 
@@ -107,3 +109,31 @@ def test_a_stale_version_refolds_and_rebuilds_the_day_count():
 
 def test_a_bare_topic_state_has_no_days():
     assert TopicState(topic_id="t").evidence_days == 0
+
+
+def test_aggregate_reads_the_stored_day_fields():
+    row = TopicMastery(
+        student_id="s",
+        topic_id="t",
+        evidence_days=3,
+        last_evidence_day="2026-10-26",
+    )
+    # unset numeric columns have no Python default until flushed
+    for name in (
+        "acc_outcome",
+        "acc_mass",
+        "acc_observations",
+        "lesson_outcome",
+        "lesson_mass",
+        "lesson_observations",
+        "srs_outcome",
+        "srs_mass",
+        "srs_observations",
+        "abandon_count",
+        "cursor_seq",
+        "scoring_version",
+    ):
+        setattr(row, name, 0)
+    aggregate = _aggregate("s", row)
+    assert aggregate.evidence_days == 3
+    assert aggregate.last_evidence_day == "2026-10-26"

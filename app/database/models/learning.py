@@ -130,6 +130,10 @@ class TopicMastery(Base):
     last_effort_at: Mapped[datetime | None] = mapped_column(
         "lastEffortAt", DateTime(timezone=True)
     )
+    evidence_days: Mapped[int] = mapped_column(
+        "evidenceDays", Integer, default=0, server_default="0"
+    )
+    last_evidence_day: Mapped[str | None] = mapped_column("lastEvidenceDay", String)
     cursor_seq: Mapped[int] = mapped_column("cursorSeq", BigInteger, default=0)
     scoring_version: Mapped[int] = mapped_column("scoringVersion", Integer, default=1)
 
