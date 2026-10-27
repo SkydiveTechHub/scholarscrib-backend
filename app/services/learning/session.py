@@ -30,6 +30,7 @@ from app.services.learning.evidence import (
 from app.services.learning.mastery import (
     TopicState,
     evidence_level,
+    is_mastered,
     topic_retention,
 )
 
@@ -261,7 +262,7 @@ def _pick_practice(
         state = inputs.states.get(topic.id)
         if topic.id in used or state is None:
             continue
-        if not state.available or state.mastery >= TARGET:
+        if not state.available or is_mastered(state):
             continue
         if evidence_level(state) == "NONE":
             continue

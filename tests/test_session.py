@@ -36,6 +36,7 @@ def make_state(
     last_days=None,
     available=True,
     acc=None,
+    evidence_days=0,
 ):
     return TopicState(
         topic_id=topic_id,
@@ -46,6 +47,7 @@ def make_state(
         last_effort_at=None if last_days is None else NOW - timedelta(days=last_days),
         available=available,
         acc_observations=observations if acc is None else acc,
+        evidence_days=evidence_days,
     )
 
 
@@ -293,6 +295,7 @@ def test_learn_reason_cites_a_solid_prerequisite():
             observations=12,
             retention=0.95,
             last_days=2,
+            evidence_days=2,
         ),
         make_state("n"),
     ]
@@ -317,6 +320,7 @@ def test_learn_prefers_subjects_the_student_already_studies():
             observations=15,
             retention=0.95,
             last_days=2,
+            evidence_days=2,
         ),
         make_state("y1"),
     ]
@@ -340,6 +344,7 @@ def test_empty_when_nothing_to_do():
             observations=15,
             retention=0.95,
             last_days=2,
+            evidence_days=2,
         )
     ]
     assert compose_session(make_inputs(topics, states)) == []
@@ -737,3 +742,21 @@ def test_every_session_item_has_exactly_the_contract_keys():
     assert mock[0]["kind"] == "MOCK"
     assert set(engine[0]) == SESSION_ITEM_KEYS
     assert set(mock[0]) == SESSION_ITEM_KEYS
+
+
+def test_practice_still_offered_until_mastered_across_two_days():
+    topics = [make_topic("a")]
+
+    def kinds(days):
+        state = make_state(
+            "a",
+            mastery=85,
+            confidence=0.8,
+            observations=12,
+            last_days=1,
+            evidence_days=days,
+        )
+        return [i["kind"] for i in compose_session(make_inputs(topics, [state]))]
+
+    assert "PRACTICE" in kinds(1)
+    assert "PRACTICE" not in kinds(2)
