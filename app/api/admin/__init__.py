@@ -5,6 +5,7 @@ from app.api.admin.announcements import router as announcements_router
 from app.api.admin.astra import router as astra_router
 from app.api.admin.audit import router as audit_router
 from app.api.admin.auth import router as auth_router
+from app.api.admin.calibration import router as calibration_router
 from app.api.admin.catalogue import (
     curriculums_router,
     subjects_router,
@@ -43,4 +44,5 @@ router.include_router(audit_router)
 router.include_router(stats_router)
 router.include_router(overview_router)
 router.include_router(analytics_router)
+router.include_router(calibration_router)
 router.include_router(rag_router)

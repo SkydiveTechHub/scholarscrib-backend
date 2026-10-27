@@ -868,6 +868,13 @@ class AnalyticsOut(ApiOut):
     funnel: dict
 
 
+class CalibrationOut(ApiOut):
+    overall: dict
+    buckets: list[dict]
+    byEvidence: dict
+    byDifficulty: dict
+
+
 class TutorMessageOut(ApiOut):
     id: str
     role: str
