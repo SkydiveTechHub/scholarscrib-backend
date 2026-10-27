@@ -2,13 +2,14 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from app.core.timeutil import as_utc
+from app.core.timeutil import as_utc, lagos_day_key
 from app.services.learning.evidence import (
     CARD_RETENTION_MIN_CARDS,
     CHANNEL_WEIGHTS,
     CONFIDENCE_FLOOR,
     DECAY_RETENTION,
     GAP_RETENTION,
+    MASTERY_MIN_DAYS,
     MASTERY_MIN_QUESTIONS,
     OBSERVATION_FLOOR,
     PRIOR_OUTCOME,
@@ -42,6 +43,8 @@ class TopicAggregate:
     abandon_count: int = 0
     decay_anchor: datetime | None = None
     last_effort_at: datetime | None = None
+    evidence_days: int = 0
+    last_evidence_day: str | None = None
     cursor_seq: int = 0
     scoring_version: int = SCORING_VERSION
 
@@ -112,6 +115,10 @@ def apply_event(
         aggregate.lesson.observations += 1
     else:
         return
+    day = lagos_day_key(occurred)
+    if day != aggregate.last_evidence_day:
+        aggregate.evidence_days += 1
+        aggregate.last_evidence_day = day
     if kind in EFFORT_KINDS and (
         aggregate.last_effort_at is None or occurred > as_utc(aggregate.last_effort_at)
     ):
@@ -132,6 +139,8 @@ def fold_events(
         aggregate.cursor_seq = 0
         aggregate.decay_anchor = None
         aggregate.last_effort_at = None
+        aggregate.evidence_days = 0
+        aggregate.last_evidence_day = None
         aggregate.scoring_version = SCORING_VERSION
     decay_to(aggregate, now)
     for event in events:
@@ -156,6 +165,7 @@ class TopicState:
     lesson_observations: int = 0
     srs_observations: int = 0
     score: float = PRIOR_OUTCOME
+    evidence_days: int = 0
 
 
 def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState:
@@ -202,6 +212,7 @@ def state_from_aggregate(aggregate: TopicAggregate, now: datetime) -> TopicState
         lesson_observations=aggregate.lesson.observations,
         srs_observations=aggregate.srs.observations,
         score=min(1.0, max(0.0, composite)),
+        evidence_days=aggregate.evidence_days,
     )
 
 
@@ -209,8 +220,13 @@ TopicStateMap = dict[str, TopicState]
 
 
 def is_mastered(state: TopicState) -> bool:
-    """A high score alone is not mastery: it must rest on enough answered questions."""
-    return state.mastery >= TARGET and state.observations >= MASTERY_MIN_QUESTIONS
+    """A high score alone is not mastery: it must rest on enough answers, from at
+    least two different days."""
+    return (
+        state.mastery >= TARGET
+        and state.observations >= MASTERY_MIN_QUESTIONS
+        and state.evidence_days >= MASTERY_MIN_DAYS
+    )
 
 
 def evidence_level(state: TopicState) -> str:

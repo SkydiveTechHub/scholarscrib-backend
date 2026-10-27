@@ -232,7 +232,7 @@ def test_practice_never_shares_a_day_with_the_topics_last_lesson():
 
 def test_a_mastered_topic_is_not_scheduled():
     subjects = [PlannerSubject("maths", "Mathematics", [topic("m1"), topic("m2")])]
-    state = {"m1": TopicState("m1", mastery=95, observations=40)}
+    state = {"m1": TopicState("m1", mastery=95, observations=40, evidence_days=3)}
     output = plan(subjects, state=state)
     assert "m1" not in {
         i.topic_id for i in output["items"] if i.activity_type != "REVISION"
@@ -342,7 +342,7 @@ def test_a_fading_topic_is_revised_without_a_new_lesson():
     due = [
         RevisionDue("m1", "maths", "Topic m1", "Fading from memory, time to refresh it")
     ]
-    state = {"m1": TopicState("m1", mastery=95, observations=40)}
+    state = {"m1": TopicState("m1", mastery=95, observations=40, evidence_days=3)}
     output = plan(subjects, revision_due=due, state=state)
     m1 = [i for i in output["items"] if i.topic_id == "m1"]
     assert m1 and {i.activity_type for i in m1} == {"REVISION"}
