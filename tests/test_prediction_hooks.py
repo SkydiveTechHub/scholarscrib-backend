@@ -67,10 +67,20 @@ async def test_assessment_predictions_are_logged_before_any_event(
 ):
     patch_assessments(monkeypatch, recorder)
     rows = [
-        {"question": question("q1"), "selected": "A", "correct": True,
-         "seconds": 10, "flagged": False},
-        {"question": question("q2"), "selected": "B", "correct": False,
-         "seconds": 12, "flagged": False},
+        {
+            "question": question("q1"),
+            "selected": "A",
+            "correct": True,
+            "seconds": 10,
+            "flagged": False,
+        },
+        {
+            "question": question("q2"),
+            "selected": "B",
+            "correct": False,
+            "seconds": 12,
+            "flagged": False,
+        },
     ]
     await submit_service()._persist_responses(SimpleNamespace(id="a1"), rows, NOW)
     assert recorder.calls[0] == "predict"
@@ -83,8 +93,13 @@ async def test_assessment_predictions_are_logged_before_any_event(
 async def test_unanswered_questions_are_not_logged(monkeypatch, recorder):
     patch_assessments(monkeypatch, recorder)
     rows = [
-        {"question": question("q1"), "selected": None, "correct": False,
-         "seconds": 0, "flagged": False},
+        {
+            "question": question("q1"),
+            "selected": None,
+            "correct": False,
+            "seconds": 0,
+            "flagged": False,
+        },
     ]
     await submit_service()._persist_responses(SimpleNamespace(id="a1"), rows, NOW)
     assert all(item.correct is None for _source, item in recorder.logged)
@@ -93,8 +108,13 @@ async def test_unanswered_questions_are_not_logged(monkeypatch, recorder):
 async def test_unmapped_questions_are_passed_with_no_topic(monkeypatch, recorder):
     patch_assessments(monkeypatch, recorder)
     rows = [
-        {"question": question("q1", topic_id=None), "selected": "A", "correct": True,
-         "seconds": 5, "flagged": False},
+        {
+            "question": question("q1", topic_id=None),
+            "selected": "A",
+            "correct": True,
+            "seconds": 5,
+            "flagged": False,
+        },
     ]
     await submit_service()._persist_responses(SimpleNamespace(id="a1"), rows, NOW)
     assert recorder.logged[0][1].topic_id is None
@@ -134,7 +154,9 @@ def patch_learning(monkeypatch, recorder, bank):
     monkeypatch.setattr(learning.subjects_repository, "by_id_or_slug", fake_subject)
     monkeypatch.setattr(learning.topics_repository, "by_slug", fake_topic)
     monkeypatch.setattr(learning.questions_repository, "many", fake_many)
-    monkeypatch.setattr(learning.RecordTopicAnswersService, "_lesson_checks", fake_checks)
+    monkeypatch.setattr(
+        learning.RecordTopicAnswersService, "_lesson_checks", fake_checks
+    )
 
 
 class FlushSession:
@@ -155,7 +177,9 @@ async def test_lesson_predictions_are_logged_once_before_events_and_deduped(
             TopicAnswerIn(questionId="q2", firstTry=False),
         ],
     )
-    result = await learning.RecordTopicAnswersService(FlushSession(), "stu", body).process()
+    result = await learning.RecordTopicAnswersService(
+        FlushSession(), "stu", body
+    ).process()
     assert result == {"recorded": 2}
     assert recorder.calls == ["predict", "event", "event"]
     logged = {item.question_id: item.correct for _source, item in recorder.logged}

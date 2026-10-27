@@ -169,7 +169,11 @@ async def test_report_service_passes_filters_and_scores_rows(monkeypatch):
 
     monkeypatch.setattr(prediction_log, "prediction_log_repository", ReportRepository())
     report = await prediction_log.GetCalibrationReportService(
-        FakeSession(), scoring_version=3, subject_id="s1", since=NOW, source="ASSESSMENT"
+        FakeSession(),
+        scoring_version=3,
+        subject_id="s1",
+        since=NOW,
+        source="ASSESSMENT",
     ).process()
     assert seen == {
         "scoring_version": 3,

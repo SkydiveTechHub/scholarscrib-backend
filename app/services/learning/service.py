@@ -470,7 +470,9 @@ class RecordTopicAnswersService:
                 )
             )
         # Before any event below exists, so an answer cannot predict itself.
-        await record_predictions(self.session, self.student_id, "LESSON_CHECK", answered)
+        await record_predictions(
+            self.session, self.student_id, "LESSON_CHECK", answered
+        )
 
         recorded = 0
         seen: set[str] = set()

@@ -12,9 +12,7 @@ from app.database.repositories.base import BaseRepository
 class PredictionLogRepository(BaseRepository[PredictionLog]):
     model = PredictionLog
 
-    async def add_many(
-        self, session: AsyncSession, rows: list[PredictionLog]
-    ) -> None:
+    async def add_many(self, session: AsyncSession, rows: list[PredictionLog]) -> None:
         if not rows:
             return
         session.add_all(rows)
@@ -36,7 +34,9 @@ class PredictionLogRepository(BaseRepository[PredictionLog]):
             PredictionLog.difficulty,
         )
         if scoring_version is not None:
-            statement = statement.where(PredictionLog.scoring_version == scoring_version)
+            statement = statement.where(
+                PredictionLog.scoring_version == scoring_version
+            )
         if subject_id is not None:
             statement = statement.where(PredictionLog.subject_id == subject_id)
         if since is not None:

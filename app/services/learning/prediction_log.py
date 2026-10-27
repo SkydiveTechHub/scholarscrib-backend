@@ -74,7 +74,9 @@ async def record_predictions(
         return
     try:
         async with session.begin_nested():
-            states = await GetTopicMasteryService(session, student_id, topic_ids).process()
+            states = await GetTopicMasteryService(
+                session, student_id, topic_ids
+            ).process()
             rows = build_rows(student_id, source, answered, states)
             await prediction_log_repository.add_many(session, rows)
     except Exception:

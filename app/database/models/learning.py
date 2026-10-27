@@ -212,6 +212,4 @@ class PredictionLog(Base):
     difficulty: Mapped[str | None] = mapped_column(Difficulty)
     correct: Mapped[bool] = mapped_column(Boolean)
     scoring_version: Mapped[int] = mapped_column("scoringVersion", Integer)
-    occurred_at: Mapped[datetime] = mapped_column(
-        "occurredAt", DateTime(timezone=True)
-    )
+    occurred_at: Mapped[datetime] = mapped_column("occurredAt", DateTime(timezone=True))
