@@ -621,6 +621,30 @@ class SubmitAttemptService:
     async def _persist_responses(
         self, attempt: AssessmentAttempt, response_rows: list[dict], now
     ) -> None:
+        from app.services.learning.prediction_log import (
+            AnsweredQuestion,
+            record_predictions,
+        )
+
+        # Before any event below exists, so an answer cannot predict itself.
+        # A blank is not evidence of what the student knew: only answered
+        # questions are scored.
+        await record_predictions(
+            self.session,
+            self.student_id,
+            "ASSESSMENT",
+            [
+                AnsweredQuestion(
+                    topic_id=item["question"].topic_id,
+                    subject_id=item["question"].subject_id,
+                    question_id=item["question"].id,
+                    difficulty=item["question"].difficulty,
+                    correct=None if item["selected"] is None else item["correct"],
+                    occurred_at=now,
+                )
+                for item in response_rows
+            ],
+        )
         for item in response_rows:
             await responses_repository.add(
                 self.session,

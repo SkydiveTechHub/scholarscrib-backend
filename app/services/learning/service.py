@@ -39,6 +39,7 @@ from app.services.learning.achievement_progress import progress_for, target_for
 from app.services.learning.checkpoint import sanitise_checkpoint
 from app.services.learning.evidence import PRETEST_PASS
 from app.services.learning.library_shelf import library_shelf
+from app.services.learning.prediction_log import AnsweredQuestion, record_predictions
 
 STATUS_RANK = {"NOT_STARTED": 0, "IN_PROGRESS": 1, "COMPLETED": 2}
 
@@ -395,6 +396,14 @@ def performance_letter(percentage: float | None) -> str | None:
     return coarse_grade(percentage)
 
 
+def _bank_answer_correct(item, question) -> bool:
+    return (
+        str(item.selectedAnswer) == str(question.correct_answer)
+        if item.selectedAnswer is not None
+        else bool(item.firstTry)
+    )
+
+
 class RecordTopicAnswersService:
     """Turns answers to a topic's practice questions into mastery evidence.
 
@@ -441,20 +450,37 @@ class RecordTopicAnswersService:
             self.session, self.student_id, topic.id, "LESSON_BLOCK_COMPLETED"
         )
 
+        now = utcnow()
+        first_answers = {}
+        for item in self.body.answers:
+            first_answers.setdefault(item.questionId, item)
+        answered = []
+        for item in first_answers.values():
+            question = bank.get(item.questionId)
+            if question is None:
+                continue
+            answered.append(
+                AnsweredQuestion(
+                    topic_id=topic.id,
+                    subject_id=subject.id,
+                    question_id=question.id,
+                    difficulty=question.difficulty,
+                    correct=_bank_answer_correct(item, question),
+                    occurred_at=now,
+                )
+            )
+        # Before any event below exists, so an answer cannot predict itself.
+        await record_predictions(self.session, self.student_id, "LESSON_CHECK", answered)
+
         recorded = 0
         seen: set[str] = set()
-        now = utcnow()
         for item in self.body.answers:
             if item.questionId in seen:
                 continue
             seen.add(item.questionId)
             question = bank.get(item.questionId)
             if question is not None:
-                correct = (
-                    str(item.selectedAnswer) == str(question.correct_answer)
-                    if item.selectedAnswer is not None
-                    else bool(item.firstTry)
-                )
+                correct = _bank_answer_correct(item, question)
                 await learning_events_repository.add(
                     self.session,
                     LearningEvent(
