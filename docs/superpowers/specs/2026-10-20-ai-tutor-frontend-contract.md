@@ -1,6 +1,6 @@
 # AI Tutor — Frontend Contract
 
-Date: 2026-10-20
+Date: 2026-10-28
 
 > **Full guide:** see [`2026-10-21-ai-tutor-frontend-integration.md`](./2026-10-21-ai-tutor-frontend-integration.md) for TypeScript types, SSE client sketch, UX recipes, and error handling. Admin console chat is [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md).
 
@@ -18,6 +18,17 @@ Date: 2026-10-20
 4. Follow-ups: `POST /api/tutor/threads/{id}/messages` **or** SSE stream.
 5. Archive: `DELETE /api/tutor/threads/{id}`.
 
+### Thread shape — new fields
+
+Every `TutorThread` now includes:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `examType` | `"WAEC" \| "JAMB" \| "NECO" \| "CUSTOM" \| null` | Snapshotted from the Question at creation; `null` if no `questionId` |
+| `examYear` | `number \| null` | Exam year, e.g. `2023`; `null` if not set on the question |
+
+Use these to group or label question-scoped threads (e.g. "WAEC 2023") in the sidebar without a separate lookup.
+
 ### Practice deep-link
 
 ```json
@@ -29,6 +40,18 @@ Date: 2026-10-20
   "wrongAnswerContext": "B"
 }
 ```
+
+### Question-scoped session resume (stream only)
+
+When `questionId` is sent to `POST /api/tutor/threads/stream` and the student already has a thread for that question, the API **resumes the existing thread** instead of creating a new one. The `firstMessage` is appended as a new turn.
+
+The SSE flow is identical in both cases. Read `threadId` from the `streamStarted` event — it may be an existing thread id:
+
+```json
+{ "streamId": "...", "runId": "...", "threadId": "existing-or-new-id", "userMessageId": "...", "threadTitle": "..." }
+```
+
+Always navigate to `/tutor/{threadId}` from `streamStarted`, not from an assumed new-thread id. The sync endpoint (`POST /api/tutor/threads`) always creates a new thread.
 
 ### Lesson drawer
 
@@ -67,11 +90,11 @@ Events:
 
 | event | data |
 |-------|------|
-| `streamStarted` | `{ "streamId", "threadId", "userMessageId" }` |
-| `userMessage` | message object (+ `streamId`) |
+| `streamStarted` | `{ "streamId", "runId", "threadId", "userMessageId", "threadTitle" }` — `threadId` may be an existing thread when resuming a question-scoped session |
+| `userMessage` | message object (+ `streamId`, `runId`) |
 | `token` | `{ "text": "..." }` |
 | `assistantMessage` | full message with `groundedOn` |
-| `done` | `{ "ok": true\|false, "cancelled": bool, "streamId" }` |
+| `done` | `{ "ok": true\|false, "cancelled": bool, "streamId", "runId" }` |
 
 Chitchat / curriculum-SQL turns may emit `assistantMessage` without tokens.
 

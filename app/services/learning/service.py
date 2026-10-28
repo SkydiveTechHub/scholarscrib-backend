@@ -29,13 +29,18 @@ from app.database.repositories.learning import (
     metrics_repository,
     progress_repository,
     student_achievements_repository,
+    xp_repository,
 )
 from app.database.repositories.question import questions_repository
 from app.domain import can
 from app.services.assessments.grading import coarse_grade
 from app.services.auth.rules import current_streak
 from app.services.cloudinary_delivery import file_link, is_authenticated_url
-from app.services.learning.achievement_progress import progress_for, target_for
+from app.services.learning.achievement_progress import (
+    category_for,
+    progress_for,
+    target_for,
+)
 from app.services.learning.checkpoint import sanitise_checkpoint
 from app.services.learning.evidence import PRETEST_PASS
 from app.services.learning.library_shelf import library_shelf
@@ -237,6 +242,7 @@ class GetAchievementsService:
                     "criteriaType": item.criteria_type,
                     "criteriaValue": item.criteria_value,
                     "iconUrl": item.icon_url,
+                    "category": category_for(item.criteria_type),
                     "earned": item.id in earned,
                     "earnedAt": (
                         earned[item.id].isoformat() if item.id in earned else None
@@ -318,9 +324,23 @@ class AchievementMeasure:
                 self.session, self.student_id, 70
             )
         if criteria == "streak_days":
-            rows = await attempts_repository.completed_at(self.session, self.student_id)
-            days = {lagos_day_key(moment) for moment in rows if moment}
+            from app.services.gamification.service import study_days_for
+
+            days = await study_days_for(self.session, self.student_id)
             return current_streak(days, lagos_day_key())
+        if criteria == "questions_corrected":
+            return await xp_repository.count_event(
+                self.session, self.student_id, "answer_corrected"
+            )
+        if criteria == "mock_improvement":
+            from app.services.gamification.improvement import ever_improved
+
+            history = await xp_repository.mock_history(self.session, self.student_id)
+            return 1 if ever_improved(history) else 0
+        if criteria == "cards_reviewed":
+            return await learning_events_repository.count_kind(
+                self.session, self.student_id, "CARD_REVIEWED"
+            )
         if criteria == "subject_mastery":
             return await self._strong_subjects()
         return 0

@@ -94,6 +94,8 @@ def _thread_out(thread: ChatThread, messages: list[ChatMessage] | None = None) -
         "topicId": thread.topic_id,
         "questionId": thread.question_id,
         "lessonId": thread.lesson_id,
+        "examType": thread.exam_type,
+        "examYear": thread.exam_year,
         "archived": thread.archived,
         "activeRun": visible_active_run(thread),
         "createdAt": thread.created_at.isoformat() if thread.created_at else None,
@@ -192,7 +194,7 @@ class CreateTutorThreadService:
 
     async def process(self) -> dict:
         require_rag()
-        await self._validate_refs()
+        question = await self._validate_refs()
         title = self.body.title
         first = (self.body.firstMessage or "").strip()
         wrong = (self.body.wrongAnswerContext or "").strip()
@@ -208,6 +210,8 @@ class CreateTutorThreadService:
             topic_id=self.body.topicId,
             question_id=self.body.questionId,
             lesson_id=self.body.lessonId,
+            exam_type=question.exam_type if question else None,
+            exam_year=question.exam_year if question else None,
         )
         await chat_threads_repository.add(self.session, thread, flush=True)
 
@@ -243,13 +247,15 @@ class CreateTutorThreadService:
             out["assistantMessage"] = assistant_payload
         return out
 
-    async def _validate_refs(self) -> None:
+    async def _validate_refs(self):
+        """Validate all referenced IDs and return the Question if one was provided."""
         if self.body.topicId:
             topic = await topics_repository.by_id(self.session, self.body.topicId)
             if topic is None:
                 raise ApiError(400, "Unknown topic")
             if self.body.subjectId and topic.subject_id != self.body.subjectId:
                 raise ApiError(400, "Topic does not belong to that subject")
+        question = None
         if self.body.questionId:
             question = await questions_repository.by_id(
                 self.session, self.body.questionId
@@ -260,6 +266,7 @@ class CreateTutorThreadService:
             lesson = await lessons_repository.by_id(self.session, self.body.lessonId)
             if lesson is None:
                 raise ApiError(400, "Unknown lesson")
+        return question
 
 
 class ListTutorThreadsService:
@@ -756,21 +763,40 @@ async def start_message_run(
     return _spawn(run, _produce_tutor_run(run, user_id, thread.id, text_value))
 
 
-def start_new_thread_run(body: TutorThreadCreateIn, user_id: str) -> TutorRun:
-    run = hub.create(user_id, None, cuid())
+def start_new_thread_run(
+    body: TutorThreadCreateIn,
+    user_id: str,
+    *,
+    existing_thread_id: str | None = None,
+) -> TutorRun:
+    """Spawn a background run for a new (or resumed) thread stream.
+
+    When ``existing_thread_id`` is provided the run attaches to that thread
+    immediately instead of creating a fresh one inside the background task.
+    """
+    run = hub.create(user_id, existing_thread_id, cuid())
     return _spawn(
         run,
-        _produce_tutor_run(run, user_id, None, body.firstMessage or "", create=body),
+        _produce_tutor_run(
+            run,
+            user_id,
+            existing_thread_id,
+            body.firstMessage or "",
+            create=body if existing_thread_id is None else None,
+        ),
     )
 
 
 async def prepare_new_thread_stream(
     session: AsyncSession, user_id: str, body: TutorThreadCreateIn
-) -> TutorThreadCreateIn:
+) -> tuple[TutorThreadCreateIn, str | None]:
     """Validate a create-and-stream request before the response starts.
 
-    Nothing is written: the thread is created by the stream itself, together
-    with the student's first message.
+    Returns ``(body, existing_thread_id)``.  When the student already has an
+    open thread for the same question the caller should resume that thread
+    rather than creating a new one; ``existing_thread_id`` will be non-None in
+    that case.  Nothing is written to the database here — the thread is created
+    (or the existing one reused) by the background task that handles the stream.
     """
     require_rag()
     if not (body.firstMessage or "").strip():
@@ -797,7 +823,19 @@ async def prepare_new_thread_stream(
             }
         )
     await CreateTutorThreadService(session, user_id, body)._validate_refs()
-    return body
+
+    # Check whether the student already has a thread for this question so the
+    # stream can resume it instead of creating a duplicate.
+    existing_thread_id: str | None = None
+    if body.questionId:
+        existing = await chat_threads_repository.for_user_question(
+            session, user_id, body.questionId
+        )
+        if existing is not None:
+            _reject_if_running(existing)
+            existing_thread_id = existing.id
+
+    return body, existing_thread_id
 
 
 async def _produce_tutor_run(
@@ -836,6 +874,14 @@ async def _produce_tutor_run(
                     raise ApiError(404, "Thread not found")
                 thread = await _owned_thread(session, user_id, thread_id)
             else:
+                # Fetch question to snapshot exam context on the new thread.
+                q_exam_type: str | None = None
+                q_exam_year: int | None = None
+                if create.questionId:
+                    q = await questions_repository.by_id(session, create.questionId)
+                    if q is not None:
+                        q_exam_type = q.exam_type
+                        q_exam_year = q.exam_year
                 thread = ChatThread(
                     id=cuid(),
                     user_id=user_id,
@@ -844,6 +890,8 @@ async def _produce_tutor_run(
                     topic_id=create.topicId,
                     question_id=create.questionId,
                     lesson_id=create.lessonId,
+                    exam_type=q_exam_type,
+                    exam_year=q_exam_year,
                 )
                 await chat_threads_repository.add(session, thread, flush=True)
                 hub.bind(run, thread.id)

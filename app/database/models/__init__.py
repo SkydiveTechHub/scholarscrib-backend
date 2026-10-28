@@ -44,6 +44,7 @@ from app.database.models.identity import (
 from app.database.models.jamb import JambCombination
 from app.database.models.learning import (
     Achievement,
+    DailyQuestSet,
     DailySession,
     LearningEvent,
     PerformanceMetric,
@@ -51,6 +52,7 @@ from app.database.models.learning import (
     StudentAchievement,
     StudentProgress,
     TopicMastery,
+    XpTransaction,
 )
 from app.database.models.notification import (
     Announcement,
@@ -121,6 +123,8 @@ __all__ = [
     "ReminderLog",
     "School",
     "StudentAchievement",
+    "DailyQuestSet",
+    "XpTransaction",
     "StudentProgress",
     "StudyPlan",
     "StudyPlanItem",

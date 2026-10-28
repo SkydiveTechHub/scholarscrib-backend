@@ -18,6 +18,7 @@ from app.api.responses import (
 from app.api.schemas import DeckIn, EnrollIn, LessonRef, ReviewIn
 from app.core.rate_limit import hit
 from app.database.db import AnSession, get_session
+from app.services.learning import AwardAchievementsService
 from app.services.planner import MarkStudyPlanItemService
 from app.services.srs import (
     CreateFlashcardDeckService,
@@ -132,6 +133,12 @@ async def _mark_revision(student_id: str) -> None:
     async with get_session() as session:
         try:
             await MarkStudyPlanItemService(session, student_id, "REVISION").process()
+            await session.commit()
+        except Exception:
+            await session.rollback()
+        # Flashcard reviews count toward revision badges; best-effort.
+        try:
+            await AwardAchievementsService(session, student_id).process()
             await session.commit()
         except Exception:
             await session.rollback()

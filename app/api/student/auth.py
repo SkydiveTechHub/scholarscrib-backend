@@ -95,6 +95,7 @@ async def session_view(student: Annotated[StudentPrincipal, Depends(require_stud
             "tier": student.tier,
             "image": student.image,
             "deviceId": student.device_id,
+            "emailVerified": student.email_verified,
         }
     }
 

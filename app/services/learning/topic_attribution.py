@@ -146,7 +146,7 @@ class AttributeAttemptTopicsService:
         if response is None:
             return {}
 
-        threshold = settings.jev_confidence_threshold
+        threshold = settings.jev_attribution_threshold
         accepted: dict[str, str] = {}
         for question_id, answer in (response.choices or {}).items():
             choice = getattr(answer, "choice", None)
@@ -195,7 +195,25 @@ async def attribute_attempt_topics_safe(
 ) -> None:
     """Fail-open wrapper for BackgroundTasks."""
     try:
-        await AttributeAttemptTopicsService(session, student_id, attempt_id).process()
+        result = await AttributeAttemptTopicsService(
+            session, student_id, attempt_id
+        ).process()
+        if result.get("skipped"):
+            logger.info(
+                "Topic attribution skipped for attempt %s (student %s): %s",
+                attempt_id,
+                student_id,
+                result["skipped"],
+            )
+        else:
+            logger.info(
+                "Topic attribution complete for attempt %s (student %s): "
+                "%d attributed, topics=%s",
+                attempt_id,
+                student_id,
+                result.get("attributed", 0),
+                result.get("topicIds", []),
+            )
     except Exception:  # noqa: BLE001
         logger.exception(
             "Topic attribution failed for attempt %s (student %s)",

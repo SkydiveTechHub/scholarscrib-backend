@@ -74,11 +74,16 @@ async def create_thread_stream(
 ):
     """Create a thread with its first message and stream the reply.
 
-    Nothing exists until the first message arrives; the ``streamStarted``
-    event carries the new ``threadId``.
+    When the student already has a thread for the same question the existing
+    thread is resumed instead of creating a duplicate.  The ``streamStarted``
+    event always carries the authoritative ``threadId`` (new or existing).
     """
-    prepared = await prepare_new_thread_stream(session, student.id, body)
-    run = start_new_thread_run(prepared, student.id)
+    prepared, existing_thread_id = await prepare_new_thread_stream(
+        session, student.id, body
+    )
+    run = start_new_thread_run(
+        prepared, student.id, existing_thread_id=existing_thread_id
+    )
     return await sse_response(run.iter_after(0))
 
 

@@ -33,6 +33,20 @@ class ChatThreadRepository(BaseRepository[ChatThread]):
             session, *filters, order_by=(ChatThread.updated_at.desc(),)
         )
 
+    async def for_user_question(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        question_id: str,
+    ) -> ChatThread | None:
+        """Return the most recent non-archived thread for this user + question."""
+        return await self.first(
+            session,
+            ChatThread.user_id == user_id,
+            ChatThread.question_id == question_id,
+            ChatThread.archived.is_(False),
+        )
+
 
 class ChatMessageRepository(BaseRepository[ChatMessage]):
     model = ChatMessage

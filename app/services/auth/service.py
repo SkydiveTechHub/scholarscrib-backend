@@ -35,6 +35,7 @@ from app.database.repositories.notification import (
 )
 from app.database.repositories.planner import plans_repository
 from app.domain import DEVICE_LIMIT, NIGERIAN_STATES, PHONE_PATTERN, TIER_RANK
+from app.services.auth.otp import StudentOTPService
 from app.services.auth.rules import is_session_revoked
 from app.services.billing import RefreshUserTierService
 from app.services.billing.rules import resolve_live_tier
@@ -81,6 +82,7 @@ class RegisterStudentService:
         email = self.body.email.strip().lower()
         await self._ensure_available(email)
         user = await self._create(email)
+        await StudentOTPService(self.session).send_otp(email)
         return self._payload(user)
 
     def _limit(self) -> None:
@@ -603,6 +605,7 @@ class GoogleSignInService:
             last_name=self.profile.get("family_name"),
             image=self.profile.get("picture"),
             role="STUDENT",
+            email_verified=utcnow(),
         )
         await users_repository.add(self.session, created, flush=True)
         return created

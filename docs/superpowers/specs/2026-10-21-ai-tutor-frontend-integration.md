@@ -1,6 +1,6 @@
 # Astra AI Tutor — Frontend Integration Guide
 
-Date: 2026-10-21  
+Date: 2026-10-28  
 Audience: Next.js / student app engineers wiring the chat UI to the ScholarsCrib API.
 
 This guide is the implementation reference for the student tutor surface. The shorter contract note lives in [`2026-10-20-ai-tutor-frontend-contract.md`](./2026-10-20-ai-tutor-frontend-contract.md). Admin console chat is a separate API: [`2026-10-22-admin-astra-frontend-integration.md`](./2026-10-22-admin-astra-frontend-integration.md).
@@ -179,6 +179,13 @@ type TutorThread = {
   topicId: string | null;
   questionId: string | null;
   lessonId: string | null;
+  /**
+   * Snapshotted from the Question at thread-creation time.
+   * Use for grouping / filtering threads by exam context without
+   * a separate question lookup.  `null` when the thread has no questionId.
+   */
+  examType: "WAEC" | "JAMB" | "NECO" | "CUSTOM" | null;
+  examYear: number | null;
   archived: boolean;
   /** `null` when the last turn is already on `messages`. */
   activeRun: TutorActiveRun;
@@ -339,8 +346,9 @@ Tool stream copy for this read: “Checking your topic standings…”.
 1. `GET /api/tutor/threads` → list by `updatedAt` (server order).
 2. Show `title` (auto-generated from first message if omitted).
 3. Optional chips from `subjectId` / `lessonId` / `questionId` if you resolve names client-side.
-4. Opening a row → `GET /api/tutor/threads/{id}` for `messages[]`.
-5. Archive → `DELETE` then remove from list (or keep under “Archived”).
+4. `examType` and `examYear` are available on every thread object — use them to group or label question-scoped threads (e.g. "WAEC 2023") without a separate API call.
+5. Opening a row → `GET /api/tutor/threads/{id}` for `messages[]`.
+6. Archive → `DELETE` then remove from list (or keep under "Archived").
 
 List payload does **not** include messages — keep list light.
 
@@ -362,7 +370,7 @@ Or omit title and send `firstMessage` (title auto-generated).
 **Recommended for streaming UX:** create with **no** `firstMessage`, then immediately `POST .../messages/stream` for the first user text.  
 `firstMessage` on create runs the graph **synchronously** (no SSE).
 
-#### B. Practice “why was I wrong?” deep-link
+#### B. Practice "why was I wrong?" deep-link
 
 ```json
 {
@@ -377,9 +385,34 @@ Or omit title and send `firstMessage` (title auto-generated).
 Server may insert a hidden **`system`** message with the wrong option. In the transcript:
 
 - Prefer **hiding** `role === "system"` in the bubble list, or
-- Show a one-line context banner (“Reviewing your answer: B”).
+- Show a one-line context banner ("Reviewing your answer: B").
 
 Scope IDs must be valid or create returns `400` (`Unknown topic` / `Unknown question` / …).
+
+#### Question-scoped session resume
+
+When `questionId` is included in a **stream** create request (`POST /api/tutor/threads/stream`) and the student already has a non-archived thread for that question, the API **resumes the existing thread** instead of creating a new one. The `firstMessage` is appended to the existing conversation and streamed as a new turn.
+
+From the frontend perspective the SSE flow is identical. The only difference is in the `streamStarted` event:
+
+```json
+{
+  "streamId": "run-xyz",
+  "runId": "run-xyz",
+  "threadId": "existing-thread-id",   // ← existing thread, not a new one
+  "userMessageId": "msg-abc",
+  "threadTitle": "Why was my answer wrong?"
+}
+```
+
+**What to do with this:**
+
+- Always use `threadId` from `streamStarted` as the canonical thread — do not assume a new thread was created.
+- If you navigated to a "new thread" route (e.g. `/tutor/new`), redirect to `/tutor/{threadId}` once `streamStarted` fires.
+- The resumed thread already contains earlier messages. `GET /api/tutor/threads/{threadId}` returns the full history.
+- **Sync create** (`POST /api/tutor/threads`, no stream) always creates a new thread even when `questionId` matches an existing one. The resume logic only applies to the stream endpoint.
+
+This behaviour ensures the student builds a single coherent conversation around each practice question rather than accumulating duplicate threads.
 
 #### C. Lesson drawer / classroom
 
@@ -779,7 +812,7 @@ GET  /api/tutor/threads/{id}
 POST /api/tutor/threads/{id}/messages/stream { content }
 ```
 
-### Recipe 3 — From a wrong practice answer
+### Recipe 3 — From a wrong practice answer (sync, no typing UX)
 
 ```
 POST /api/tutor/threads {
@@ -790,7 +823,8 @@ POST /api/tutor/threads {
 → navigate to /tutor/{threadId} with messages already filled
 ```
 
-(If you need typing UX on this path, create without `firstMessage`, insert your own banner for the wrong option, then stream.)
+Note: sync create always opens a **new** thread even if one exists for that question.  
+Use Recipe 5 if you want the resume-session behaviour and a typing UX.
 
 ### Recipe 4 — From a lesson
 
@@ -798,6 +832,27 @@ POST /api/tutor/threads {
 POST /api/lessons/{lessonId}/tutor { firstMessage? }
 → open thread drawer / route
 ```
+
+### Recipe 5 — From a practice question with resume-session (stream)
+
+The student taps "Ask Astra" on a practice question. If they have asked about this question before, the existing conversation is resumed; otherwise a new one is created. The frontend does not need to pre-check either way.
+
+```
+POST /api/tutor/threads/stream {
+  questionId, subjectId, topicId,
+  firstMessage: "Can you explain this question?"
+}
+
+→ SSE: streamStarted { threadId, runId, userMessageId, threadTitle }
+   // threadId is the canonical id — new or existing
+
+→ navigate to /tutor/{threadId}
+   (redirect from /tutor/new if that was your placeholder route)
+
+→ SSE: token … assistantMessage … done
+```
+
+If the student already has a conversation for that question, earlier messages will be in `GET /api/tutor/threads/{threadId}` history, giving them full context.
 
 ---
 
@@ -826,10 +881,14 @@ POST /api/lessons/{lessonId}/tutor { firstMessage? }
 - [ ] Feedback posts on assistant id  
 - [ ] 429 disables send  
 - [ ] Abort mid-stream recovers via GET thread  
-- [ ] “What am I weak at?” uses `get_topic_standings` (tool event, no approval card)  
+- [ ] "What am I weak at?" uses `get_topic_standings` (tool event, no approval card)  
 - [ ] Performance page can load `GET /api/performance/topics` with status / subject filters  
 - [ ] Unsafe / jailbreak prompts still return a normal `assistantMessage` (canned refuse or support), no new SSE event type  
 - [ ] If a tool is blocked by safety checks, the stream may show a failed `tool` event; the turn still completes  
+- [ ] `TutorThread` renders `examType` + `examYear` labels correctly when non-null; null is handled gracefully  
+- [ ] Stream create with `questionId` on a returning question → `streamStarted.threadId` is an existing id; UI navigates to that thread and loads prior history  
+- [ ] Stream create with `questionId` on a first visit → `streamStarted.threadId` is a new id; thread has no prior messages  
+- [ ] Placeholder route (e.g. `/tutor/new`) redirects to `/tutor/{threadId}` once `streamStarted` fires  
 
 ### Guardrails (frontend note)
 
