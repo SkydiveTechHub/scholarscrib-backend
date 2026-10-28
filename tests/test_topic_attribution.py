@@ -9,12 +9,21 @@ import pytest
 
 from app.services.learning import topic_attribution as attr_mod
 from app.services.learning.topic_attribution import (
+    MAX_TOPICS_PER_BATCH,
     AttributeAttemptTopicsService,
     attribute_attempt_topics_safe,
 )
 
 
 def _choice_batch(mapping: dict[str, tuple[str, float]]):
+    """Build a fake ClassifierResponse.
+
+    The new per-question call always uses the key ``"topic"`` for the single
+    Choice in each request, so ``mapping`` should be ``{"topic": (choice_id,
+    confidence)}``.  Tests that were written against the old batch shape (keyed
+    by question ID) still work by passing a single-entry dict; the helper
+    ignores the key name and just reads the value.
+    """
     choices = {
         key: SimpleNamespace(
             type="choice",
@@ -178,6 +187,8 @@ async def test_rejects_none_and_low_confidence(monkeypatch, jev_on):
         "for_subject",
         AsyncMock(return_value=[topic]),
     )
+    # Single batched call; q1 returns "none", q2 returns below-threshold.
+    # Both are rejected. Response is keyed by question ID.
     monkeypatch.setattr(
         attr_mod,
         "decide_batch",
@@ -280,7 +291,7 @@ async def test_rejects_confidence_just_below_attribution_threshold(monkeypatch, 
     )
     topic = SimpleNamespace(id="topic-grammar", title="Grammar", slug="grammar")
     subject = SimpleNamespace(id="eng", name="English")
-    batch = _choice_batch({"q1": ("topic-grammar", 0.54)})
+    batch = _choice_batch({"topic": ("topic-grammar", 0.54)})
 
     _common_patches(monkeypatch, jev_on, question, subject, topic, batch)
     update_events = AsyncMock()
@@ -488,3 +499,42 @@ async def test_after_submit_runs_attribution_even_when_plan_mark_fails(monkeypat
     await _after_submit("student-1", "attempt-1", "TOPIC_QUIZ", None)
 
     assert attribution_called["n"] == 1
+
+
+async def test_max_topics_per_batch_caps_criteria(monkeypatch, jev_on):
+    """_map_chunk only sends MAX_TOPICS_PER_BATCH topics to Jev even when
+    the subject has more distinct topics available."""
+    n = MAX_TOPICS_PER_BATCH + 5
+    topics = [SimpleNamespace(id=f"t{i}", title=f"Topic {i}") for i in range(n)]
+
+    captured_criteria: dict = {}
+
+    async def fake_decide_batch(state, questions):
+        first_q = next(iter(questions.values()))
+        captured_criteria["count"] = len(first_q.criteria)
+        return SimpleNamespace(choices={})
+
+    monkeypatch.setattr(attr_mod, "decide_batch", fake_decide_batch)
+
+    svc = AttributeAttemptTopicsService.__new__(AttributeAttemptTopicsService)
+    svc.session = MagicMock()
+    svc.student_id = "student-1"
+    svc.attempt_id = "attempt-1"
+
+    question = SimpleNamespace(
+        id="q1",
+        subject_id="maths",
+        topic_id=None,
+        question_text="What is 2+2?",
+        options={},
+    )
+
+    await svc._map_chunk(
+        subject_name="Mathematics",
+        class_level="SS2",
+        topics=topics,
+        questions=[question],
+    )
+
+    # criteria includes the capped topics + the "none" option
+    assert captured_criteria["count"] == MAX_TOPICS_PER_BATCH + 1

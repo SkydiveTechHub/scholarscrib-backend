@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, cast
+from typing import Any
 
 from langchain_typesafe import Choice
 from langchain_typesafe.types import Question
@@ -28,12 +28,34 @@ from app.services.learning.mastery_store import GetTopicMasteryService
 CHUNK_SIZE = 20
 MIN_CLASS_TOPICS = 5
 NONE_OPTION = "none"
-TOPIC_INSTRUCTIONS = (
-    "Which curriculum topic does this exam question primarily test? "
-    "Use `topics` as the closed set of allowed topics. "
-    "Match the question in `questions` under the same id as this Choice. "
-    "Pick `none` only when no listed topic is a reasonable fit."
-)
+
+# Maximum number of topics to present to Jev in one criteria set.
+# A large criteria set spreads probability thinly; cap it so each option
+# has enough mass for the attribution threshold to be meaningful.
+MAX_TOPICS_PER_BATCH = 20
+
+
+def _topic_instructions(
+    question_text: str, options: dict | None
+) -> dict[str, JsonValue]:
+    """Per-question instructions object for the topic Choice.
+
+    Each exam question's text and options live in that question's own Choice
+    instructions — not in a shared state dict keyed by ID.  This avoids the
+    Jev indirection failure mode: the model reads exactly the right content
+    without needing to look up its own ID in a separate lookup table.
+    """
+    instr: dict[str, JsonValue] = {
+        "task": (
+            "Which curriculum topic does this exam question primarily test? "
+            "Choose from the `criteria`. "
+            "Pick `none` only when no listed topic is a reasonable fit."
+        ),
+        "question": question_text[:2000],
+    }
+    if options:
+        instr["options"] = options
+    return instr
 
 
 class AttributeAttemptTopicsService:
@@ -119,26 +141,34 @@ class AttributeAttemptTopicsService:
         topics: list[Topic],
         questions: list,
     ) -> dict[str, str]:
-        criteria: dict[str, JsonValue] = {topic.id: topic.title for topic in topics}
+        # Cap the criteria set so confidence does not spread too thin.
+        # Topics are already deduplicated by title; if more remain than the
+        # cap allows, keep the first MAX_TOPICS_PER_BATCH (curriculum order).
+        capped = topics[:MAX_TOPICS_PER_BATCH]
+        criteria: dict[str, JsonValue] = {topic.id: topic.title for topic in capped}
         criteria[NONE_OPTION] = "No topic in the curriculum list matches this question"
 
-        known_ids = {question.id for question in questions}
-        state = {
+        # Shared state holds only context that is identical for every question
+        # in this chunk — subject name and class level.  Putting the topic list
+        # here alongside criteria would duplicate it and add irrelevant noise
+        # (jaggedness: "large state full of irrelevant detail costs accuracy").
+        state: dict[str, JsonValue] = {
             "subject": subject_name,
             "classLevel": class_level,
-            "topics": [{"id": topic.id, "title": topic.title} for topic in topics],
-            "questions": {
-                question.id: {
-                    "text": (question.question_text or "")[:2000],
-                    "options": question.options,
-                }
-                for question in questions
-            },
         }
+
+        # Each exam question gets its own Choice entry in the batch.
+        # Its text and options go in that question's `instructions` object —
+        # not in a shared lookup dict keyed by ID (which would require
+        # indirection, a documented Jev failure mode).
+        # All questions share one API call: same state, parallel answers,
+        # no extra cost (parallel_questions cookbook: 12x cheaper than N calls).
         choice_questions: dict[str, Question] = {
             question.id: Choice(
-                instructions=TOPIC_INSTRUCTIONS,
-                criteria=cast(dict[str, JsonValue], criteria),
+                instructions=_topic_instructions(
+                    question.question_text or "", question.options
+                ),
+                criteria=criteria,
             )
             for question in questions
         }
@@ -146,17 +176,15 @@ class AttributeAttemptTopicsService:
         if response is None:
             return {}
 
+        known_ids = {question.id for question in questions}
         threshold = settings.jev_attribution_threshold
         accepted: dict[str, str] = {}
         for question_id, answer in (response.choices or {}).items():
+            if question_id not in known_ids:
+                continue
             choice = getattr(answer, "choice", None)
             confidence = float(getattr(answer, "confidence", 0) or 0)
-            if (
-                not choice
-                or choice == NONE_OPTION
-                or confidence < threshold
-                or question_id not in known_ids
-            ):
+            if not choice or choice == NONE_OPTION or confidence < threshold:
                 continue
             accepted[question_id] = choice
         return accepted
