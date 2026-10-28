@@ -263,26 +263,29 @@ class AssessmentAttemptRepository(BaseRepository[AssessmentAttempt]):
         )
 
 
+def seen_question_ids_statement(student_id: str, since):
+    seen_id = func.coalesce(
+        QuestionResponse.question_id, QuestionResponse.coverage_question_id
+    )
+    return (
+        select(seen_id)
+        .join(AssessmentAttempt, AssessmentAttempt.id == QuestionResponse.attempt_id)
+        .where(
+            seen_id.is_not(None),
+            AssessmentAttempt.student_id == student_id,
+            AssessmentAttempt.status == "COMPLETED",
+            AssessmentAttempt.completed_at >= since,
+        )
+    )
+
+
 class QuestionResponseRepository(BaseRepository[QuestionResponse]):
     model = QuestionResponse
 
     async def seen_question_ids(
         self, session: AsyncSession, student_id: str, since
     ) -> set[str]:
-        rows = await self.rows(
-            session,
-            select(QuestionResponse.question_id)
-            .join(
-                AssessmentAttempt,
-                AssessmentAttempt.id == QuestionResponse.attempt_id,
-            )
-            .where(
-                QuestionResponse.question_id.is_not(None),
-                AssessmentAttempt.student_id == student_id,
-                AssessmentAttempt.status == "COMPLETED",
-                AssessmentAttempt.completed_at >= since,
-            ),
-        )
+        rows = await self.rows(session, seen_question_ids_statement(student_id, since))
         return {row[0] for row in rows.all()}
 
     async def for_attempt(

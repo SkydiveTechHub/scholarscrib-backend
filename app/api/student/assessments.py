@@ -44,6 +44,12 @@ from app.services.assessments import (
     SyncJambPaperService,
 )
 from app.services.assessments.past_paper import resolve_subject
+from app.services.gamification.service import (
+    AwardAttemptXpService,
+    AwardCorrectionXpService,
+    AwardTopicMasteryXpService,
+    GetDailyQuestsService,
+)
 from app.services.learning import (
     AwardAchievementsService,
     attribute_attempt_topics_safe,
@@ -211,6 +217,43 @@ async def _after_submit(
                 attempt_id,
             )
 
+        # Step 1b — XP (best-effort; the ledger's unique key makes retries safe)
+        try:
+            async with session.begin_nested():
+                await AwardAttemptXpService(
+                    session, student_id, attempt_id, exit_passed
+                ).process()
+        except Exception:
+            logger.exception(
+                "XP award failed for student %s after attempt %s",
+                student_id,
+                attempt_id,
+            )
+
+        # Step 1c — daily quest bonus (best-effort, idempotent)
+        try:
+            async with session.begin_nested():
+                await GetDailyQuestsService(session, student_id).process()
+        except Exception:
+            logger.exception(
+                "Daily quest check failed for student %s after attempt %s",
+                student_id,
+                attempt_id,
+            )
+
+        # Step 1d — corrected-question XP (best-effort, idempotent per question)
+        try:
+            async with session.begin_nested():
+                await AwardCorrectionXpService(
+                    session, student_id, attempt_id
+                ).process()
+        except Exception:
+            logger.exception(
+                "Correction XP failed for student %s after attempt %s",
+                student_id,
+                attempt_id,
+            )
+
         # Step 2 — study plan (best-effort, must not block attribution)
         try:
             activity = {
@@ -238,6 +281,19 @@ async def _after_submit(
 
         # Step 3 — topic attribution (critical: runs unconditionally)
         await attribute_attempt_topics_safe(session, student_id, attempt_id)
+
+        # Step 4 — mastery XP. Needs the attribution above, so it runs after it.
+        try:
+            async with session.begin_nested():
+                await AwardTopicMasteryXpService(
+                    session, student_id, attempt_id
+                ).process()
+        except Exception:
+            logger.exception(
+                "Mastery XP failed for student %s after attempt %s",
+                student_id,
+                attempt_id,
+            )
 
         await session.commit()
 

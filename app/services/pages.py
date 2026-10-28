@@ -33,7 +33,8 @@ from app.database.repositories.planner import plan_items_repository, plans_repos
 from app.database.repositories.question import questions_repository
 from app.domain import can, entitlement_denial
 from app.services.assessments.grading import coarse_grade
-from app.services.auth.rules import current_streak
+from app.services.gamification.service import study_days_for
+from app.services.gamification.streaks import display_streak
 from app.services.learning.evidence import GATE
 from app.services.learning.graph import (
     GraphEdge,
@@ -81,10 +82,7 @@ class GetDashboardService:
     async def process(self) -> dict:
         today = lagos_day_key()
         now = utcnow()
-        completed = await attempts_repository.completed_at(
-            self.session, self.student_id, limit=400
-        )
-        days = {lagos_day_key(moment) for moment in completed if moment}
+        days = await study_days_for(self.session, self.student_id, today=today)
         recent = await _attempts(
             self.session,
             self.student_id,
@@ -164,7 +162,7 @@ class GetDashboardService:
         }
         return {
             "firstName": self.first_name,
-            "streak": current_streak(days, today),
+            "streak": display_streak(days, today),
             "tier": self.tier,
             "session": session_payload,
             "subjects": subjects,

@@ -217,3 +217,51 @@ class PredictionLog(Base):
     correct: Mapped[bool] = mapped_column(Boolean)
     scoring_version: Mapped[int] = mapped_column("scoringVersion", Integer)
     occurred_at: Mapped[datetime] = mapped_column("occurredAt", DateTime(timezone=True))
+
+
+class XpTransaction(Base):
+    """Append-only XP ledger. A student's XP is the sum of their rows.
+
+    `idempotencyKey` is unique, so a retried or repeated event cannot pay twice.
+    """
+
+    __tablename__ = "XpTransaction"
+    __table_args__ = (
+        Index("XpTransaction_student_occurred_idx", "studentId", "occurredAt"),
+    )
+
+    id: Mapped[str] = id_column()
+    student_id: Mapped[str] = mapped_column(
+        "studentId", ForeignKey("User.id", ondelete="CASCADE")
+    )
+    amount: Mapped[int] = mapped_column(Integer)
+    event: Mapped[str] = mapped_column(String)
+    reason: Mapped[str] = mapped_column(String)
+    source_id: Mapped[str] = mapped_column("sourceId", String)
+    idempotency_key: Mapped[str] = mapped_column("idempotencyKey", String, unique=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        "occurredAt", DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class DailyQuestSet(Base):
+    """The quests assigned to one student on one Lagos day.
+
+    Stored so a refresh never reshuffles them. Only the assignment lives here;
+    progress is recomputed from the day's recorded activity.
+    """
+
+    __tablename__ = "DailyQuestSet"
+    __table_args__ = (
+        UniqueConstraint("studentId", "day", name="DailyQuestSet_studentId_day_key"),
+    )
+
+    id: Mapped[str] = id_column()
+    student_id: Mapped[str] = mapped_column(
+        "studentId", ForeignKey("User.id", ondelete="CASCADE")
+    )
+    day: Mapped[str] = mapped_column(String)
+    quests: Mapped[list] = mapped_column(JSONB)
+    generated_at: Mapped[datetime] = mapped_column(
+        "generatedAt", DateTime(timezone=True), server_default=func.now()
+    )

@@ -8,6 +8,7 @@ from app.api.student.billing import router as billing_router
 from app.api.student.classroom import router as classroom_router
 from app.api.student.dashboard import router as dashboard_router
 from app.api.student.flashcards import router as flashcards_router
+from app.api.student.gamification import router as gamification_router
 from app.api.student.learning_path import router as learning_path_router
 from app.api.student.lessons import router as lessons_router
 from app.api.student.library import router as library_router
@@ -31,6 +32,7 @@ router.include_router(study_plan_router)
 router.include_router(lessons_router)
 router.include_router(library_router)
 router.include_router(achievements_router)
+router.include_router(gamification_router)
 router.include_router(learning_path_router)
 router.include_router(announcements_router)
 router.include_router(notifications_router)

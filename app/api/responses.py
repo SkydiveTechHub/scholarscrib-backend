@@ -1000,3 +1000,37 @@ class TutorTimeTravelOut(ApiOut):
     forkedFrom: str | None = None
     route: str | None = None
     question: str | None = None
+
+
+class XpProfileOut(ApiOut):
+    totalXp: int
+    level: int
+    title: str
+    xpIntoLevel: int
+    xpToNext: int
+    levelSpan: int
+    isMax: bool
+    recent: list[dict]
+
+
+class DailyQuestsOut(ApiOut):
+    day: str
+    quests: list[dict]
+    allComplete: bool
+    bonusXp: int
+    bonusAwarded: bool
+
+
+class StreakOut(ApiOut):
+    timezone: str
+    today: str
+    currentStreak: int
+    longestStreak: int
+    days: list[str]
+    studiedToday: bool
+    daysSinceLastStudy: int | None
+
+
+class ImprovementOut(ApiOut):
+    status: str
+    message: str | None = None

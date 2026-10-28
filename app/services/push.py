@@ -16,13 +16,11 @@ from app.core.timeutil import lagos_day_key, previous_day_key, utcnow
 from app.database.models import (
     Announcement,
     AnnouncementDelivery,
-    AssessmentAttempt,
     FlashcardReview,
     PushSubscription,
     StudyPlan,
     StudyPlanItem,
 )
-from app.database.repositories.assessment import attempts_repository
 from app.database.repositories.flashcard import reviews_repository
 from app.database.repositories.notification import (
     announcement_deliveries_repository,
@@ -33,6 +31,7 @@ from app.database.repositories.notification import (
 )
 from app.database.repositories.planner import plan_items_repository, plans_repository
 from app.services.auth.rules import current_streak
+from app.services.gamification.service import study_days_for
 
 BUDGET_SECONDS = 40
 PAGE_SIZE = 200
@@ -297,15 +296,7 @@ class SendRemindersService:
         }
 
     async def _streak_message(self, user_id: str, today: str) -> dict[str, str] | None:
-        rows = await attempts_repository.list_where(
-            self.session,
-            AssessmentAttempt.student_id == user_id,
-            AssessmentAttempt.status == "COMPLETED",
-            AssessmentAttempt.completed_at.is_not(None),
-        )
-        days = {
-            lagos_day_key(moment) for moment in (r.completed_at for r in rows) if moment
-        }
+        days = await study_days_for(self.session, user_id, today=today)
         if today in days:
             return None
         streak = current_streak(days, previous_day_key(today))
