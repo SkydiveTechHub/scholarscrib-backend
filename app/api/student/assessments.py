@@ -190,9 +190,29 @@ async def _after_submit(
     assessment_type: str | None,
     exit_passed: bool | None,
 ) -> None:
+    """Post-submission housekeeping.
+
+    Each step runs in its own nested savepoint so a failure in achievements or
+    plan-marking never prevents topic attribution from running.  Attribution is
+    the most important step: without it, LearningEvent rows stay topic_id=NULL
+    and can never contribute to mastery standings.
+    """
+    from app.core.logger import logger
+
     async with get_session() as session:
+        # Step 1 — achievements (best-effort, must not block the rest)
         try:
-            await AwardAchievementsService(session, student_id).process()
+            async with session.begin_nested():
+                await AwardAchievementsService(session, student_id).process()
+        except Exception:
+            logger.exception(
+                "Achievement award failed for student %s after attempt %s",
+                student_id,
+                attempt_id,
+            )
+
+        # Step 2 — study plan (best-effort, must not block attribution)
+        try:
             activity = {
                 "PAST_PAPER": "PAST_QUESTIONS",
                 "MOCK_EXAM": "MOCK_EXAM",
@@ -200,14 +220,26 @@ async def _after_submit(
             }.get(assessment_type or "", "PRACTICE")
             # A plan lesson is done only by passing its exit; a failed exit
             # counts for nothing, and anything else is ordinary practice.
-            if exit_passed is True:
-                await MarkStudyPlanItemService(session, student_id, "LESSON").process()
-            elif exit_passed is None:
-                await MarkStudyPlanItemService(session, student_id, activity).process()
-            await attribute_attempt_topics_safe(session, student_id, attempt_id)
-            await session.commit()
+            async with session.begin_nested():
+                if exit_passed is True:
+                    await MarkStudyPlanItemService(
+                        session, student_id, "LESSON"
+                    ).process()
+                elif exit_passed is None:
+                    await MarkStudyPlanItemService(
+                        session, student_id, activity
+                    ).process()
         except Exception:
-            await session.rollback()
+            logger.exception(
+                "Study plan mark failed for student %s after attempt %s",
+                student_id,
+                attempt_id,
+            )
+
+        # Step 3 — topic attribution (critical: runs unconditionally)
+        await attribute_attempt_topics_safe(session, student_id, attempt_id)
+
+        await session.commit()
 
 
 @router.get("/attempts/{attempt_id}", response_model=AttemptResultOut)

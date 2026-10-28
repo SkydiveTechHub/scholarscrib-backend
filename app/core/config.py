@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     jev_model: str = "jev-latest"
     jev_enabled: bool = True
     jev_confidence_threshold: float = 0.7
+    # Topic attribution uses a lower bar than intent routing: a slightly wrong
+    # mapping self-corrects over future answers, but a rejected mapping leaves
+    # the LearningEvent permanently invisible to the mastery fold.
+    jev_attribution_threshold: float = 0.55
     jev_grade_noul_threshold: float = 0.55
     jev_guardrails_enabled: bool = True
     jev_guard_policy: str = "strict"

@@ -12,7 +12,10 @@ from app.database.models.columns import id_column, timestamp_column
 
 class ChatThread(Base):
     __tablename__ = "ChatThread"
-    __table_args__ = (Index("ChatThread_userId_updatedAt_idx", "userId", "updatedAt"),)
+    __table_args__ = (
+        Index("ChatThread_userId_updatedAt_idx", "userId", "updatedAt"),
+        Index("ChatThread_userId_questionId_idx", "userId", "questionId"),
+    )
 
     id: Mapped[str] = id_column()
     user_id: Mapped[str] = mapped_column(
@@ -31,6 +34,10 @@ class ChatThread(Base):
     lesson_id: Mapped[str | None] = mapped_column(
         "lessonId", ForeignKey("Lesson.id", ondelete="SET NULL")
     )
+    # Denormalised snapshot from Question at thread-creation time so thread lists
+    # can be grouped by exam context without joining back to Question.
+    exam_type: Mapped[str | None] = mapped_column("examType", String, nullable=True)
+    exam_year: Mapped[int | None] = mapped_column("examYear", Integer, nullable=True)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
     active_run: Mapped[dict | None] = mapped_column(
         "activeRun", JSONB, nullable=True, default=None

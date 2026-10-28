@@ -897,6 +897,8 @@ class TutorThreadOut(ApiOut):
     topicId: str | None = None
     questionId: str | None = None
     lessonId: str | None = None
+    examType: str | None = None
+    examYear: int | None = None
     archived: bool = False
     activeRun: TutorActiveRunOut | None = None
     createdAt: str | None = None
