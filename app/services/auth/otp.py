@@ -68,5 +68,8 @@ class StudentOTPService:
         user = await users_repository.by_email(self.session, normalised)
         if user is not None and user.email_verified is None:
             user.email_verified = utcnow()
+            await users_repository.update(
+                self.session, user, update_data={"email_verified": user.email_verified}
+            )
 
         return True, "Email verified successfully"

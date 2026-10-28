@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal, TypeVar
 
 from fastapi import Query
@@ -79,6 +80,7 @@ class SessionUserOut(ApiOut):
     deviceId: str | None = None
     role: str | None = None
     hasPassword: bool | None = None
+    emailVerified: datetime | None = None
 
 
 class TokenOut(ApiOut):

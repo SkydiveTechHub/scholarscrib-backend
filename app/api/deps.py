@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -29,6 +30,7 @@ class StudentPrincipal:
     image: str | None
     has_password: bool
     issued_at: int | None
+    email_verified: datetime | None
 
 
 def _student_token(request: Request) -> str | None:
@@ -74,6 +76,7 @@ async def optional_student(
         image=user.image,
         has_password=bool(user.password_hash),
         issued_at=issued,
+        email_verified=user.email_verified,
     )
 
 
@@ -152,4 +155,5 @@ async def library_student(request: Request, session: AnSession) -> StudentPrinci
         image=profile.get("image"),
         has_password=bool(user and user.password_hash),
         issued_at=claims.get("iat"),
+        email_verified=user.email_verified if user else None,
     )
