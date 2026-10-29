@@ -80,6 +80,7 @@ from app.database.repositories.curriculum import (
     topics_repository,
 )
 from app.database.repositories.question import questions_repository
+from app.services.product_events import capture
 
 _ANSWER_NODES = frozenset(
     {"generate_answer", "chitchat", "sql_agent", "action_agent", "action_outcome"}
@@ -245,6 +246,12 @@ class CreateTutorThreadService:
         out = _thread_out(thread, messages)
         if assistant_payload:
             out["assistantMessage"] = assistant_payload
+        if first:
+            capture(
+                self.user_id,
+                "tutor_message_sent",
+                {"surface": "lesson" if thread.lesson_id else "tutor"},
+            )
         return out
 
     async def _validate_refs(self):
@@ -374,6 +381,11 @@ class PostTutorMessageService:
         await chat_messages_repository.add(self.session, user_msg, flush=True)
         await _ensure_thread_title(self.session, thread, content)
         assistant = await _run_graph_and_persist(self.session, thread, content)
+        capture(
+            self.user_id,
+            "tutor_message_sent",
+            {"surface": "lesson" if thread.lesson_id else "tutor"},
+        )
         return {
             "userMessage": _message_out(user_msg),
             "assistantMessage": assistant,
@@ -924,6 +936,11 @@ async def _produce_tutor_run(
             await chat_messages_repository.add(session, user_msg, flush=True)
             await _ensure_thread_title(session, thread, text_value)
             await session.commit()
+            capture(
+                user_id,
+                "tutor_message_sent",
+                {"surface": "lesson" if thread.lesson_id else "tutor"},
+            )
             log = RunLog(thread.id, run)
             begin_stream(thread.id, run.run_id)
             begun = True

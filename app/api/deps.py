@@ -14,6 +14,7 @@ from app.database.repositories.admin import admins_repository
 from app.database.repositories.identity import devices_repository, users_repository
 from app.domain import DEVICE_TOUCH_SECONDS, can, entitlement_denial
 from app.services.auth.rules import is_session_revoked
+from app.services.product_events import note_user_active
 
 
 @dataclass
@@ -84,6 +85,7 @@ async def require_student(request: Request, session: AnSession) -> StudentPrinci
     student = await optional_student(request, session)
     if student is None:
         raise unauthorized()
+    note_user_active(student.id)
     return student
 
 

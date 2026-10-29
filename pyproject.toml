@@ -46,6 +46,7 @@ dependencies = [
     "langchain-anthropic>=1.7.6",
     "psycopg2>=2.9.13",
     "fastapi-pagination[sqlalchemy]>=0.16.1",
+    "posthog>=7.80.0",
 ]
 
 [tool.pytest.ini_options]

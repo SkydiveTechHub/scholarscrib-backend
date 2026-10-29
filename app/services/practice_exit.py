@@ -43,6 +43,7 @@ from app.services.assessments.service import (
     _subject,
 )
 from app.services.pages import GetTopicPageService
+from app.services.product_events import capture
 
 EXIT_COOLDOWN = timedelta(minutes=30)
 SECONDS_PER_QUESTION = 90
@@ -304,6 +305,7 @@ class CompletePracticeExitService:
 
         now = utcnow()
         passed = self.percentage >= lesson.pass_mark_percent
+        already_completed = row.status == "COMPLETED"
         checkpoint = record_attempt(
             checkpoint,
             attempt_id=self.attempt_id,
@@ -330,6 +332,12 @@ class CompletePracticeExitService:
                     occurred_at=now,
                 ),
             )
+            if not already_completed:
+                capture(
+                    self.student_id,
+                    "lesson_completed",
+                    {"subject_id": topic.subject_id, "topic_id": topic.id},
+                )
         await self.session.flush()
         return passed
 

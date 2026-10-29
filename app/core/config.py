@@ -99,6 +99,10 @@ class Settings(BaseSettings):
     jev_guard_action_threshold: float = 0.7
     jev_guard_severity_block: float = 2.0
 
+    # Product analytics. Empty token disables capture.
+    posthog_project_token: str | None = None
+    posthog_host: str = "https://eu.i.posthog.com"
+
     @model_validator(mode="after")
     def secrets_must_differ(self) -> "Settings":
         if self.auth_secret == self.admin_auth_secret:

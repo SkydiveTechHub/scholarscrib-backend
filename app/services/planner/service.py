@@ -59,6 +59,7 @@ from app.services.planner.timetable import (
     timetable_warnings,
 )
 from app.services.planner.topics import CarryOver, PlanTopic, calendar_topic_id
+from app.services.product_events import capture
 
 logger = logging.getLogger(__name__)
 
@@ -505,6 +506,16 @@ class CreateStudyPlanService:
         await ReplanStudyPlanService(
             self.session, plan, self.class_level or "SS1"
         ).process()
+        target = _day(plan.target_date) if plan.target_date else None
+        capture(
+            self.student_id,
+            "study_plan_created",
+            {
+                "mode": resolve_plan_mode(
+                    plan.scope_class_level, target, plan.force_exam_mode
+                )
+            },
+        )
         return {"planId": plan.id}
 
 
@@ -837,6 +848,7 @@ class SetStudyPlanItemStatusService:
         item_day = _day(item.date)
         if item_day > today:
             raise ApiError(400, "Future items cannot be changed yet")
+        previous = item.status
         if self.status in {"COMPLETED", "SKIPPED"} and item_day < add_days(
             today, -MANUAL_LOOKBACK_DAYS
         ):
@@ -850,6 +862,12 @@ class SetStudyPlanItemStatusService:
             item.completion_source = None
         else:
             item.completion_source = "MANUAL"
+        if self.status == "COMPLETED" and previous != "COMPLETED":
+            capture(
+                self.student_id,
+                "study_plan_item_completed",
+                {"activity_type": item.activity_type},
+            )
         return {"status": item.status}
 
 

@@ -34,6 +34,7 @@ from app.database.repositories.learning import (
     progress_repository,
 )
 from app.services.learning.evidence import CARD_OUTCOMES
+from app.services.product_events import capture
 from app.services.srs.analytics import (
     LOG_WINDOW_DAYS,
     CardRow,
@@ -449,6 +450,7 @@ class ReviewFlashcardService:
         await self._log_review(card.id, schedule)
         await self._record_event(deck, card.id, now)
         await self.session.flush()
+        capture(self.user_id, "flashcard_reviewed", {"rating": self.body.rating})
         return {
             "outcome": schedule.state,
             "review": {

@@ -21,6 +21,7 @@ from app.services.billing.rules import (
     term_end,
     term_start,
 )
+from app.services.product_events import capture
 
 
 class CheckoutService:
@@ -38,6 +39,11 @@ class CheckoutService:
         reference, amount = self._price()
         await self._store_pending(reference, amount)
         url = await self._initialize(reference, amount)
+        capture(
+            self.user.id,
+            "checkout_started",
+            {"tier": self.tier, "period": self.period},
+        )
         return {"authorizationUrl": url}
 
     def _validate(self) -> None:
@@ -176,6 +182,12 @@ class ApplyChargeSuccessService:
         if not applied:
             return "already-applied"
         await RefreshUserTierService(self.session, row.user_id).process()
+        capture(
+            row.user_id,
+            "subscription_activated",
+            {"tier": row.tier, "period": row.period},
+            set_props={"tier": row.tier},
+        )
         return "activate"
 
     def _outcome(self, row: Subscription | None) -> str:

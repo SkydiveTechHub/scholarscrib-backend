@@ -40,6 +40,7 @@ from app.services.auth.rules import is_session_revoked
 from app.services.billing import RefreshUserTierService
 from app.services.billing.rules import resolve_live_tier
 from app.services.email import EmailService
+from app.services.product_events import capture
 
 PHONE = re.compile(PHONE_PATTERN)
 ADMIN_IDENTIFIER = re.compile(r"^[a-z0-9._-]{3,32}$")
@@ -83,6 +84,18 @@ class RegisterStudentService:
         await self._ensure_available(email)
         user = await self._create(email)
         await StudentOTPService(self.session).send_otp(email)
+        capture(
+            user.id,
+            "user_signed_up",
+            {"signup_method": "email"},
+            set_props={
+                "class_level": user.class_level,
+                "track": user.track,
+                "state": user.state,
+                "tier": user.tier,
+            },
+            set_once={"signup_method": "email"},
+        )
         return self._payload(user)
 
     def _limit(self) -> None:
@@ -187,6 +200,7 @@ class LoginStudentService:
             return None
         await RefreshUserTierService(self.session, user.id).process()
         device = await RegisterDeviceService(self.session, user, self.label).process()
+        capture(user.id, "user_logged_in", {"method": "email"})
         return self._payload(user, device)
 
     def _limit(self, normalised: str) -> None:
@@ -345,6 +359,20 @@ class CompleteProfileService:
         self._validate()
         self._apply(user)
         await self.session.flush()
+        capture(
+            user.id,
+            "profile_completed",
+            {
+                "class_level": user.class_level,
+                "track": user.track,
+                "state": user.state,
+            },
+            set_props={
+                "class_level": user.class_level,
+                "track": user.track,
+                "state": user.state,
+            },
+        )
         token = issue_student_token(user, self.device_id or "")
         return {"message": "Profile completed", "accessToken": token}
 
@@ -570,11 +598,27 @@ class GoogleSignInService:
 
     async def process(self) -> dict:
         account, user = await self._find()
+        created = user is None
         user = await self._ensure_user(user)
         await self._ensure_account(account, user)
         self._assert_active(user)
         await RefreshUserTierService(self.session, user.id).process()
         device = await RegisterDeviceService(self.session, user, self.label).process()
+        if created:
+            capture(
+                user.id,
+                "user_signed_up",
+                {"signup_method": "google"},
+                set_props={
+                    "class_level": user.class_level,
+                    "track": user.track,
+                    "state": user.state,
+                    "tier": user.tier,
+                },
+                set_once={"signup_method": "google"},
+            )
+        else:
+            capture(user.id, "user_logged_in", {"method": "google"})
         return {
             "accessToken": issue_student_token(user, device.id),
             "user": {"id": user.id, **profile_dict(user)},

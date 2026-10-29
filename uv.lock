@@ -258,6 +258,15 @@ wheels = [
 ]
 
 [[package]]
+name = "backoff"
+version = "2.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/d7/5bbeb12c44d7c4f2fb5b56abce497eb5ed9f34d85701de869acedd602619/backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba", size = 17001, upload-time = "2022-10-05T19:19:32.061Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/73/b6e24bd22e6720ca8ee9a85a0c4a2971af8497d8f3193fa05390cbd46e09/backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8", size = 15148, upload-time = "2022-10-05T19:19:30.546Z" },
+]
+
+[[package]]
 name = "bcrypt"
 version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2418,6 +2427,21 @@ wheels = [
 ]
 
 [[package]]
+name = "posthog"
+version = "7.80.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "backoff" },
+    { name = "distro" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3e/bd/fee28719996701ea91c9c02ad47e577a6dafba5696f7e457a50753a2ccdc/posthog-7.80.0.tar.gz", hash = "sha256:835d0e00998eac6ceaed8066ad02125f9cf106023c88f9779d5c7687d7267b09", size = 863233, upload-time = "2026-10-29T10:31:03.552Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/83/6bbac9531dfe452fe4bcf925de5614087074fa63516641df638d788a4e17/posthog-7.80.0-py3-none-any.whl", hash = "sha256:2f508b9f3391d886a79f5b869c6c961af92d825eef8c95214eed8ac6be6438cf", size = 1003132, upload-time = "2026-10-29T10:31:00.807Z" },
+]
+
+[[package]]
 name = "pre-commit"
 version = "4.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3311,6 +3335,7 @@ dependencies = [
     { name = "langchain-typesafe" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
+    { name = "posthog" },
     { name = "pre-commit" },
     { name = "psycopg2" },
     { name = "pydantic-settings" },
@@ -3350,6 +3375,7 @@ requires-dist = [
     { name = "langchain-typesafe", specifier = ">=0.0.1a3" },
     { name = "langgraph", specifier = ">=1.0" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0" },
+    { name = "posthog", specifier = ">=7.80.0" },
     { name = "pre-commit", specifier = ">=4.6.2" },
     { name = "psycopg2", specifier = ">=2.9.13" },
     { name = "pydantic-settings", specifier = ">=2.6.0" },

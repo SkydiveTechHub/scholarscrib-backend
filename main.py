@@ -20,14 +20,19 @@ from app.core.logger import logger
 async def lifespan(api: FastAPI):
     from app.ai.core.checkpointer import open_checkpointer
     from app.ai.core.memory import open_memory_store
+    from app.services.product_events import open_client, shutdown_client
 
     logger.info("Starting %s", settings.service_name)
-    # Open for the duration of the server (LangGraph custom-checkpointer /
-    # custom-store lifecycle), not per request.
-    async with open_checkpointer() as checkpointer, open_memory_store() as store:
-        api.state.checkpointer = checkpointer
-        api.state.memory_store = store
-        yield
+    open_client()
+    try:
+        # Open for the duration of the server (LangGraph custom-checkpointer /
+        # custom-store lifecycle), not per request.
+        async with open_checkpointer() as checkpointer, open_memory_store() as store:
+            api.state.checkpointer = checkpointer
+            api.state.memory_store = store
+            yield
+    finally:
+        shutdown_client()
     logger.warning("Shutting down %s", settings.service_name)
 
 

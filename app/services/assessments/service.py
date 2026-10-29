@@ -54,6 +54,7 @@ from app.services.assessments.grading import (
     waec_grade,
 )
 from app.services.catalogue import deadline_at, public_question, time_limit_minutes
+from app.services.product_events import capture
 
 
 def _is_stale(attempt: AssessmentAttempt, assessment: Assessment, now) -> bool:
@@ -271,6 +272,15 @@ async def _persist(
             ),
         )
     await session.flush()
+    capture(
+        student_id,
+        "practice_started",
+        {
+            "assessment_type": assessment_type,
+            "exam_type": exam_type,
+            "subject_id": subject.id,
+        },
+    )
     return _payload(assessment, attempt, questions)
 
 
@@ -503,6 +513,15 @@ class SubmitAttemptService:
             payload["jamb"] = extra
         payload["gradeRemark"] = remark
         payload["isCredit"] = credit
+        capture(
+            self.student_id,
+            "practice_submitted",
+            {
+                "assessment_type": assessment.assessment_type,
+                "subject_id": assessment.subject_id,
+                "percentage": percentage,
+            },
+        )
         return payload, True
 
     async def _load(self) -> tuple[AssessmentAttempt, Assessment]:
