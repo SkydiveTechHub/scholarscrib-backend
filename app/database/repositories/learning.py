@@ -431,17 +431,16 @@ class XpRepository(BaseRepository[XpTransaction]):
         )
         if started is None:
             return []
-        return list(
-            await session.scalars(
-                select(LearningEvent.topic_id)
-                .where(
-                    LearningEvent.student_id == student_id,
-                    LearningEvent.occurred_at >= started,
-                    LearningEvent.topic_id.is_not(None),
-                )
-                .distinct()
+        topic_ids = await session.scalars(
+            select(LearningEvent.topic_id)
+            .where(
+                LearningEvent.student_id == student_id,
+                LearningEvent.occurred_at >= started,
+                LearningEvent.topic_id.is_not(None),
             )
+            .distinct()
         )
+        return [topic_id for topic_id in topic_ids if topic_id is not None]
 
     async def count_event(
         self, session: AsyncSession, student_id: str, event: str

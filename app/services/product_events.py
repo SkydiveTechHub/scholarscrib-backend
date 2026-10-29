@@ -90,6 +90,13 @@ def use_client(client: Any) -> None:
         _seen.clear()
 
 
+def client() -> Any | None:
+    """The process PostHog client, or None when capture is off."""
+    if not _sending():
+        return None
+    return _client
+
+
 def capture(
     distinct_id: str,
     event: str,

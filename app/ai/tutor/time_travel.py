@@ -10,7 +10,20 @@ from langchain_core.runnables import RunnableConfig
 from app.ai.core.checkpointer import get_checkpointer
 from app.ai.core.memory import get_memory_store
 from app.ai.tutor.graph import get_tutor_graph
+from app.ai.tutor.tracing import with_tutor_trace
 from app.core.errors import ApiError
+
+
+class _TraceThread:
+    """Identity only. Subject columns stay unset so replay traces omit them."""
+
+    def __init__(self, thread_id: str, user_id: str) -> None:
+        self.id = thread_id
+        self.user_id = user_id
+
+
+def _trace_thread(thread_id: str, user_id: str) -> _TraceThread:
+    return _TraceThread(thread_id, user_id)
 
 
 def _config(thread_id: str, checkpoint_id: str | None = None) -> RunnableConfig:
@@ -50,14 +63,19 @@ async def list_checkpoints(thread_id: str, *, limit: int = 30) -> list[dict]:
     return history
 
 
-async def replay_from_checkpoint(thread_id: str, checkpoint_id: str) -> dict:
+async def replay_from_checkpoint(
+    thread_id: str, checkpoint_id: str, *, user_id: str
+) -> dict:
     checkpointer = get_checkpointer()
     if checkpointer is None:
         raise ApiError(503, "Checkpointer is not available")
     store = get_memory_store()
     graph = get_tutor_graph(checkpointer=checkpointer, store=store)
     config = _config(thread_id, checkpoint_id)
-    result = await graph.ainvoke(None, config)
+    result = await graph.ainvoke(
+        None,
+        with_tutor_trace(config, _trace_thread(thread_id, user_id), kind="replay"),
+    )
     return {
         "ok": True,
         "checkpointId": checkpoint_id,
@@ -70,6 +88,7 @@ async def fork_from_checkpoint(
     thread_id: str,
     checkpoint_id: str,
     *,
+    user_id: str,
     question: str | None = None,
 ) -> dict:
     """Branch from a prior checkpoint; optionally inject a new user question."""
@@ -90,7 +109,10 @@ async def fork_from_checkpoint(
             "route": None,
         }
     fork_config = await graph.aupdate_state(config, update)
-    result = await graph.ainvoke(None, fork_config)
+    result = await graph.ainvoke(
+        None,
+        with_tutor_trace(fork_config, _trace_thread(thread_id, user_id), kind="fork"),
+    )
     new_id = (fork_config.get("configurable") or {}).get("checkpoint_id")
     return {
         "ok": True,

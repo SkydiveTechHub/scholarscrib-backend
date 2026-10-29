@@ -231,7 +231,9 @@ async def thread_replay(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     await GetTutorThreadService(session, student.id, thread_id).process()
-    return await replay_from_checkpoint(thread_id, body.checkpointId)
+    return await replay_from_checkpoint(
+        thread_id, body.checkpointId, user_id=student.id
+    )
 
 
 @router.post(
@@ -246,7 +248,10 @@ async def thread_fork(
 ):
     await GetTutorThreadService(session, student.id, thread_id).process()
     return await fork_from_checkpoint(
-        thread_id, body.checkpointId, question=body.question
+        thread_id,
+        body.checkpointId,
+        user_id=student.id,
+        question=body.question,
     )
 
 

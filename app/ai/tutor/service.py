@@ -56,6 +56,7 @@ from app.ai.tutor.tools.context import (
     reset_tool_context,
     set_tool_context,
 )
+from app.ai.tutor.tracing import with_tutor_trace
 from app.ai.tutor.ui_blocks import UiStreamFilter, split_ui
 from app.api.schemas import (
     TutorActionResumeIn,
@@ -581,7 +582,8 @@ async def _run_graph_and_persist(
     try:
         await _assert_no_pending(graph, config)
         result = await graph.ainvoke(
-            _graph_input(thread, lc_messages, user_text), config=config
+            _graph_input(thread, lc_messages, user_text),
+            config=with_tutor_trace(config, thread, kind="message"),
         )
         snapshot = await graph.aget_state(config)
         pending = _interrupt_value(snapshot)
@@ -995,7 +997,7 @@ async def _produce_tutor_run(
             try:
                 async for event in graph.astream_events(
                     _graph_input(thread, lc_messages, text_value),
-                    config=config,
+                    config=with_tutor_trace(config, thread, kind="stream"),
                     version="v2",
                 ):
                     if should_stop(thread.id, run.run_id):
@@ -1328,7 +1330,10 @@ async def _resume_graph(
     payload = resume_command(pending, body.approved, body.args)
     token = set_tool_context(await load_tool_context(session, thread.user_id))
     try:
-        result = await graph.ainvoke(Command(resume=payload), config=config)
+        result = await graph.ainvoke(
+            Command(resume=payload),
+            config=with_tutor_trace(config, thread, kind="resume"),
+        )
     finally:
         reset_tool_context(token)
     text = _outcome_text(result) or (

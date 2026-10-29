@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     # Product analytics. Empty token disables capture.
     posthog_project_token: str | None = None
     posthog_host: str = "https://eu.i.posthog.com"
+    # Student Astra traces on the same project. Privacy mode is always on.
+    posthog_ai_tracing: bool = False
 
     @model_validator(mode="after")
     def secrets_must_differ(self) -> "Settings":
