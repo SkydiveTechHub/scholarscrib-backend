@@ -47,7 +47,7 @@ dependencies = [
     "psycopg2>=2.9.13",
     "fastapi-pagination[sqlalchemy]>=0.16.1",
     "posthog>=7.80.0",
-    "logfire[fastapi]>=5.4.0",
+    "logfire[fastapi,system-metrics]>=5.4.0",
 ]
 
 [tool.pytest.ini_options]

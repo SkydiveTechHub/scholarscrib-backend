@@ -27,3 +27,4 @@ def setup_observability(app: FastAPI) -> None:
         # Probe endpoint; would dominate the trace list.
         excluded_urls="/health",
     )
+    logfire.instrument_system_metrics()
