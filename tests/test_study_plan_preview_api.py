@@ -28,6 +28,7 @@ def principal(tier="PREMIUM", track="SCIENCE") -> StudentPrincipal:
         image=None,
         has_password=True,
         issued_at=None,
+        email_verified=None,
     )
 
 

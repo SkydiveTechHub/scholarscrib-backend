@@ -14,6 +14,7 @@ from app.api.system.views import router as system_router
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.core.logger import logger
+from app.core.observability import setup_observability
 
 
 @asynccontextmanager
@@ -90,6 +91,7 @@ def get_app() -> FastAPI:
             {"error": "Something went wrong. Please try again."}, status_code=500
         )
 
+    setup_observability(api)
     return api
 
 

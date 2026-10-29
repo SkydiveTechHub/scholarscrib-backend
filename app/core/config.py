@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     )
 
     service_name: str = "ScholarsCrib API"
+    service_version: str = "0.1.0"
+    # Shown as deployment.environment.name in Logfire (development / production).
+    environment: str = "development"
+    # Kill switch for Logfire export (the test suite turns it off).
+    logfire_enabled: bool = True
     database_url: str
     port: int = 8001
     debug: bool = True

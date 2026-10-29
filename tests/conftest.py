@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
+import os
+
+# Before any test imports ``main``: local Logfire credentials must not receive
+# spans from the suite.
+os.environ.setdefault("LOGFIRE_ENABLED", "false")
+
+import pytest  # noqa: E402
 
 from app.core import rate_limit
 from app.services import product_events
