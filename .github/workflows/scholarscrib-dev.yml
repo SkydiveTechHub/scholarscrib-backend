@@ -4,10 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches:
-      - develop
+      - dev
   push:
     branches:
-      - develop
+      - dev
 
 env:
   SCHOLARSCRIB_ENV: dev
