@@ -1144,7 +1144,9 @@ class CreateAnnouncementService:
                     "type": "ANNOUNCEMENT",
                     "title": announcement.title,
                     "body": announcement.body,
-                    "url": announcement.url or "/dashboard",
+                    # No link stays no link: the inbox hides "Open" for a null
+                    # url. Only the push payload needs a fallback destination.
+                    "url": announcement.url or None,
                     "source_key": source_key,
                 }
             )
