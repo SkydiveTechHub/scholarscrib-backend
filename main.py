@@ -6,13 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi_pagination import add_pagination
 from redis_fastapi import FastAPIRedis
+from sqlalchemy.exc import InterfaceError, OperationalError
 
 from app.api.admin import router as admin_router
 from app.api.cron import router as cron_router
 from app.api.student import router as student_router
 from app.api.system.views import router as system_router
 from app.core.config import settings
-from app.core.errors import ApiError
+from app.core.errors import ApiError, DatabaseWaking
 from app.core.logger import logger
 from app.core.observability import setup_observability
 
@@ -73,6 +74,15 @@ def get_app() -> FastAPI:
         if exc.retry_after is not None:
             headers["Retry-After"] = str(exc.retry_after)
         return JSONResponse(exc.payload, status_code=exc.status_code, headers=headers)
+
+    @api.exception_handler(OperationalError)
+    @api.exception_handler(InterfaceError)
+    @api.exception_handler(ConnectionError)
+    @api.exception_handler(TimeoutError)
+    async def db_unreachable_handler(request: Request, exc: Exception):
+        # The connection dropped mid-request (e.g. the database suspended).
+        logger.warning("Database unreachable: %s", type(exc).__name__)
+        return await api_error_handler(request, DatabaseWaking())
 
     @api.exception_handler(RequestValidationError)
     async def validation_handler(request: Request, exc: RequestValidationError):
