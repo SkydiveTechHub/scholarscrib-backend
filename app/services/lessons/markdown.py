@@ -22,7 +22,8 @@ from dataclasses import dataclass, field
 
 from app.services.lessons.svg import sanitize_svg
 
-MAX_CARD_WORDS = 120
+MAX_CARD_WORDS = 150  # hard limit: fails the lint
+SOFT_CARD_WORDS = 120  # soft target: warns only
 EXAM_TYPES = ("WAEC", "JAMB", "NECO")
 DIFFICULTIES = ("BASIC", "INTERMEDIATE", "ADVANCED")
 FENCE_TYPES = ("example", "tip", "mistake", "mnemonic", "check", "diagram")
@@ -189,6 +190,23 @@ def lint_blocks(blocks: list[dict]) -> list[LessonIssue]:
             LessonIssue(None, "A lesson should include at least one knowledge check.")
         )
     return issues
+
+
+def soft_length_warnings(blocks: list[dict]) -> list[str]:
+    """Blocks over SOFT_CARD_WORDS but within MAX_CARD_WORDS: advisory only."""
+    warnings: list[str] = []
+    for block in blocks:
+        if block["type"] == "check":
+            continue
+        words = block_word_count(block)
+        if SOFT_CARD_WORDS < words <= MAX_CARD_WORDS:
+            name = block.get("title") if block["type"] == "concept" else None
+            name = name or block["id"]
+            warnings.append(
+                f'"{name}" is {words} words — consider splitting it so each block '
+                f"carries one idea (aim for ≤ {SOFT_CARD_WORDS})."
+            )
+    return warnings
 
 
 # ─── frontmatter ─────────────────────────────────────────────
@@ -731,6 +749,35 @@ def _build_fence_block(
 # ─── concept cards ───────────────────────────────────────────
 
 
+_SENTENCE_RE = re.compile(r"""\S.*?(?:[.!?]+["')\]]*(?=\s|$)|$)""", re.S)
+
+
+def _split_oversized_paragraph(paragraph: str) -> list[str]:
+    """Split one over-cap paragraph at sentence boundaries into balanced chunks
+    (153 words -> 77 + 76, not 150 + 3). Others pass through untouched."""
+    total = word_count(paragraph)
+    if total <= MAX_CARD_WORDS:
+        return [paragraph]
+    sentences = [s.strip() for s in _SENTENCE_RE.findall(paragraph) if s.strip()]
+    if len(sentences) < 2:
+        return [paragraph]
+
+    target = -(-total // -(-total // MAX_CARD_WORDS))  # ceil(total / ceil(total / cap))
+    chunks: list[str] = []
+    current: list[str] = []
+    running = 0
+    for sentence in sentences:
+        words = word_count(sentence)
+        if current and running + words > target:
+            chunks.append(" ".join(current))
+            current, running = [], 0
+        current.append(sentence)
+        running += words
+    if current:
+        chunks.append(" ".join(current))
+    return chunks
+
+
 def _emit_concept(
     section: dict, next_id, blocks: list[dict], parsed: ParsedLesson
 ) -> None:
@@ -747,7 +794,12 @@ def _emit_concept(
         blocks.append(whole)
         return
 
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", section["text"]) if p.strip()]
+    paragraphs = [
+        chunk
+        for p in re.split(r"\n\s*\n", section["text"])
+        if p.strip()
+        for chunk in _split_oversized_paragraph(p.strip())
+    ]
     if len(paragraphs) < 2:  # nothing to split on — the lint rejects it, honestly
         blocks.append(whole)
         return
@@ -925,4 +977,5 @@ def validate_lesson_markdown(source: str) -> ParsedLesson:
     parsed = parse_lesson_markdown(source)
     if parsed.blocks:
         parsed.errors.extend(lint_blocks(parsed.blocks))
+        parsed.warnings.extend(soft_length_warnings(parsed.blocks))
     return parsed
