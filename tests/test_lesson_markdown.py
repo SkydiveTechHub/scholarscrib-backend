@@ -42,11 +42,11 @@ def test_checks_carry_after_card_and_canonical_keys():
     assert parsed.errors == []
 
 
-# ── the 120-word cap ─────────────────────────────────────────
+# ── the 150-word cap ─────────────────────────────────────────
 
 
 def test_long_section_is_split_with_a_warning():
-    para = " ".join(["word"] * 70)
+    para = " ".join(["word"] * 90)
     parsed = validate_lesson_markdown(f"# T\n## Big\n{para}\n\n{para}\n{QUIZ}")
     assert parsed.errors == []
     assert len([b for b in parsed.blocks if b["type"] == "concept"]) == 2
@@ -54,9 +54,9 @@ def test_long_section_is_split_with_a_warning():
 
 
 def test_single_overlong_paragraph_is_rejected():
-    para = " ".join(["word"] * 130)
+    para = " ".join(["word"] * 160)
     parsed = validate_lesson_markdown(f"# T\n## Big\n{para}\n{QUIZ}")
-    assert any("cards must be ≤ 120" in m for m in _messages(parsed))
+    assert any("cards must be ≤ 150" in m for m in _messages(parsed))
 
 
 # ── stray headings ───────────────────────────────────────────
@@ -308,8 +308,21 @@ def test_theory_question_without_model_answer_is_not_a_short_block():
 
 
 def test_short_block_counts_towards_the_word_cap():
-    long = " ".join(["w"] * 130)
+    long = " ".join(["w"] * 160)
     parsed = validate_lesson_markdown(
         f"# T\n## A\nt\n## Quiz\n1. Why? *(Short answer: {long})*\n"
     )
-    assert any("cards must be ≤ 120" in m for m in _messages(parsed))
+    assert any("cards must be ≤ 150" in m for m in _messages(parsed))
+
+
+def test_block_between_soft_and_hard_cap_warns_but_uploads():
+    para = " ".join(["word"] * 135)
+    parsed = validate_lesson_markdown(f"# T\n## Big\n{para}\n{QUIZ}")
+    assert not any("cards must be" in m for m in _messages(parsed))
+    assert any("135 words" in w and "aim for ≤ 120" in w for w in parsed.warnings)
+
+
+def test_block_within_soft_cap_has_no_length_warning():
+    para = " ".join(["word"] * 100)
+    parsed = validate_lesson_markdown(f"# T\n## Fine\n{para}\n{QUIZ}")
+    assert not any("aim for" in w for w in parsed.warnings)

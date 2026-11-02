@@ -36,7 +36,8 @@ SVG_ATTRS = {
     "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity",
     "font-size", "font-family", "font-weight", "text-anchor", "dominant-baseline",
     "offset", "stop-color", "stop-opacity", "gradientunits", "marker-end",
-    "marker-start", "id", "class", "xmlns",
+    "marker-start", "markerwidth", "markerheight", "markerunits", "refx", "refy",
+    "orient", "id", "class", "xmlns",
 }  # fmt: skip
 
 # html.parser lower-cases names; SVG is case-sensitive for these.
@@ -45,6 +46,11 @@ _ATTR_CASE = {
     "viewbox": "viewBox",
     "preserveaspectratio": "preserveAspectRatio",
     "gradientunits": "gradientUnits",
+    "markerwidth": "markerWidth",
+    "markerheight": "markerHeight",
+    "markerunits": "markerUnits",
+    "refx": "refX",
+    "refy": "refY",
 }
 
 # `url(#id)` is a legitimate paint reference; any other url()/scheme is not.
