@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends
+from redis_fastapi import AsyncRedisDep
 
 from app.api.deps import StudentPrincipal, require_student
 from app.api.responses import (
@@ -90,6 +91,7 @@ async def start_past_paper(
     body: PastPaperIn,
     background: BackgroundTasks,
     session: AnSession,
+    redis: AsyncRedisDep,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"past-paper:{student.id}", 20, 60)
@@ -99,6 +101,7 @@ async def start_past_paper(
         subject_key=body.subject,
         exam=body.examType,
         exam_year=body.examYear,
+        redis=redis,
     ).process()
     try:
         subject = await resolve_subject(session, ProviderFactory.create(), body.subject)
@@ -131,6 +134,7 @@ async def continue_past_paper(
     body: PastPaperMoreIn,
     background: BackgroundTasks,
     session: AnSession,
+    redis: AsyncRedisDep,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"past-paper:{student.id}", 20, 60)
@@ -140,6 +144,7 @@ async def continue_past_paper(
         attempt_id=attempt_id,
         subject_key=body.subject,
         cursor=body.cursor,
+        redis=redis,
     ).process()
     try:
         subject = await resolve_subject(session, ProviderFactory.create(), body.subject)
@@ -363,12 +368,15 @@ async def jamb_history(
 async def jamb_prepare(
     body: JambIn,
     session: AnSession,
+    redis: AsyncRedisDep,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     # Synchronous on purpose: the year's four papers are pulled from the
     # provider and stored before this answers, so "ready" means ready.
     hit(f"jamb-cbt-prepare:{student.id}", 10, 60)
-    return await SyncJambPaperService(session, body.subjectIds, body.examYear).process()
+    return await SyncJambPaperService(
+        session, body.subjectIds, body.examYear, redis=redis
+    ).process()
 
 
 @router.post("/jamb-cbt/generate", response_model=QuizOut)

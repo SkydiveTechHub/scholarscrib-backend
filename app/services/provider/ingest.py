@@ -1,5 +1,7 @@
 """Deduplicated provider page ingest into ProviderQuestion / Question."""
 
+import hashlib
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,16 +16,62 @@ from app.database.models import (
 )
 from app.database.repositories.curriculum import topics_repository
 from app.database.repositories.provider import (
+    catalogues_repository,
     fetches_repository,
     provider_questions_repository,
 )
 from app.database.repositories.question import questions_repository
-from app.services.provider.base import PROVIDER_PAPER_PAGE_LIMIT, QuestionProvider
+from app.services.provider.base import (
+    PROVIDER_PAPER_PAGE_LIMIT,
+    PaperFetchMode,
+    QuestionProvider,
+    SearchPage,
+)
+from app.services.provider.cache import (
+    AsyncRedisClient,
+    PaperCacheError,
+    decode_page_cursor,
+    encode_page_cursor,
+    fetch_provider_paper,
+    get_or_fill_paper,
+    local_cursor_cache_id,
+    paginate_paper,
+    paper_cache_id,
+)
 from app.services.provider.mapping import map_item
 from app.services.provider.rules import MAPPER_VERSION, cache_key, fingerprint
 
 # Past papers try this many empty provider pages before giving up.
 MAX_SKIPPED_PAGES = 5
+# A paper in our bank is read whole and paged locally; none is longer than this.
+BANK_PAPER_LIMIT = 500
+RESTART_PAPER_MESSAGE = (
+    "The question source changed while you were sitting this paper. "
+    "Please start it again."
+)
+
+
+def bank_cache_id(subject_id: str, exam_type: str, exam_year: int) -> str:
+    """Names a bank-served paper inside its local pagination cursors."""
+    digest = hashlib.sha256(f"{subject_id}:{exam_type}:{exam_year}".encode())
+    return f"bank-{digest.hexdigest()}"
+
+
+async def record_paper(
+    session: AsyncSession,
+    provider: str,
+    subject_id: str,
+    exam_type: str,
+    exam_year: int,
+) -> None:
+    """Upsert one ``ProviderCatalogue`` row (idempotent)."""
+    await catalogues_repository.upsert_years(
+        session,
+        provider=provider,
+        subject_id=subject_id,
+        exam_type=exam_type,
+        years=[exam_year],
+    )
 
 
 class ProviderPaperIngest:
@@ -39,6 +87,7 @@ class ProviderPaperIngest:
         exam_type: str,
         exam_year: int,
         page_limit: int = PROVIDER_PAPER_PAGE_LIMIT,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         self.session = session
         self.provider = provider
@@ -47,6 +96,10 @@ class ProviderPaperIngest:
         self.exam_type = exam_type
         self.exam_year = exam_year
         self.page_limit = page_limit
+        # With Redis, pages come from the bank or a cached snapshot when the
+        # provider cannot page live; without it, always live from the provider.
+        self.redis = redis
+        self._catalogued = False
 
     async def page(
         self, cursor: str | None = None
@@ -59,13 +112,20 @@ class ProviderPaperIngest:
         self, cursor: str | None = None
     ) -> tuple[list[tuple[Question, dict]], str | None, int | None]:
         """Like ``page``, also returning provider credits remaining when present."""
-        result = await self.provider.search(
-            subject_slug=self.provider_subject,
-            exam_type=self.exam_type,
-            exam_year=self.exam_year,
-            limit=self.page_limit,
-            cursor=cursor,
-        )
+        saturate_at_end = True
+        source = "live" if self.redis is None else await self._source(cursor)
+        if isinstance(source, ProviderFetch):
+            return await self._bank_page(source, cursor)
+        if source == "snapshot":
+            result, saturate_at_end = await self._snapshot_page(cursor)
+        else:
+            result = await self.provider.search(
+                subject_slug=self.provider_subject,
+                exam_type=self.exam_type,
+                exam_year=self.exam_year,
+                limit=self.page_limit,
+                cursor=cursor,
+            )
         if result is None:
             raise ApiError(503, "Questions are unavailable right now.")
         fetch = await self._fetch_row()
@@ -89,9 +149,115 @@ class ProviderPaperIngest:
                 stored.append((question, item))
         next_cursor = result.next_cursor if result.has_more else None
         self._advance_checkpoint(
-            fetch, cursor, next_cursor, has_more=bool(result.has_more and next_cursor)
+            fetch,
+            cursor,
+            next_cursor,
+            has_more=bool(result.has_more and next_cursor),
+            saturate_at_end=saturate_at_end,
         )
+        await self.record_catalogue(fetch)
         return stored, next_cursor, result.credits_remaining
+
+    async def _source(self, cursor: str | None) -> "ProviderFetch | str":
+        """Where this page comes from: a banked paper, a snapshot or the provider.
+
+        A cursor pins the source it was issued by. One that no longer fits the
+        active provider (the provider was switched mid-paper) cannot be
+        continued, so the student is asked to restart the paper.
+        """
+        sampled = self.provider.paper_fetch_mode == PaperFetchMode.SAMPLED
+        banked = await fetches_repository.banked_paper(
+            self.session, self.subject.id, self.exam_type, self.exam_year
+        )
+        if cursor:
+            owner = local_cursor_cache_id(cursor)
+            if owner is None:
+                if sampled:
+                    raise ApiError(409, RESTART_PAPER_MESSAGE, reason="RESTART_PAPER")
+                return "live"
+            if banked is not None and owner == self._bank_id():
+                return banked
+            if sampled and owner == self._snapshot_id():
+                return "snapshot"
+            raise ApiError(409, RESTART_PAPER_MESSAGE, reason="RESTART_PAPER")
+        if banked is not None:
+            return banked
+        return "snapshot" if sampled else "live"
+
+    def _bank_id(self) -> str:
+        return bank_cache_id(self.subject.id, self.exam_type, self.exam_year)
+
+    def _snapshot_id(self) -> str:
+        return paper_cache_id(
+            self.provider.name, self.subject.slug, self.exam_type, self.exam_year
+        )
+
+    async def _bank_page(
+        self, banked: ProviderFetch, cursor: str | None
+    ) -> tuple[list[tuple[Question, dict]], str | None, int | None]:
+        """One page of a paper already in our bank, served with no provider call."""
+        cache_id = self._bank_id()
+        try:
+            offset = decode_page_cursor(cursor, cache_id) if cursor else 0
+        except ValueError as error:
+            raise ApiError(400, str(error)) from error
+        questions = await provider_questions_repository.paper_questions(
+            self.session, banked.id, BANK_PAPER_LIMIT
+        )
+        if offset > len(questions):
+            raise ApiError(400, "Invalid question pagination cursor")
+        end = min(offset + self.page_limit, len(questions))
+        page = questions[offset:end]
+        payloads = await provider_questions_repository.payloads_for(
+            self.session, [question.id for question in page]
+        )
+        stored = [(question, payloads.get(question.id, {})) for question in page]
+        next_cursor = (
+            encode_page_cursor(cache_id, end) if end < len(questions) else None
+        )
+        return stored, next_cursor, None
+
+    async def _snapshot_page(
+        self, cursor: str | None
+    ) -> tuple[SearchPage | None, bool]:
+        """One page of the provider's cached sample, and whether its end is final."""
+        assert self.redis is not None
+        cache_id = self._snapshot_id()
+
+        async def load():
+            return await fetch_provider_paper(
+                self.provider,
+                subject_slug=self.subject.slug,
+                exam_type=self.exam_type,
+                exam_year=self.exam_year,
+            )
+
+        try:
+            paper = await get_or_fill_paper(self.redis, cache_id=cache_id, loader=load)
+        except PaperCacheError as error:
+            raise ApiError(503, str(error)) from error
+        if not paper.cacheable or (paper.failed and paper.status_code != 404):
+            if paper.status_code == 429:
+                raise ApiError(503, "Too many question requests. Try again shortly.")
+            raise ApiError(503, "Questions are unavailable right now.")
+        try:
+            page = paginate_paper(
+                paper, cache_id=cache_id, limit=self.page_limit, cursor=cursor
+            )
+        except ValueError as error:
+            raise ApiError(400, str(error)) from error
+        pagination = page["pagination"]
+        return (
+            SearchPage(
+                items=page["questions"],
+                next_cursor=pagination["nextCursor"],
+                has_more=pagination["hasMore"],
+                status_code=404 if paper.status_code == 404 else 200,
+                credits_remaining=paper.credits_remaining,
+            ),
+            # A sample's end is only the end of what was drawn, not of the paper.
+            paper.complete,
+        )
 
     async def page_with_questions(
         self, cursor: str | None = None, exclude: set[str] | frozenset = frozenset()
@@ -121,7 +287,25 @@ class ProviderPaperIngest:
         }
         for item in items:
             await self._store(fetch, item, topics)
+        await self.record_catalogue(fetch)
         return fetch
+
+    async def record_catalogue(self, fetch: ProviderFetch) -> None:
+        """Note that the provider has this paper, once it has yielded questions.
+
+        Whatever a student sits or a backfill walks proves the paper exists, so
+        the picker's catalogue heals itself without any discovery calls.
+        """
+        if self._catalogued or (fetch.promoted_count or 0) <= 0:
+            return
+        await record_paper(
+            self.session,
+            self.provider.name,
+            self.subject.id,
+            self.exam_type,
+            self.exam_year,
+        )
+        self._catalogued = True
 
     async def fetch_row(self) -> ProviderFetch:
         """This paper's fetch ledger row, created on first use."""
@@ -134,6 +318,7 @@ class ProviderPaperIngest:
         next_cursor: str | None,
         *,
         has_more: bool,
+        saturate_at_end: bool = True,
     ) -> None:
         """Advance the paper checkpoint only when this page is the next expected one."""
         if request_cursor != fetch.next_cursor:
@@ -146,7 +331,8 @@ class ProviderPaperIngest:
                 fetch.status = "PENDING"
         else:
             fetch.next_cursor = None
-            fetch.status = "SATURATED"
+            if saturate_at_end:
+                fetch.status = "SATURATED"
 
     async def _fetch_row(self) -> ProviderFetch:
         key = cache_key(self.subject.slug, self.exam_type, self.exam_year)

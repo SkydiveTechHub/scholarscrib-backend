@@ -330,11 +330,10 @@ def map_item(
         reasons.append("empty question text")
     if not objective_ok(normalized.options, normalized.answer):
         reasons.append("options or answer incomplete")
-    exam_type = exam_type_for(item.get("examType")) or expected_exam
+    exam_type = exam_type_for(normalized.exam_type) or expected_exam
     if exam_type != expected_exam:
         reasons.append(f"drawn for {expected_exam} but the item says {exam_type}")
-    year = item.get("year")
-    exam_year = year if isinstance(year, int) and not isinstance(year, bool) else None
+    exam_year = normalized.exam_year
     if exam_year is None:
         exam_year = expected_year
     elif exam_year != expected_year:
@@ -342,7 +341,6 @@ def map_item(
     raw_metadata = item.get("metadata")
     metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
     estimate = metadata.get("estimatedTime")
-    number = item.get("questionNumber")
     return MappedItem(
         exam_type=exam_type,
         exam_year=exam_year,
@@ -350,9 +348,7 @@ def map_item(
         time_estimate_seconds=int(estimate)
         if isinstance(estimate, int | float) and 0 < estimate <= 3600
         else 60,
-        question_number=number
-        if isinstance(number, int) and not isinstance(number, bool)
-        else None,
+        question_number=normalized.question_number,
         topic_slug=map_topic(subject_slug, metadata, topic_slugs),
         rejection_reasons=reasons,
     )

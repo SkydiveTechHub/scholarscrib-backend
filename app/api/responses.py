@@ -324,13 +324,11 @@ class JambSubjectOut(ApiOut):
     name: str
     slug: str
     code: str | None = None
-    # The question provider's key and category (sciences, arts, ...).
+    # The key the provider is asked by (our slug) and the subject's category.
     providerKey: str
     category: str | None = None
     # Questions this subject contributes to a sitting.
     questions: int
-    # Years the provider holds a full paper for, newest first.
-    years: list[int]
 
 
 class JambOptionsOut(ApiOut):
@@ -535,6 +533,41 @@ class CoverageOut(ApiOut):
 class DiscoveryOut(ApiOut):
     provider: str
     data: dict | list[dict]
+
+
+class CatalogueSubjectOut(ApiOut):
+    slug: str
+    name: str
+    displayName: str
+    category: str
+    examTypes: list[str]
+
+
+class CatalogueSubjectsOut(ApiOut):
+    provider: str
+    data: list[CatalogueSubjectOut]
+
+
+class CatalogueYearOut(ApiOut):
+    year: int
+    # None when only the provider lists the paper and nothing is stored yet.
+    questionCount: int | None
+    cached: bool
+
+
+class CatalogueSubjectRefOut(ApiOut):
+    slug: str
+    name: str
+
+
+class CatalogueYearsOut(ApiOut):
+    provider: str
+    subject: CatalogueSubjectRefOut
+    exam: str
+    # False when discovery is still running or ran out of time: the list is
+    # what is known so far, and asking again later may add years.
+    complete: bool
+    data: list[CatalogueYearOut]
 
 
 class PretestOut(ApiOut):

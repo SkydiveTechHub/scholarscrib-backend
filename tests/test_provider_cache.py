@@ -59,6 +59,7 @@ class FakeProvider:
     name = "ALOC"
     configured = True
     supports_search = True
+    sample_draws = 1
     paper_fetch_mode = PaperFetchMode.COMPLETE
 
     def __init__(self, pages):

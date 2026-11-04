@@ -35,10 +35,8 @@ class FakeProvider:
 @pytest.fixture(autouse=True)
 def _clear_discovery_cache():
     _DISCOVERY_CACHE.clear()
-    jamb._YEAR_COUNTS.clear()
     yield
     _DISCOVERY_CACHE.clear()
-    jamb._YEAR_COUNTS.clear()
 
 
 async def test_walks_every_page_of_a_paper_in_order():
@@ -67,15 +65,3 @@ async def test_a_paper_the_provider_does_not_have_is_complete_and_empty():
     items, complete = await jamb._walk_paper(Missing(), "physics", 1990)
     assert complete
     assert items == []
-
-
-async def test_year_counts_read_the_jamb_breakdown_only():
-    provider = FakeProvider(
-        years=[
-            {"year": 2010, "questionCount": 75, "breakdown": {"jamb": 75}},
-            {"year": 2011, "questionCount": 30, "breakdown": {"waec": 30}},
-            {"year": "bad", "breakdown": {"jamb": 9}},
-            {"year": 2012, "breakdown": {"jamb": 0}},
-        ]
-    )
-    assert await jamb._jamb_year_counts(provider, "english-language") == {2010: 75}

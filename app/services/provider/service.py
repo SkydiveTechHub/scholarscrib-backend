@@ -43,15 +43,19 @@ from app.services.provider.cache import (
     sample_item_identity,
 )
 from app.services.provider.factory import ProviderFactory
-from app.services.provider.ingest import ProviderPaperIngest
-from app.services.provider.mapping import map_item, map_topic, provider_topic_filters
+from app.services.provider.ingest import ProviderPaperIngest, record_paper
+from app.services.provider.mapping import (
+    exam_type_for,
+    map_item,
+    map_topic,
+    provider_topic_filters,
+)
 from app.services.provider.rules import (
     COOLDOWN_MINUTES,
     LEASE_WINDOW_MS,
     MAPPER_VERSION,
     cache_key,
     fingerprint,
-    next_circuit,
 )
 
 
@@ -194,7 +198,9 @@ class EnsureProviderQuestionsService:
         if result.credits_remaining is not None:
             state.credits_remaining = result.credits_remaining
         if result.failed:
-            state.circuit = next_circuit(result.status_code, result.body, state.circuit)
+            state.circuit = self.provider.next_circuit(
+                result.status_code, result.body, state.circuit
+            )
             if state.circuit == "EXHAUSTED":
                 state.cooldown_until = utcnow() + timedelta(minutes=COOLDOWN_MINUTES)
             if result.status_code == 404:
@@ -232,6 +238,14 @@ class EnsureProviderQuestionsService:
         ):
             row.status = "SATURATED"
             bust_catalogue()
+        if row.promoted_count > 0 and row.subject_id:
+            await record_paper(
+                self.session,
+                self.provider.name,
+                row.subject_id,
+                self.exam_type,
+                self.exam_year,
+            )
 
     async def _stage_item(
         self, row: ProviderFetch, subject: Subject, item: dict, topics: dict[str, str]
@@ -635,13 +649,14 @@ def provider_question(
 ) -> dict:
     """One provider item shaped like a bank question, answer included."""
     normalized = provider.normalize(item)
-    exam_type = item.get("examType") or exam_type
+    claimed = normalized.exam_type
+    exam_type = exam_type_for(claimed) or claimed or exam_type
     payload = {
         "id": normalized.provider_id,
         "subjectId": subject.id if subject else None,
         "topicId": None,
         "examType": str(exam_type).upper() if exam_type else None,
-        "examYear": item.get("year") or exam_year,
+        "examYear": normalized.exam_year or exam_year,
         "questionNumber": None,
         "questionText": normalized.text,
         "questionImageUrl": normalized.image_url or None,
@@ -654,10 +669,12 @@ def provider_question(
         "explanation": normalized.explanation or None,
         "explanationImageUrl": None,
     }
-    if item.get("hasPassage"):
+    if normalized.passage:
         payload["hasPassage"] = True
-        payload["passage"] = item.get("section")
+        payload["passage"] = normalized.passage
         payload["passageGroup"] = item.get("category")
+    elif normalized.instruction:
+        payload["instruction"] = normalized.instruction
     return payload
 
 
@@ -733,7 +750,13 @@ class TopicQuizQuestionsService:
             exam_type=exam_type,
         )
         out = [public_question(row, include_answers=True) for row in stored]
-        if len(out) >= self.limit or not self.provider.configured:
+        # A provider that cannot filter by topic would hand back random
+        # questions of the subject, which we would then label with this topic.
+        if (
+            len(out) >= self.limit
+            or not self.provider.configured
+            or not self.provider.supports_topic_filter
+        ):
             return out
         seen = {question["questionText"] for question in out}
         for aloc_topic, aloc_subtopic in provider_topic_filters(

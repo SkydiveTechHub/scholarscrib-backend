@@ -32,6 +32,7 @@ def _item(index: int, metadata: dict | None = None) -> dict:
 class FakeProvider:
     name = "ALOC"
     configured = True
+    supports_topic_filter = True
 
     def __init__(self, pages: dict[str, list[dict]]):
         self.pages = pages
@@ -198,3 +199,16 @@ async def test_aloc_search_sends_topic_and_random():
     assert params["subtopic"] == "gas-laws-thermal"
     assert params["random"] == "true"
     assert params["limit"] == "10"
+
+
+async def test_provider_without_topic_filter_is_never_asked_to_label_questions(repos):
+    class NoTopicProvider(FakeProvider):
+        supports_topic_filter = False
+
+    provider = NoTopicProvider({"WAEC": [_item(1), _item(2)], "JAMB": [_item(3)]})
+
+    result = await _service(provider).process()
+
+    # Random questions of the subject must never be labelled with our topic.
+    assert provider.calls == []
+    assert result["questions"] == []

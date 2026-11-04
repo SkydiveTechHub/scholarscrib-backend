@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from urllib.parse import quote
 
 import httpx
@@ -88,8 +89,75 @@ class AlocProvider(QuestionProvider):
         return self._fetch_explanations
 
     @property
+    def supports_topic_filter(self) -> bool:
+        return True
+
+    @property
+    def native_discovery(self) -> bool:
+        return True
+
+    @property
     def headers(self) -> dict[str, str]:
         return {"X-API-Key": self.api_key or ""}
+
+    async def catalogue_subjects(self, exam: str | None = None) -> set[str] | None:
+        """Every name ALOC knows a subject by, for subjects held for ``exam``."""
+        from app.services.provider.mapping import slugify
+
+        rows = await self.discover(DiscoveryResource.SUBJECTS)
+        if not isinstance(rows, list):
+            return None
+        names: set[str] = set()
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            exam_types = row.get("examTypes")
+            if (
+                exam
+                and isinstance(exam_types, list)
+                and exam not in {str(value).lower() for value in exam_types}
+            ):
+                continue
+            keys = [row.get("slug"), row.get("name"), row.get("displayName")]
+            keys.extend(
+                alias for alias in row.get("aliases") or [] if isinstance(alias, str)
+            )
+            for key in keys:
+                if isinstance(key, str) and (slug := slugify(key)):
+                    names.add(slug)
+        return names
+
+    async def catalogue_years(
+        self,
+        subject_slug: str,
+        exam: str,
+        *,
+        known: Collection[int] = (),
+        progress: dict[int, int | None] | None = None,
+    ) -> dict[int, int | None] | None:
+        """ALOC's per-subject year breakdown: one cached call, counts included."""
+        try:
+            rows = await self.discover(DiscoveryResource.SUBJECT_YEARS, subject_slug)
+        except ProviderNotFound:
+            return {}
+        data = rows.get("years") if isinstance(rows, dict) else rows
+        if not isinstance(data, list):
+            return None
+        years: dict[int, int | None] = {}
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+            year = row.get("year")
+            if not isinstance(year, int) or isinstance(year, bool):
+                continue
+            breakdown = row.get("breakdown")
+            if isinstance(breakdown, dict):
+                count = breakdown.get(exam)
+                if isinstance(count, int) and not isinstance(count, bool) and count > 0:
+                    years[year] = count
+            elif exam in {str(value).lower() for value in row.get("examTypes") or []}:
+                years[year] = None
+        return years
 
     async def draw(
         self, subject_slug: str, exam_type: str, exam_year: int, limit: int
@@ -190,6 +258,11 @@ class AlocProvider(QuestionProvider):
 
     def normalize(self, item: dict) -> NormalizedQuestion:
         options = item.get("options") or {}
+        # ``section`` is the comprehension passage itself when ``hasPassage``,
+        # otherwise the instruction shared by a group of questions.
+        section = item.get("section")
+        section = section if isinstance(section, str) and section.strip() else None
+        has_passage = bool(item.get("hasPassage"))
         if isinstance(options, list):
             options = {chr(65 + index): value for index, value in enumerate(options)}
         return NormalizedQuestion(
@@ -200,6 +273,17 @@ class AlocProvider(QuestionProvider):
             explanation=str(item.get("explanation") or ""),
             image_url=item.get("imageUrl"),
             raw=item,
+            exam_type=item.get("examType"),
+            exam_year=item.get("year")
+            if isinstance(item.get("year"), int)
+            and not isinstance(item.get("year"), bool)
+            else None,
+            question_number=item.get("questionNumber")
+            if isinstance(item.get("questionNumber"), int)
+            and not isinstance(item.get("questionNumber"), bool)
+            else None,
+            passage=section if has_passage else None,
+            instruction=None if has_passage else section,
         )
 
     def should_saturate(

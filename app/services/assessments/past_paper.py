@@ -34,7 +34,8 @@ from app.services.assessments.service import (
 )
 from app.services.catalogue import public_question
 from app.services.provider.base import DiscoveryResource, QuestionProvider
-from app.services.provider.factory import ProviderFactory
+from app.services.provider.cache import AsyncRedisClient
+from app.services.provider.factory import ProviderFactory, normalize_stored_item
 from app.services.provider.ingest import ProviderPaperIngest
 from app.services.provider.mapping import exam_type_for, subject_slug_candidates
 from app.services.provider.service import ProviderDiscoveryService
@@ -57,6 +58,7 @@ class PastPaperIngest(ProviderPaperIngest):
         subject: Subject,
         exam_type: str,
         exam_year: int,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         super().__init__(
             session,
@@ -66,28 +68,29 @@ class PastPaperIngest(ProviderPaperIngest):
             exam_type=exam_type,
             exam_year=exam_year,
             page_limit=PAST_PAPER_PAGE_SIZE,
+            redis=redis,
         )
 
 
 def paper_question(question: Question, item: dict | None) -> dict:
     """The question as the exam surface gets it: no answer, context attached.
 
-    ALOC's `section` means two things (checked against live English papers):
-    with `hasPassage` it is the comprehension passage itself (its `passage`
-    field stays empty); without, it is the instruction shared by a group of
-    questions ("select the option that best explains ..."), which the
-    question text alone does not make sense without.
+    A provider's shared `section` means two things (checked against live ALOC
+    English papers): a comprehension passage, or the instruction shared by a
+    group of questions ("select the option that best explains ..."), which the
+    question text alone does not make sense without. Each provider's
+    normalizer decides which, so this reads only the normalized fields.
     """
     payload = public_question(question, include_answers=False)
-    section = item.get("section") if item else None
-    if not isinstance(section, str) or not section.strip():
+    if not item:
         return payload
-    if item and item.get("hasPassage"):
+    normalized = normalize_stored_item(item)
+    if normalized.passage:
         payload["hasPassage"] = True
-        payload["passage"] = section
+        payload["passage"] = normalized.passage
         payload["passageGroup"] = item.get("category")
-    else:
-        payload["instruction"] = section
+    elif normalized.instruction:
+        payload["instruction"] = normalized.instruction
     return payload
 
 
@@ -141,6 +144,7 @@ class StartPastPaperService:
         exam: str,
         exam_year: int,
         provider: QuestionProvider | None = None,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
@@ -148,6 +152,7 @@ class StartPastPaperService:
         self.exam = exam
         self.exam_year = exam_year
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
 
     async def process(self) -> dict:
         subject, exam_type = await _subject_and_exam(
@@ -161,6 +166,7 @@ class StartPastPaperService:
             subject=subject,
             exam_type=exam_type,
             exam_year=self.exam_year,
+            redis=self.redis,
         ).page_with_questions()
         if not stored:
             raise ApiError(404, "No questions found for this paper yet.")
@@ -197,6 +203,7 @@ class ContinuePastPaperService:
         subject_key: str,
         cursor: str,
         provider: QuestionProvider | None = None,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
@@ -204,6 +211,7 @@ class ContinuePastPaperService:
         self.subject_key = subject_key
         self.cursor = cursor
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
 
     async def process(self) -> dict:
         attempt, assessment = await self._load()
@@ -223,6 +231,7 @@ class ContinuePastPaperService:
             subject=subject,
             exam_type=assessment.exam_type,
             exam_year=assessment.exam_year,
+            redis=self.redis,
         ).page_with_questions(self.cursor, exclude=on_paper)
         added = [
             question

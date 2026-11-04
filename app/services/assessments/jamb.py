@@ -15,7 +15,7 @@ paper as it was, comprehension passages and all.
 """
 
 import asyncio
-import time
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +27,10 @@ from app.database.repositories.assessment import (
     attempts_repository,
 )
 from app.database.repositories.curriculum import subjects_repository
-from app.database.repositories.provider import provider_questions_repository
+from app.database.repositories.provider import (
+    fetches_repository,
+    provider_questions_repository,
+)
 from app.domain import (
     JAMB_DURATION_MINUTES,
     JAMB_ENGLISH_CODE,
@@ -47,19 +50,26 @@ from app.services.assessments.service import (
     _persist,
     reap_stale,
 )
-from app.services.provider.base import DiscoveryResource, QuestionProvider
+from app.services.provider.base import (
+    PaperFetchMode,
+    QuestionProvider,
+)
+from app.services.provider.cache import (
+    AsyncRedisClient,
+    PaperCacheError,
+    fetch_provider_paper,
+    get_or_fill_paper,
+    paper_cache_id,
+)
 from app.services.provider.factory import ProviderFactory
-from app.services.provider.mapping import subject_slug_candidates
-from app.services.provider.service import ProviderDiscoveryService
+
+logger = logging.getLogger(__name__)
 
 JAMB = "JAMB"
 # The provider's lower-case key for the board.
 PROVIDER_JAMB = "jamb"
 # Pages walked per paper at most; a JAMB year is at most ~7 pages of 15.
 MAX_PAPER_PAGES = 20
-YEAR_COUNTS_TTL_SECONDS = 6 * 60 * 60
-# Provider subject key -> (fetched at, JAMB questions per year).
-_YEAR_COUNTS: dict[str, tuple[float, dict[int, int]]] = {}
 
 
 def _need(subject: Subject, english: Subject) -> int:
@@ -77,65 +87,34 @@ async def _english(session: AsyncSession) -> Subject:
 
 async def _provider_subjects(
     session: AsyncSession, provider: QuestionProvider
-) -> list[tuple[Subject, dict]]:
-    """Our subjects the provider carries for JAMB, with the provider's record."""
-    rows = await ProviderDiscoveryService(
-        DiscoveryResource.SUBJECTS, provider=provider
-    )._fetch()
-    if not isinstance(rows, list):
-        raise ApiError(503, "Question coverage is unavailable right now.")
-    found: list[tuple[Subject, dict]] = []
-    seen: set[str] = set()
-    for row in rows:
-        if not isinstance(row, dict) or not row.get("name"):
+) -> list[tuple[Subject, str]]:
+    """Our JAMB subjects the provider also carries, with the key to ask it by.
+
+    Subjects are ours (flagged ``is_jamb``); the provider only narrows them. A
+    provider that cannot say what it holds leaves the list whole, and the
+    paper fetch then reports what is actually missing.
+    """
+    try:
+        available = await provider.catalogue_subjects(PROVIDER_JAMB)
+    except Exception:  # noqa: BLE001 - a provider fault must not hide the subjects
+        logger.warning("Provider subject listing failed", exc_info=True)
+        available = None
+    english = await _english(session)
+    found: list[tuple[Subject, str]] = []
+    for subject in await subjects_repository.active_ordered(session):
+        if not (subject.is_jamb or subject.id == english.id):
             continue
-        if PROVIDER_JAMB not in (row.get("examTypes") or []):
-            continue
-        for slug in subject_slug_candidates(str(row["name"]), row):
-            subject = await subjects_repository.by_slug(session, slug)
-            if subject is not None and subject.id not in seen:
-                seen.add(subject.id)
-                found.append((subject, row))
-                break
+        if available is None or subject.slug in available:
+            found.append((subject, subject.slug))
     return found
 
 
-async def _jamb_year_counts(provider: QuestionProvider, key: str) -> dict[int, int]:
-    """JAMB questions the provider holds per year for one subject.
-
-    Cached for hours, not the discovery default of minutes: past papers
-    barely change, and a cold catalogue costs one slow provider call per
-    subject (~12s for the full list) on the page a student is waiting for.
-    """
-    cached = _YEAR_COUNTS.get(key)
-    if cached and time.monotonic() - cached[0] < YEAR_COUNTS_TTL_SECONDS:
-        return cached[1]
-    counts = await _fetch_jamb_year_counts(provider, key)
-    if counts:
-        _YEAR_COUNTS[key] = (time.monotonic(), counts)
-    return counts
-
-
-async def _fetch_jamb_year_counts(
-    provider: QuestionProvider, key: str
-) -> dict[int, int]:
-    rows = await ProviderDiscoveryService(
-        DiscoveryResource.SUBJECT_YEARS, key, provider=provider
-    )._fetch()
-    counts: dict[int, int] = {}
-    for row in rows if isinstance(rows, list) else []:
-        if not isinstance(row, dict) or not isinstance(row.get("year"), int):
-            continue
-        raw = row.get("breakdown")
-        breakdown = raw if isinstance(raw, dict) else {}
-        count = breakdown.get(PROVIDER_JAMB)
-        if isinstance(count, int) and count > 0:
-            counts[row["year"]] = count
-    return counts
-
-
 class GetJambCatalogueService:
-    """The subjects and years a full JAMB sitting can be assembled from."""
+    """The subjects a full JAMB sitting can be assembled from.
+
+    Years are not listed here: they are learned per subject, only for the
+    subjects a student actually picks, through the neutral catalogue endpoint.
+    """
 
     def __init__(
         self, session: AsyncSession, provider: QuestionProvider | None = None
@@ -148,36 +127,17 @@ class GetJambCatalogueService:
             raise ApiError(503, "Questions are unavailable right now.")
         english = await _english(self.session)
         subjects = await _provider_subjects(self.session, self.provider)
-        # Discovery is HTTP only (and cached), so the per-subject year lists
-        # are fetched concurrently rather than one slow call after another.
-        counts = await asyncio.gather(
-            *(
-                _jamb_year_counts(self.provider, str(row["name"]))
-                for _, row in subjects
-            ),
-            return_exceptions=True,
-        )
         entries = []
         english_entry = None
-        for (subject, row), years in zip(subjects, counts, strict=True):
-            need = _need(subject, english)
-            sittable = (
-                []
-                if isinstance(years, BaseException)
-                else sorted(
-                    (year for year, count in years.items() if count >= need),
-                    reverse=True,
-                )
-            )
+        for subject, key in subjects:
             entry = {
                 "id": subject.id,
                 "name": subject.name,
                 "slug": subject.slug,
                 "code": subject.code,
-                "providerKey": row["name"],
-                "category": row.get("category"),
-                "questions": need,
-                "years": sittable,
+                "providerKey": key,
+                "category": subject.track_category,
+                "questions": _need(subject, english),
             }
             if subject.id == english.id:
                 english_entry = entry
@@ -210,7 +170,7 @@ async def select_subjects(
     if english.id in subject_ids:
         raise ApiError(400, "English is already included. Choose 3 other subjects")
     offered = {
-        subject.id: row for subject, row in await _provider_subjects(session, provider)
+        subject.id: key for subject, key in await _provider_subjects(session, provider)
     }
     if english.id not in offered:
         raise ApiError(503, "English papers are unavailable right now.")
@@ -222,16 +182,43 @@ async def select_subjects(
         if subject is None:
             raise ApiError(400, "One or more subjects are not available for JAMB")
         chosen.append(subject)
-    keys = {
-        subject.id: str(offered[subject.id]["name"]) for subject in [english, *chosen]
-    }
+    keys = {subject.id: offered[subject.id] for subject in [english, *chosen]}
     return english, chosen, keys
 
 
+async def _snapshot_paper(
+    provider: QuestionProvider, key: str, year: int, redis: AsyncRedisClient
+) -> tuple[list[dict], bool]:
+    """A sampled provider's paper: its cached snapshot, drawn once and reused.
+
+    A sample is never "the end of the paper", so it only reports complete when
+    the provider said the paper does not exist.
+    """
+
+    async def load():
+        return await fetch_provider_paper(
+            provider, subject_slug=key, exam_type=JAMB, exam_year=year
+        )
+
+    cache_id = paper_cache_id(provider.name, key, JAMB, year)
+    try:
+        paper = await get_or_fill_paper(redis, cache_id=cache_id, loader=load)
+    except PaperCacheError:
+        return [], False
+    if not paper.cacheable or (paper.failed and paper.status_code != 404):
+        return [], False
+    return list(paper.items), paper.complete
+
+
 async def _walk_paper(
-    provider: QuestionProvider, key: str, year: int
+    provider: QuestionProvider,
+    key: str,
+    year: int,
+    redis: AsyncRedisClient | None = None,
 ) -> tuple[list[dict], bool]:
     """Every item of one paper, and whether the walk reached its end."""
+    if redis is not None and provider.paper_fetch_mode == PaperFetchMode.SAMPLED:
+        return await _snapshot_paper(provider, key, year, redis)
     items: list[dict] = []
     cursor: str | None = None
     for _ in range(MAX_PAPER_PAGES):
@@ -262,6 +249,11 @@ async def _coverage(
     rows = []
     for subject in subjects:
         fetch = await _ingest(session, provider, subject, keys, year).fetch_row()
+        # A paper any provider has already walked to its end is read from the
+        # bank, whichever provider is active now.
+        banked = await fetches_repository.banked_paper(session, subject.id, JAMB, year)
+        if banked is not None:
+            fetch = banked
         rows.append(
             {
                 "subjectId": subject.id,
@@ -320,11 +312,13 @@ class SyncJambPaperService:
         subject_ids: list[str],
         exam_year: int,
         provider: QuestionProvider | None = None,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         self.session = session
         self.subject_ids = subject_ids
         self.exam_year = exam_year
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
 
     async def process(self) -> dict:
         if not self.provider.configured:
@@ -338,12 +332,16 @@ class SyncJambPaperService:
             fetch = await _ingest(
                 self.session, self.provider, subject, keys, self.exam_year
             ).fetch_row()
-            # A paper already walked to its end has nothing more to give.
-            if fetch.status != "SATURATED":
+            banked = await fetches_repository.banked_paper(
+                self.session, subject.id, JAMB, self.exam_year
+            )
+            # A paper already walked to its end (by any provider) has nothing
+            # more to give.
+            if fetch.status != "SATURATED" and banked is None:
                 pending.append(subject)
         walked = await asyncio.gather(
             *(
-                _walk_paper(self.provider, keys[subject.id], self.exam_year)
+                _walk_paper(self.provider, keys[subject.id], self.exam_year, self.redis)
                 for subject in pending
             )
         )

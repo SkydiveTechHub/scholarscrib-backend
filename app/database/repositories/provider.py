@@ -1,8 +1,12 @@
 """Repositories for the SDASH question provider."""
 
+from collections.abc import Iterable
+
 from sqlalchemy import func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ids import cuid
 from app.database.models import (
     ProviderCatalogue,
     ProviderFetch,
@@ -38,6 +42,32 @@ class ProviderFetchRepository(BaseRepository[ProviderFetch]):
     async def paper_statuses(self, session: AsyncSession, provider: str) -> list[tuple]:
         result = await session.execute(paper_status_statement(provider))
         return [tuple(row) for row in result.all()]
+
+    async def banked_paper(
+        self,
+        session: AsyncSession,
+        subject_id: str,
+        exam_type: str,
+        exam_year: int,
+    ) -> ProviderFetch | None:
+        """The fullest finished fetch of a paper from *any* provider.
+
+        A paper some provider has already walked to its end, with questions
+        promoted, can be served from our bank without a provider call.
+        """
+        return await self.one(
+            session,
+            select(ProviderFetch)
+            .where(
+                ProviderFetch.subject_id == subject_id,
+                ProviderFetch.exam_type == exam_type,
+                ProviderFetch.exam_year == exam_year,
+                ProviderFetch.status == "SATURATED",
+                ProviderFetch.promoted_count > 0,
+            )
+            .order_by(ProviderFetch.promoted_count.desc(), ProviderFetch.id)
+            .limit(1),
+        )
 
     async def by_cache_key(
         self, session: AsyncSession, provider: str, cache_key: str
@@ -138,13 +168,58 @@ class ProviderCatalogueRepository(BaseRepository[ProviderCatalogue]):
         session: AsyncSession,
         exam_type: str | None = None,
         subject_id: str | None = None,
+        provider: str | None = None,
     ) -> list[ProviderCatalogue]:
         criteria = []
         if exam_type:
             criteria.append(ProviderCatalogue.exam_type == exam_type)
         if subject_id:
             criteria.append(ProviderCatalogue.subject_id == subject_id)
+        if provider:
+            criteria.append(ProviderCatalogue.provider == provider)
         return await self.list_where(session, *criteria)
+
+    async def upsert_years(
+        self,
+        session: AsyncSession,
+        *,
+        provider: str,
+        subject_id: str,
+        exam_type: str,
+        years: Iterable[int],
+    ) -> int:
+        """Record that a provider holds these papers; years already known are kept.
+
+        Idempotent and safe under concurrent callers: the unique key
+        (provider, subject, exam, year) decides, so a race only drops the
+        duplicate. Returns the number of rows written.
+        """
+        rows = [
+            {
+                "id": cuid(),
+                "provider": provider,
+                "subject_id": subject_id,
+                "exam_type": exam_type,
+                "exam_year": year,
+            }
+            for year in sorted(set(years))
+        ]
+        if not rows:
+            return 0
+        written = await session.scalars(
+            pg_insert(ProviderCatalogue)
+            .values(rows)
+            .on_conflict_do_nothing(
+                index_elements=[
+                    ProviderCatalogue.provider,
+                    ProviderCatalogue.subject_id,
+                    ProviderCatalogue.exam_type,
+                    ProviderCatalogue.exam_year,
+                ]
+            )
+            .returning(ProviderCatalogue.id)
+        )
+        return len(written.all())
 
 
 class ProviderStateRepository(BaseRepository[ProviderState]):
