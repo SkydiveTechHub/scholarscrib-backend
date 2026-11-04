@@ -63,6 +63,9 @@ class Settings(BaseSettings):
 
     resend_api_key: str | None = None
     email_from: str = "noreply@scholarscrib.com"
+    # Public origin that serves the logo and icons used in emails. Not app_url:
+    # that can be localhost in dev, where a mail client could never load images.
+    email_asset_url: str = "https://www.scholarscrib.com"
     frontend_url: str = "https://scholarscrib.vercel.app"
 
     # AI tutor / RAG (provider-agnostic; switch via provider:model strings)

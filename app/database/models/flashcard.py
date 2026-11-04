@@ -38,7 +38,9 @@ class FlashcardDeck(Base):
     topic_id: Mapped[str | None] = mapped_column("topicId", ForeignKey("Topic.id"))
     lesson_id: Mapped[str | None] = mapped_column("lessonId", ForeignKey("Lesson.id"))
     source: Mapped[str] = mapped_column(FlashcardSource, default="AUTHORED")
-    created_by: Mapped[str | None] = mapped_column("createdBy", ForeignKey("User.id"))
+    created_by: Mapped[str | None] = mapped_column(
+        "createdBy", ForeignKey("User.id", ondelete="CASCADE")
+    )
     slug: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = timestamp_column("createdAt")
 

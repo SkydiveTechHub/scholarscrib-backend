@@ -1,0 +1,44 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button, step, muted with context %}
+
+{% block title %}Welcome to ScholarsCrib{% endblock %}
+{% block preheader %}Your account is ready. Here is how to start practising for WAEC, JAMB and NECO.{% endblock %}
+{% block reason %}You received this email because you created a ScholarsCrib account{% if email %} with {{ email }}{% endif %}.{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td align="center" style="padding:0 0 24px 0;">
+      <img src="{{ brand.icon_url }}" alt="" width="72" height="72" style="display:block;width:72px;height:72px;border-radius:18px;">
+    </td>
+  </tr>
+</table>
+
+<div style="text-align:center;">
+  {{ eyebrow("Account ready", "success") }}
+  {{ heading("Welcome to ScholarsCrib" ~ (", " ~ first_name if first_name else "") ~ "!") }}
+  <p style="margin:0 0 28px 0;">You're in. Learn the concept, practise like it's the real exam, and always know your next best step.</p>
+  {{ button(dashboard_url, "Go to your dashboard") }}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:36px 0 0 0;border-top:1px solid #e2e8f0;">
+  <tr>
+    <td style="padding-top:28px;">
+      <p style="margin:0 0 18px 0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:2px;color:#2563eb;text-transform:uppercase;">Get started in three steps</p>
+      {{ step("1", "Practise past questions", "Work through JAMB, WAEC and NECO style questions by subject, topic and year, with clear explanations.") }}
+      {{ step("2", "Take a timed mock exam", "Sit CBT sessions under real exam conditions and get instant, area-by-area feedback.") }}
+      {{ step("3", "Follow your study plan", "Build a revision plan around your timetable, revise with flashcards, and ask the AI tutor when a topic doesn't click.") }}
+    </td>
+  </tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 0 0;">
+  <tr>
+    <td bgcolor="#eff6ff" style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;font-size:14px;line-height:22px;color:#334155;">
+      <strong style="color:#1d4ed8;">Tip:</strong> a little every day beats a lot once a week. Keep your streak going and watch your accuracy climb.
+    </td>
+  </tr>
+</table>
+
+<p style="margin:28px 0 0 0;font-size:13px;line-height:20px;color:#94a3b8;">Questions or stuck on something? Visit the Contact page on our website and we'll help. This address can't receive replies.</p>
+{% endblock %}

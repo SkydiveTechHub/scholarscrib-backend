@@ -179,7 +179,12 @@ async def test_student_reset_password_success(mock_session, monkeypatch):
 
 
 async def test_student_otp_flow(mock_session, mock_email, monkeypatch):
-    user = SimpleNamespace(id="u1", email="student@example.com", email_verified=None)
+    user = SimpleNamespace(
+        id="u1",
+        email="student@example.com",
+        first_name="Ada",
+        email_verified=None,
+    )
     monkeypatch.setattr(
         "app.services.auth.otp.users_repository.by_email",
         AsyncMock(return_value=user),
@@ -233,6 +238,20 @@ async def test_student_otp_flow(mock_session, mock_email, monkeypatch):
     assert ok
     assert "Email verified successfully" in msg
     assert user.email_verified is not None
+
+    # First verification sends the welcome email...
+    welcome = [m for m in mock_email if m["template"] == "student_welcome.html"]
+    assert len(welcome) == 1
+    assert welcome[0]["email"] == "student@example.com"
+    assert welcome[0]["context"]["first_name"] == "Ada"
+
+    # ...and verifying again does not send it twice.
+    await otp_service.send_otp("student@example.com")
+    ok, _ = await otp_service.verify_otp(
+        "student@example.com", mock_email[-1]["context"]["otp_code"]
+    )
+    assert ok
+    assert len([m for m in mock_email if m["template"] == "student_welcome.html"]) == 1
 
 
 async def test_admin_forgot_and_reset_password(mock_session, mock_email, monkeypatch):
@@ -486,3 +505,88 @@ async def test_email_service_jinja2_rendering():
     assert "student@example.com" in rendered_otp
     assert "654321" in rendered_otp
     assert "Verify Your Email Address" in rendered_otp
+
+    # 4. Welcome template
+    rendered_welcome = await EmailService.render_template(
+        "student_welcome.html",
+        {
+            "first_name": "Ada",
+            "email": "student@example.com",
+            "dashboard_url": "https://example.com/dashboard",
+        },
+    )
+    assert "Welcome to ScholarsCrib, Ada!" in rendered_welcome
+    assert "https://example.com/dashboard" in rendered_welcome
+
+
+async def test_email_templates_share_branded_layout():
+    cases = {
+        "student_otp.html": {"email": "a@example.com", "otp_code": "123456"},
+        "student_password_reset.html": {
+            "email": "a@example.com",
+            "reset_url": "https://example.com/reset?t=1",
+        },
+        "admin_password_reset.html": {
+            "email": "a@example.com",
+            "reset_url": "https://example.com/admin/reset?t=1",
+        },
+        "student_welcome.html": {
+            "first_name": "Ada",
+            "dashboard_url": "https://example.com/dashboard",
+        },
+    }
+    for name, context in cases.items():
+        html = await EmailService.render_template(name, context)
+        # Logo comes from the public asset origin, never a relative path.
+        assert 'src="https://www.scholarscrib.com/logo-on-light.png"' in html, name
+        assert "Learn" in html and "Practice" in html and "Pass" in html, name
+        assert "{{" not in html and "{%" not in html, name
+
+
+async def test_email_rendering_escapes_user_supplied_values():
+    html = await EmailService.render_template(
+        "student_welcome.html",
+        {"first_name": "<script>x</script>", "dashboard_url": "https://e.com/d"},
+    )
+    assert "<script>x</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+async def test_send_email_sends_a_plain_text_part(monkeypatch):
+    from app.core.config import settings
+
+    posted = {}
+
+    class FakeResponse:
+        status_code = 200
+        text = ""
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            posted.update(json)
+            return FakeResponse()
+
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr("app.services.email.httpx.AsyncClient", FakeClient)
+
+    await EmailService.send_email(
+        "a@example.com",
+        "Reset",
+        "student_password_reset.html",
+        {"email": "a@example.com", "reset_url": "https://example.com/reset?t=1"},
+    )
+    assert "<" not in posted["text"]
+    assert "https://example.com/reset?t=1" in posted["text"]
+    assert "Reset Your Password" in posted["text"]
+    # The hidden inbox-preview text must not leak into the plain-text part.
+    assert "Use this link to choose a new password" not in posted["text"]
+    assert "<html" in posted["html"]

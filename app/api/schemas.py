@@ -69,6 +69,17 @@ class PasswordIn(BaseModel):
     newPassword: str = Field(min_length=6)
 
 
+class DeleteAccountIn(BaseModel):
+    """Identity check for self-service deletion.
+
+    Password accounts send ``password``; Google-only accounts (no password) send
+    ``confirmEmail`` instead.
+    """
+
+    password: str | None = None
+    confirmEmail: str | None = None
+
+
 class ForgotPasswordIn(BaseModel):
     email: EmailStr
 
