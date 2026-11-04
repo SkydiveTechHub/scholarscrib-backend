@@ -216,6 +216,9 @@ class ScopedMockIn(BaseModel):
     from_: ScopePoint = Field(alias="from")
     to: ScopePoint
     count: int = Field(default=40, ge=5, le=80)
+    # Omitted for the default, an untimed sitting; otherwise the student's own
+    # clock, up to half an hour.
+    timeLimitMinutes: int | None = Field(default=None, ge=5, le=30)
 
     model_config = {"populate_by_name": True}
 

@@ -42,8 +42,21 @@ from app.services.provider.service import ProviderDiscoveryService
 
 # Questions per provider page (the provider caps search at 15).
 PAST_PAPER_PAGE_SIZE = 15
-# Past papers run at a minute a question; each extra page adds its minutes.
-MINUTES_PER_QUESTION = 1
+# Past-paper clock, fixed per exam (students spend ~45-60s a question):
+# WAEC and NECO get an hour; JAMB gets 40 minutes for English, 30 otherwise.
+# Later pages of the same paper share this clock rather than extending it.
+WAEC_NECO_MINUTES = 60
+JAMB_ENGLISH_MINUTES = 40
+JAMB_OTHER_MINUTES = 30
+ENGLISH_SLUG = "english-language"
+
+
+def past_paper_minutes(exam_type: str, subject: Subject) -> int:
+    if exam_type != "JAMB":
+        return WAEC_NECO_MINUTES
+    if subject.slug == ENGLISH_SLUG:
+        return JAMB_ENGLISH_MINUTES
+    return JAMB_OTHER_MINUTES
 
 
 class PastPaperIngest(ProviderPaperIngest):
@@ -181,7 +194,7 @@ class StartPastPaperService:
             exam_year=self.exam_year,
             title=f"{exam_type} {subject.name} {self.exam_year}",
             untimed=False,
-            time_override=len(questions) * MINUTES_PER_QUESTION,
+            time_override=past_paper_minutes(exam_type, subject),
         )
         items = {question.id: item for question, item in stored}
         payload["questions"] = [

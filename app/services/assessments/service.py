@@ -234,12 +234,16 @@ async def _persist(
     total_marks: int | None = None,
     pass_mark: int = 50,
     time_override: int | None = None,
+    unlimited: bool = False,
 ) -> dict:
-    limit = (
-        time_override
-        if time_override is not None
-        else time_limit_minutes(len(questions), untimed, exam_type)
-    )
+    # `unlimited` is a hard "no clock", for a paper that has an exam type (which
+    # `untimed` alone does not exempt) but that the student chose not to time.
+    if unlimited:
+        limit = None
+    elif time_override is not None:
+        limit = time_override
+    else:
+        limit = time_limit_minutes(len(questions), untimed, exam_type)
     assessment = Assessment(
         id=cuid(),
         title=title,
@@ -945,6 +949,8 @@ class GenerateScopedMockService:
                 part for part in (subject.name, self.body.examType, "mock") if part
             ),
             untimed=False,
+            time_override=self.body.timeLimitMinutes,
+            unlimited=self.body.timeLimitMinutes is None,
         )
         paper["scope"] = {
             "from": self._point(self.body.from_),
