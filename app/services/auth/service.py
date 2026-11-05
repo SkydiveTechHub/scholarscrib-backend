@@ -3,6 +3,7 @@ import logging
 import re
 import secrets
 from datetime import timedelta
+from urllib.parse import quote
 
 import httpx
 from sqlalchemy.exc import IntegrityError
@@ -800,6 +801,8 @@ class StudentForgotPasswordService:
 
     async def process(self) -> dict:
         normalised = self.email.strip().lower()
+        url_safe_email = quote(normalised, safe="")
+
         self._limit(normalised)
         user = await users_repository.by_email(self.session, normalised)
         if user is not None and user.is_active:
@@ -810,7 +813,7 @@ class StudentForgotPasswordService:
                 self.session, identifier=identifier, token=token, expires=expires
             )
             base = settings.frontend_url.rstrip("/")
-            reset_url = f"{base}/reset-password?token={token}&email={normalised}"
+            reset_url = f"{base}/reset-password?token={token}&email={url_safe_email}"
             await EmailService.send_email(
                 to_email=normalised,
                 subject="Reset your ScholarsCrib password",

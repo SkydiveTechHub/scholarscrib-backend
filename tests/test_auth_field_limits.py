@@ -21,7 +21,9 @@ def _fields_failing(**overrides) -> set[str]:
 
 
 def test_register_accepts_boundary_lengths():
-    RegisterIn(**{**VALID, "firstName": "a" * 50, "lastName": "b" * 50, "password": "p" * 25})
+    RegisterIn(
+        **{**VALID, "firstName": "a" * 50, "lastName": "b" * 50, "password": "p" * 25}
+    )
     RegisterIn(**{**VALID, "password": "p" * 6})
 
 
