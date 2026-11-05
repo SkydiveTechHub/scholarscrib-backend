@@ -809,7 +809,7 @@ class StudentForgotPasswordService:
             await verification_tokens_repository.create_token(
                 self.session, identifier=identifier, token=token, expires=expires
             )
-            base = settings.app_url.rstrip("/")
+            base = settings.frontend_url.rstrip("/")
             reset_url = f"{base}/reset-password?token={token}&email={normalised}"
             await EmailService.send_email(
                 to_email=normalised,

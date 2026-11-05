@@ -43,7 +43,7 @@ class StudentOTPService:
 
         await EmailService.send_email(
             to_email=normalised,
-            subject=f"{code} is your ScholarsCrib verification code",
+            subject="ScholarsCrib verification code",
             template_name="student_otp.html",
             context={"otp_code": code, "email": normalised},
         )
