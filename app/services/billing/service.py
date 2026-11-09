@@ -249,6 +249,26 @@ class ApplyChargeSuccessService:
             self.session, self.reference
         )
         outcome = self._outcome(row)
+        logger.info(
+            "ApplyChargeSuccess reference=%s outcome=%s row=%s txn_status=%s "
+            "txn_amount=%s/%s",
+            self.reference,
+            outcome,
+            None
+            if row is None
+            else {
+                "id": row.id,
+                "user_id": row.user_id,
+                "status": row.status,
+                "tier": row.tier,
+                "amount_kobo": row.amount_kobo,
+                "currency": row.currency,
+                "kind": getattr(row, "kind", None),
+            },
+            self.transaction.get("status"),
+            self.transaction.get("amount"),
+            self.transaction.get("currency"),
+        )
         if outcome == "not-successful" and row is not None and row.status == "PENDING":
             row.status = "FAILED"
             capture(
@@ -263,12 +283,41 @@ class ApplyChargeSuccessService:
                 },
             )
         if outcome != "activate" or row is None:
+            if row is None:
+                logger.warning(
+                    "ApplyChargeSuccess no subscription row for reference=%s "
+                    "outcome=%s — checkout PENDING may be missing",
+                    self.reference,
+                    outcome,
+                )
+            elif outcome != "activate":
+                logger.warning(
+                    "ApplyChargeSuccess not activating reference=%s outcome=%s "
+                    "row_status=%s row_tier=%s row_amount=%s txn_amount=%s",
+                    self.reference,
+                    outcome,
+                    row.status,
+                    row.tier,
+                    row.amount_kobo,
+                    self.transaction.get("amount"),
+                )
             return outcome
         # Re-check under the lock: peer may have already activated.
         if row.status == "ACTIVE":
+            logger.info(
+                "ApplyChargeSuccess already-applied reference=%s user=%s tier=%s",
+                self.reference,
+                row.user_id,
+                row.tier,
+            )
             return "already-applied"
         applied = await self._activate(row)
         if not applied:
+            logger.info(
+                "ApplyChargeSuccess activate raced reference=%s user=%s",
+                self.reference,
+                row.user_id,
+            )
             return "already-applied"
         user = await users_repository.by_id(self.session, row.user_id)
         if user:
@@ -276,6 +325,16 @@ class ApplyChargeSuccessService:
             # user fields (subscription.create may already have stamped SUB_new).
             prior_code = getattr(row, "prior_paystack_subscription_code", None)
             prior_token = getattr(row, "prior_paystack_email_token", None)
+            logger.info(
+                "ApplyChargeSuccess activating user=%s tier=%s→%s plan=%s "
+                "prior_sub=%s live_sub=%s",
+                user.id,
+                user.tier,
+                row.tier,
+                user.plan_code,
+                prior_code,
+                getattr(user, "paystack_subscription_code", None),
+            )
             await self._store_paystack_tokens(user)
             await get_billing_provider().on_checkout_activated(
                 self.session,
@@ -298,6 +357,16 @@ class ApplyChargeSuccessService:
             )
             if not getattr(row, "kind", None):
                 row.kind = "checkout"
+            logger.info(
+                "ApplyChargeSuccess applied user=%s tier=%s plan=%s "
+                "billing_status=%s next_billing_at=%s sub=%s",
+                user.id,
+                user.tier,
+                user.plan_code,
+                user.billing_status,
+                user.next_billing_at,
+                getattr(user, "paystack_subscription_code", None),
+            )
         capture(
             row.user_id,
             "subscription_activated",

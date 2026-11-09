@@ -10,6 +10,7 @@ from app.api.responses import CheckoutOut, WebhookOut
 from app.api.schemas import CheckoutIn
 from app.core.config import settings
 from app.core.errors import ApiError
+from app.core.logger import logger
 from app.core.rate_limit import hit
 from app.database.db import AnSession
 from app.database.repositories.billing import subscriptions_repository
@@ -28,6 +29,32 @@ from app.services.billing import (
     VerifyPaystackSignatureService,
 )
 from app.services.billing.lago_client import verify_hmac_signature
+
+
+def _webhook_data_summary(data) -> dict:
+    """Compact, non-secret fields useful when tracing upgrade settlement."""
+    if not isinstance(data, dict):
+        return {"data_type": type(data).__name__}
+    raw_meta = data.get("metadata")
+    raw_customer = data.get("customer")
+    raw_subscription = data.get("subscription")
+    meta = raw_meta if isinstance(raw_meta, dict) else {}
+    customer = raw_customer if isinstance(raw_customer, dict) else {}
+    subscription = raw_subscription if isinstance(raw_subscription, dict) else {}
+    return {
+        "reference": data.get("reference"),
+        "amount": data.get("amount"),
+        "currency": data.get("currency"),
+        "status": data.get("status"),
+        "customer_code": customer.get("customer_code"),
+        "customer_email": customer.get("email"),
+        "subscription_code": data.get("subscription_code")
+        or subscription.get("subscription_code"),
+        "metadata_plan_code": meta.get("plan_code"),
+        "metadata_tier": meta.get("tier"),
+        "metadata_user_id": meta.get("userId"),
+    }
+
 
 router = APIRouter(prefix="/billing", tags=["Student / Billing"])
 
@@ -172,28 +199,52 @@ def _paystack_event_key(event_type: str, payload: dict, data) -> str | None:
 
 
 @router.post("/paystack/webhook", response_model=WebhookOut)
-@router.post("/webhook", response_model=WebhookOut, include_in_schema=False)
 async def billing_webhook(request: Request, session: AnSession):
     from app.services.billing.providers import get_billing_provider
 
     raw = await request.body()
-    if not await VerifyPaystackSignatureService(
+    signature_ok = await VerifyPaystackSignatureService(
         raw, request.headers.get("x-paystack-signature")
-    ).process():
+    ).process()
+    if not signature_ok:
+        logger.warning(
+            "paystack webhook rejected: invalid signature (billing_enabled=%s)",
+            settings.billing_enabled,
+        )
         raise ApiError(401, "Invalid signature")
     try:
         payload = await request.json()
     except Exception as exc:
+        logger.warning("paystack webhook rejected: malformed JSON")
         raise ApiError(400, "Malformed JSON") from exc
     data = payload.get("data") or {}
     event_type = payload.get("event") or payload.get("type") or "unknown"
+    summary = _webhook_data_summary(data)
     event_key = _paystack_event_key(event_type, payload, data)
+    logger.info(
+        "paystack webhook received event=%s key=%s provider=%s %s",
+        event_type,
+        event_key,
+        get_billing_provider().name,
+        summary,
+    )
     if not event_key:
+        logger.warning(
+            "paystack webhook ignored: no idempotency key event=%s %s",
+            event_type,
+            summary,
+        )
         return {"received": True}
     inserted = await RecordPaystackEventService(
         session, event_key, event_type, payload
     ).process()
     if not inserted:
+        logger.info(
+            "paystack webhook duplicate event=%s key=%s %s",
+            event_type,
+            event_key,
+            summary,
+        )
         return {"received": True, "duplicate": True}
 
     provider = get_billing_provider()
@@ -205,21 +256,68 @@ async def billing_webhook(request: Request, session: AnSession):
         if handled is not None and (
             event_type != "charge.success" or handled.get("renewal")
         ):
+            logger.info(
+                "paystack webhook provider-handled event=%s key=%s result=%s",
+                event_type,
+                event_key,
+                handled,
+            )
             return {"received": True, **handled}
 
         if event_type != "charge.success":
+            logger.info(
+                "paystack webhook ack without settlement event=%s key=%s handled=%s",
+                event_type,
+                event_key,
+                handled,
+            )
             return {"received": True}
 
         reference = (
             data.get("reference") if isinstance(data, dict) else None
         ) or event_key
+        logger.info(
+            "paystack webhook settling checkout event=%s key=%s reference=%s "
+            "provider_handled=%s",
+            event_type,
+            event_key,
+            reference,
+            handled,
+        )
         transaction = await VerifyPaymentService(session, reference).process()
         if not transaction:
+            logger.error(
+                "paystack webhook verify returned empty reference=%s key=%s",
+                reference,
+                event_key,
+            )
             raise ApiError(500, "Could not verify transaction")
+        logger.info(
+            "paystack webhook verified reference=%s status=%s amount=%s currency=%s "
+            "customer=%s meta=%s",
+            reference,
+            transaction.get("status"),
+            transaction.get("amount"),
+            transaction.get("currency"),
+            transaction.get("customer_code"),
+            transaction.get("metadata"),
+        )
         outcome = await ApplyChargeSuccessService(
             session, reference, transaction
         ).process()
+        logger.info(
+            "paystack webhook settled reference=%s key=%s outcome=%s",
+            reference,
+            event_key,
+            outcome,
+        )
     except Exception as exc:
+        logger.exception(
+            "paystack webhook apply failed event=%s key=%s %s",
+            event_type,
+            event_key,
+            summary,
+        )
         await ForgetPaystackEventService(session, event_key, event_type).process()
         raise ApiError(500, "Could not apply payment") from exc
     return {"received": True, "outcome": outcome}

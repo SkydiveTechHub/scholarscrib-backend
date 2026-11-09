@@ -206,6 +206,7 @@ class PaystackSubscriptionProvider:
             return {"handled": True, "event": event_type}
         if event_type == PaystackEvents.CHARGE_SUCCESS:
             return await self._on_renewal_charge(session, data)
+        logger.info("Paystack event unhandled by provider event=%s", event_type)
         return None
 
     async def _user_from_customer(
@@ -235,10 +236,28 @@ class PaystackSubscriptionProvider:
     async def _on_subscription_create(self, session: AsyncSession, data: dict) -> dict:
         user = await self._user_from_customer(session, data)
         if user is None:
+            raw_customer = data.get("customer")
+            customer = raw_customer if isinstance(raw_customer, dict) else {}
+            logger.warning(
+                "subscription.create user-not-found customer=%s email=%s meta=%s",
+                customer.get("customer_code"),
+                customer.get("email"),
+                data.get("metadata"),
+            )
             return {"handled": False, "reason": "user-not-found"}
         new_code = data.get("subscription_code")
         old_code = getattr(user, "paystack_subscription_code", None)
         old_token = getattr(user, "paystack_email_token", None)
+        logger.info(
+            "subscription.create user=%s tier=%s plan=%s billing_status=%s "
+            "old_sub=%s new_sub=%s",
+            user.id,
+            user.tier,
+            user.plan_code,
+            user.billing_status,
+            old_code,
+            new_code,
+        )
         if new_code and old_code and old_code != new_code:
             await self._disable_subscription_codes(
                 user,
@@ -283,10 +302,32 @@ class PaystackSubscriptionProvider:
                     session, User.paystack_subscription_code == code
                 )
         if user is None:
+            raw_customer = data.get("customer")
+            customer = raw_customer if isinstance(raw_customer, dict) else {}
+            logger.warning(
+                "subscription.disable user-not-found code=%s customer=%s",
+                data.get("subscription_code"),
+                customer.get("customer_code"),
+            )
             return {"handled": False, "reason": "user-not-found"}
         # Avoid re-entrant disable when assign_freemium clears codes.
         if user.billing_status == "freemium" and user.tier == "FREEMIUM":
+            logger.info(
+                "subscription.disable noop user=%s already freemium code=%s",
+                user.id,
+                data.get("subscription_code"),
+            )
             return {"handled": True, "event": "subscription.disable", "noop": True}
+        logger.warning(
+            "subscription.disable assigning freemium user=%s tier=%s plan=%s "
+            "billing_status=%s live_sub=%s disabled_sub=%s",
+            user.id,
+            user.tier,
+            user.plan_code,
+            user.billing_status,
+            getattr(user, "paystack_subscription_code", None),
+            data.get("subscription_code"),
+        )
         await assign_freemium(session, user, source="paystack_subscription_disable")
         return {"handled": True, "event": "subscription.disable", "userId": user.id}
 
@@ -330,15 +371,52 @@ class PaystackSubscriptionProvider:
             row = await subscriptions_repository.by_reference(session, reference)
             if row is not None and row.status == "PENDING":
                 # First checkout — leave to ApplyChargeSuccessService.
+                logger.info(
+                    "charge.success deferred to checkout settlement "
+                    "reference=%s user=%s pending_tier=%s pending_amount=%s",
+                    reference,
+                    row.user_id,
+                    row.tier,
+                    row.amount_kobo,
+                )
                 return None
+            if row is not None:
+                logger.info(
+                    "charge.success existing subscription row reference=%s "
+                    "status=%s tier=%s kind=%s — evaluating as renewal path",
+                    reference,
+                    row.status,
+                    row.tier,
+                    getattr(row, "kind", None),
+                )
+            else:
+                logger.info(
+                    "charge.success no local subscription for reference=%s "
+                    "— evaluating as renewal path",
+                    reference,
+                )
 
         user = await self._user_from_customer(session, data)
         if user is None:
+            raw_customer = data.get("customer")
+            customer = raw_customer if isinstance(raw_customer, dict) else {}
+            logger.warning(
+                "charge.success user-not-found reference=%s customer=%s meta=%s",
+                reference,
+                customer.get("customer_code"),
+                data.get("metadata"),
+            )
             return {"handled": False, "reason": "user-not-found"}
 
         sub_code = getattr(user, "paystack_subscription_code", None)
         # Already active paid user: treat as renewal.
         if user.billing_status in {"freemium", "trialing"} and not sub_code:
+            logger.info(
+                "charge.success deferred to checkout settlement user=%s "
+                "billing_status=%s (no paystack sub code)",
+                user.id,
+                user.billing_status,
+            )
             return None
 
         meta = data.get("metadata") or {}
@@ -347,6 +425,21 @@ class PaystackSubscriptionProvider:
             plan_code = meta.get("plan_code")
         if not plan_code:
             plan_code = user.plan_code or plan_code_for_tier(user.tier)
+
+        logger.info(
+            "charge.success treating as renewal user=%s tier=%s plan=%s "
+            "billing_status=%s sub=%s resolved_plan=%s amount=%s reference=%s "
+            "meta=%s",
+            user.id,
+            user.tier,
+            user.plan_code,
+            user.billing_status,
+            sub_code,
+            plan_code,
+            data.get("amount"),
+            reference,
+            meta if isinstance(meta, dict) else None,
+        )
 
         now = utcnow()
         next_at = term_end(now, "MONTHLY")
