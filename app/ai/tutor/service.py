@@ -39,7 +39,7 @@ from app.ai.core.stream_events import (
 from app.ai.core.streaming import beat_loop, spawn_run
 from app.ai.rag.vectorstore import require_rag
 from app.ai.tutor.graph import TutorState, get_tutor_graph
-from app.ai.tutor.limits import enforce_daily_message_limit
+from app.ai.tutor.limits import enforce_tutor_quota
 from app.ai.tutor.prompts import TITLE_PROMPT
 from app.ai.tutor.proposals import public_proposal, resume_command
 from app.ai.tutor.runs import (
@@ -188,11 +188,16 @@ class LessonTutorService:
 
 class CreateTutorThreadService:
     def __init__(
-        self, session: AsyncSession, user_id: str, body: TutorThreadCreateIn
+        self,
+        session: AsyncSession,
+        user_id: str,
+        body: TutorThreadCreateIn,
+        tier: str = "FREEMIUM",
     ) -> None:
         self.session = session
         self.user_id = user_id
         self.body = body
+        self.tier = tier
 
     async def process(self) -> dict:
         require_rag()
@@ -201,7 +206,7 @@ class CreateTutorThreadService:
         first = (self.body.firstMessage or "").strip()
         wrong = (self.body.wrongAnswerContext or "").strip()
         if first:
-            enforce_daily_message_limit(self.user_id)
+            await enforce_tutor_quota(self.session, self.user_id, self.tier)
         if not title and first:
             title = await _auto_title(first)
         thread = ChatThread(
@@ -360,15 +365,17 @@ class PostTutorMessageService:
         user_id: str,
         thread_id: str,
         body: TutorMessageIn,
+        tier: str = "FREEMIUM",
     ) -> None:
         self.session = session
         self.user_id = user_id
         self.thread_id = thread_id
         self.body = body
+        self.tier = tier
 
     async def process(self) -> dict:
         require_rag()
-        enforce_daily_message_limit(self.user_id)
+        await enforce_tutor_quota(self.session, self.user_id, self.tier)
         thread = await _owned_thread(self.session, self.user_id, self.thread_id)
         content = self.body.content.strip()
         if not content:
@@ -759,11 +766,15 @@ async def stop_tutor_stream(
 
 
 async def start_message_run(
-    session: AsyncSession, user_id: str, thread_id: str, content: str
+    session: AsyncSession,
+    user_id: str,
+    thread_id: str,
+    content: str,
+    tier: str = "FREEMIUM",
 ) -> TutorRun:
     """Validate the turn, then keep running after this request ends."""
     require_rag()
-    enforce_daily_message_limit(user_id)
+    await enforce_tutor_quota(session, user_id, tier)
     text_value = content.strip()
     if not text_value:
         raise ApiError(400, "content is required")
@@ -802,7 +813,10 @@ def start_new_thread_run(
 
 
 async def prepare_new_thread_stream(
-    session: AsyncSession, user_id: str, body: TutorThreadCreateIn
+    session: AsyncSession,
+    user_id: str,
+    body: TutorThreadCreateIn,
+    tier: str = "FREEMIUM",
 ) -> tuple[TutorThreadCreateIn, str | None]:
     """Validate a create-and-stream request before the response starts.
 
@@ -815,7 +829,7 @@ async def prepare_new_thread_stream(
     require_rag()
     if not (body.firstMessage or "").strip():
         raise ApiError(400, "firstMessage is required")
-    enforce_daily_message_limit(user_id)
+    await enforce_tutor_quota(session, user_id, tier)
     if body.lessonId:
         from app.database.models import Lesson, Subtopic, Topic
 

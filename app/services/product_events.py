@@ -17,7 +17,18 @@ from app.core.config import settings
 from app.core.logger import logger
 from app.core.timeutil import lagos_day_key
 
-_PERSON_FIELDS = frozenset({"class_level", "track", "state", "tier", "signup_method"})
+_PERSON_FIELDS = frozenset(
+    {
+        "class_level",
+        "track",
+        "state",
+        "tier",
+        "signup_method",
+        "plan_code",
+        "billing_status",
+        "intro_ends_at",
+    }
+)
 _DISALLOWED = frozenset(
     {
         "email",

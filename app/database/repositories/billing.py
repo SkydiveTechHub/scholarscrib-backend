@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import PaystackEvent, Subscription
 from app.database.repositories.base import BaseRepository
+from app.domain import TIER_RANK
 
 
 class SubscriptionRepository(BaseRepository[Subscription]):
@@ -19,6 +20,16 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         self, session: AsyncSession, reference: str
     ) -> Subscription | None:
         return await self.first(session, Subscription.reference == reference)
+
+    async def by_reference_for_update(
+        self, session: AsyncSession, reference: str
+    ) -> Subscription | None:
+        """Lock the row for settlement so verify + webhook cannot race."""
+        return await session.scalar(
+            select(Subscription)
+            .where(Subscription.reference == reference)
+            .with_for_update()
+        )
 
     async def latest_live_end(
         self, session: AsyncSession, user_id: str, now: datetime
@@ -61,6 +72,22 @@ class SubscriptionRepository(BaseRepository[Subscription]):
             Subscription.user_id == user_id,
             Subscription.status == "ACTIVE",
         )
+
+    async def end_active_below(
+        self, session: AsyncSession, user_id: str, tier: str, now: datetime
+    ) -> int:
+        """Cut short lower-tier ACTIVE terms so an upgrade becomes live immediately."""
+        target_rank = TIER_RANK.get(tier, 0)
+        ended = 0
+        for row in await self.for_user(session, user_id):
+            if row.status != "ACTIVE":
+                continue
+            if TIER_RANK.get(row.tier, 0) >= target_rank:
+                continue
+            if row.ends_at is None or row.ends_at > now:
+                row.ends_at = now
+                ended += 1
+        return ended
 
 
 class PaystackEventRepository(BaseRepository[PaystackEvent]):

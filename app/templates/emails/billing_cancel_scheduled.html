@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button with context %}
+
+{% block title %}Your plan will end soon{% endblock %}
+{% block preheader %}You'll keep access until {{ access_until_label }}. After that you'll move to Free unless you resubscribe.{% endblock %}
+{% block reason %}You received this because you cancelled your ScholarsCrib plan.{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  {{ eyebrow("Cancellation", "slate") }}
+  {{ heading("You'll keep " ~ plan_name ~ " until " ~ access_until_label) }}
+  <p style="margin:0 0 28px 0;">We won't renew your subscription. You can resume anytime before that date from Settings → Billing.</p>
+  {{ button(billing_url, "Manage billing") }}
+</div>
+{% endblock %}

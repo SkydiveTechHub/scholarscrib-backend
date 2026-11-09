@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button with context %}
+
+{% block title %}You're now on Free{% endblock %}
+{% block preheader %}Your paid access has ended. Upgrade anytime from billing settings.{% endblock %}
+{% block reason %}You received this because your ScholarsCrib plan changed to Free.{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  {{ eyebrow("Plan update", "slate") }}
+  {{ heading("You're now on Free") }}
+  <p style="margin:0 0 28px 0;">You can still practise past questions, use class notes, and ask the AI tutor a little each day. Upgrade anytime for explanations, study plans, and more.</p>
+  {{ button(billing_url, "Upgrade") }}
+</div>
+{% endblock %}

@@ -1,0 +1,138 @@
+# External scheduler for /api/cron/* (no Celery / pg_cron required).
+# Set repo secrets: CRON_SECRET (same as Heroku), CRON_API_BASE_URL (API origin, no trailing slash).
+#
+# Schedules are UTC. Lagos is UTC+1 with no DST:
+#   06:xx UTC = 07:xx Lagos, 18:xx UTC = 19:xx Lagos.
+name: Cron
+
+on:
+  schedule:
+    # Push announcement drain + email outbox drain (GHA cannot reliably hit every minute).
+    - cron: "*/5 * * * *"
+    # Morning study reminders — 07:00–07:55 Lagos.
+    - cron: "*/5 6 * * *"
+    # Evening streak reminders — 19:00–19:55 Lagos.
+    - cron: "*/5 18 * * *"
+    # Billing intro/renewal reminders + grace/intro downgrades — 08:00 Lagos.
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which cron endpoint to call
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - drain
+          - email_drain
+          - morning
+          - streak
+          - billing
+
+concurrency:
+  group: cron-${{ github.event.schedule || github.event.inputs.job || 'manual' }}
+  cancel-in-progress: false
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: drain
+            path: /api/cron/push/drain
+            schedule: "*/5 * * * *"
+          - id: email_drain
+            path: /api/cron/email/drain
+            schedule: "*/5 * * * *"
+          - id: morning
+            path: /api/cron/push/morning
+            schedule: "*/5 6 * * *"
+          - id: streak
+            path: /api/cron/push/streak
+            schedule: "*/5 18 * * *"
+          - id: billing
+            path: /api/cron/billing/reminders
+            schedule: "0 7 * * *"
+    steps:
+      - name: Decide whether to run
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          INPUT_JOB: ${{ github.event.inputs.job }}
+          MATRIX_ID: ${{ matrix.id }}
+          MATRIX_SCHEDULE: ${{ matrix.schedule }}
+        run: |
+          set -euo pipefail
+          run=false
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            if [ "$EVENT_SCHEDULE" = "$MATRIX_SCHEDULE" ]; then
+              run=true
+            fi
+            # Colliding ticks (morning/streak/billing) still drain push + email.
+            if [ "$MATRIX_ID" = "drain" ] || [ "$MATRIX_ID" = "email_drain" ]; then
+              case "$EVENT_SCHEDULE" in
+                "*/5 * * * *"|"*/5 6 * * *"|"*/5 18 * * *"|"0 7 * * *") run=true ;;
+              esac
+            fi
+            # Billing at 07:00 UTC even if GHA collapses onto the */5 schedule.
+            if [ "$MATRIX_ID" = "billing" ]; then
+              utc_hm=$(date -u +%H%M)
+              if [ "$EVENT_SCHEDULE" = "0 7 * * *" ] || \
+                 { [ "$EVENT_SCHEDULE" = "*/5 * * * *" ] && [ "$utc_hm" = "0700" ]; }; then
+                run=true
+              fi
+            fi
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$INPUT_JOB" = "all" ] || [ "$INPUT_JOB" = "$MATRIX_ID" ]; then
+              run=true
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "matrix=$MATRIX_ID schedule_match=${EVENT_SCHEDULE:-none} → run=$run"
+
+      - name: POST ${{ matrix.path }}
+        if: steps.gate.outputs.run == 'true'
+        env:
+          BASE: ${{ secrets.CRON_API_BASE_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+          PATH_SUFFIX: ${{ matrix.path }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE:-}" ] || [ -z "${SECRET:-}" ]; then
+            echo "::error::Set repository secrets CRON_API_BASE_URL and CRON_SECRET"
+            exit 1
+          fi
+          url="${BASE%/}${PATH_SUFFIX}"
+          echo "POST $url"
+          # 204 = intentional skip under CRON_FAIL_OPEN (secret unset / feature off).
+          # 503 = cron misconfigured (secret missing/short, fail-closed) — fail the job.
+          # 401 = secret mismatch. 5xx / network errors fail the job.
+          code=$(curl -sS -o /tmp/cron-body.txt -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${SECRET}" \
+            -H "Accept: application/json" \
+            --max-time 55 \
+            "$url")
+          echo "HTTP $code"
+          head -c 2000 /tmp/cron-body.txt || true
+          echo
+          case "$code" in
+            200|204) exit 0 ;;
+            401)
+              echo "::error::Unauthorized — CRON_SECRET does not match the API"
+              exit 1
+              ;;
+            503)
+              echo "::error::Cron not configured (503) — set CRON_SECRET on the API or CRON_FAIL_OPEN=true for local skip"
+              exit 1
+              ;;
+            *)
+              echo "::error::Unexpected status $code from $url"
+              exit 1
+              ;;
+          esac

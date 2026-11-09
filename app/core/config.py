@@ -40,6 +40,21 @@ class Settings(BaseSettings):
     app_url: str
 
     paystack_secret_key: str | None
+
+    # Who owns recurring billing: paystack (native Subscriptions) or lago
+    # (invoices + charge_authorization). Default is Paystack.
+    billing_provider: Literal["paystack", "lago"] = "paystack"
+    # Lago Cloud billing (subscriptions / invoices). Empty key disables Lago sync.
+    # Only used when billing_provider=lago.
+    lago_api_key: str | None = None
+    lago_api_url: str = "https://api.getlago.com/api/v1"
+    # HMAC secret for Lago webhook verification (preferred over JWT for simplicity).
+    lago_hmac_key: str | None = None
+    # Free Standard intro length and paid renewal reminder lead times.
+    billing_intro_days: int = 30
+    billing_reminder_lead_days: str = "7,1"
+    billing_grace_days: int = 3
+
     cloudinary_cloud_name: str | None
     cloudinary_api_key: str | None
     cloudinary_api_secret: str | None
@@ -60,6 +75,9 @@ class Settings(BaseSettings):
     vapid_private_key: str | None
     vapid_subject: str | None
     cron_secret: str | None
+    # When true, missing/short CRON_SECRET returns 204 (local/dev). Production
+    # should leave this false so misconfigured cron fails closed (503).
+    cron_fail_open: bool = False
 
     resend_api_key: str | None = None
     email_from: str = "noreply@scholarscrib.com"
@@ -125,6 +143,19 @@ class Settings(BaseSettings):
     def billing_enabled(self) -> bool:
         key = (self.paystack_secret_key or "").strip()
         return bool(key) and key != "your-paystack-secret-key"
+
+    @property
+    def lago_enabled(self) -> bool:
+        key = (self.lago_api_key or "").strip()
+        return bool(key) and key != "your-lago-api-key"
+
+    @property
+    def billing_reminder_leads(self) -> list[int]:
+        return [
+            int(part.strip())
+            for part in (self.billing_reminder_lead_days or "7,1").split(",")
+            if part.strip().isdigit()
+        ]
 
     @property
     def google_enabled(self) -> bool:

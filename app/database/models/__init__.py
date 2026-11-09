@@ -8,7 +8,14 @@ from app.database.models.assessment import (
     AssessmentQuestion,
     QuestionResponse,
 )
-from app.database.models.billing import PaystackEvent, Subscription
+from app.database.models.billing import EmailOutbox, PaystackEvent, Subscription
+from app.database.models.billing_catalog import (
+    BillingFeature,
+    BillingPlan,
+    BillingPlanEntitlement,
+    BillingReminderLog,
+    LagoEvent,
+)
 from app.database.models.chat import (
     ChatFeedback,
     ChatMessage,
@@ -92,6 +99,10 @@ __all__ = [
     "AssessmentAttempt",
     "AssessmentQuestion",
     "AuthSession",
+    "BillingFeature",
+    "BillingPlan",
+    "BillingPlanEntitlement",
+    "BillingReminderLog",
     "ChatFeedback",
     "ChatMessage",
     "ChatThread",
@@ -105,11 +116,13 @@ __all__ = [
     "FlashcardReviewLog",
     "InAppNotification",
     "JambCombination",
+    "LagoEvent",
     "LearningEvent",
     "PredictionLog",
     "Lesson",
     "LessonResource",
     "NotificationPreference",
+    "EmailOutbox",
     "PaystackEvent",
     "PerformanceMetric",
     "ProviderCatalogue",

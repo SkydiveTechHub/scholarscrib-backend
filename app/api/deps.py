@@ -12,9 +12,14 @@ from app.database.db import AnSession
 from app.database.models import Admin
 from app.database.repositories.admin import admins_repository
 from app.database.repositories.identity import devices_repository, users_repository
-from app.domain import DEVICE_TOUCH_SECONDS, can, entitlement_denial
+from app.domain import DEVICE_TOUCH_SECONDS, TIER_DISPLAY, can, entitlement_denial
 from app.services.auth.rules import is_session_revoked
-from app.services.product_events import note_user_active
+from app.services.billing.catalog import (
+    can_gate,
+    catalog_is_empty,
+    required_tier_for_gate,
+)
+from app.services.product_events import capture, note_user_active
 
 
 @dataclass
@@ -96,19 +101,47 @@ def require_feature(feature: str):
         student: Annotated[StudentPrincipal, Depends(require_student)],
     ) -> StudentPrincipal:
         tier = student.tier
-        if not can(tier, feature):
+        allowed = await can_gate(session, tier, feature)
+        if not allowed:
             fresh = await users_repository.by_id(session, student.id)
             tier = fresh.tier if fresh else tier
-            if not can(tier, feature):
-                denial = entitlement_denial(feature)
-                raise ApiError(
-                    403,
-                    str(denial["error"]),
-                    requiredTier=denial["requiredTier"],
-                    feature=feature,
-                )
+            allowed = await can_gate(session, tier, feature)
+        if allowed:
+            # Always sync principal — JWT tier can lag a paid upgrade.
             student.tier = tier
-        return student
+            return student
+        # Static domain.ENTITLEMENTS only when the DB catalog has no plans.
+        # Never override an explicit catalog denial (can_gate False with rows).
+        if await catalog_is_empty(session) and can(tier, feature):
+            student.tier = tier
+            return student
+        try:
+            required = await required_tier_for_gate(session, feature)
+        except Exception:
+            required = entitlement_denial(feature)["requiredTier"]
+        denial = {
+            "error": (
+                f"This feature is part of {TIER_DISPLAY.get(required, required)}."
+            ),
+            "requiredTier": required,
+            "feature": feature,
+        }
+        capture(
+            student.id,
+            "billing_entitlement_blocked",
+            {
+                "feature": feature,
+                "required_plan": denial["requiredTier"],
+                "plan_code": tier.lower(),
+                "source": "gate",
+            },
+        )
+        raise ApiError(
+            403,
+            str(denial["error"]),
+            requiredTier=denial["requiredTier"],
+            feature=feature,
+        )
 
     return checker
 

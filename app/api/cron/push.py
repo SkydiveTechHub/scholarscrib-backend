@@ -20,11 +20,13 @@ def _guard(request: Request) -> int | None:
 
 
 def _auth_stopped(decision: int | None):
-    """Cron auth only. 204 when secret unset (fail-soft)."""
+    """Cron auth. 204 only under CRON_FAIL_OPEN; else 503 when secret missing."""
     if decision == 405:
         raise ApiError(405, "Method not allowed")
     if decision == 401:
         raise ApiError(401, "Unauthorized")
+    if decision == 503:
+        raise ApiError(503, "Cron is not configured")
     if decision == 204:
         return Response(status_code=204)
     return None

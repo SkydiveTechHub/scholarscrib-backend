@@ -33,12 +33,14 @@ def term_end(start: datetime, period: str) -> datetime:
 def is_live(
     status: str, starts_at: datetime | None, ends_at: datetime | None, now: datetime
 ) -> bool:
-    return (
-        status == "ACTIVE"
-        and ends_at is not None
-        and (starts_at is None or starts_at <= now)
-        and ends_at > now
-    )
+    if status != "ACTIVE":
+        return False
+    if starts_at is not None and starts_at > now:
+        return False
+    # Open-ended ACTIVE rows (e.g. freemium) stay live forever.
+    if ends_at is None:
+        return True
+    return ends_at > now
 
 
 def resolve_live_tier(rows: list[dict], now: datetime) -> tuple[str, datetime | None]:
@@ -50,7 +52,12 @@ def resolve_live_tier(rows: list[dict], now: datetime) -> tuple[str, datetime | 
     if not live:
         return "FREEMIUM", None
     best = max(live, key=lambda row: TIER_RANK[row["tier"]])
-    expires = max(row["endsAt"] for row in live if row["tier"] == best["tier"])
+    ends = [
+        row["endsAt"]
+        for row in live
+        if row["tier"] == best["tier"] and row.get("endsAt") is not None
+    ]
+    expires = max(ends) if ends else None
     return best["tier"], expires
 
 

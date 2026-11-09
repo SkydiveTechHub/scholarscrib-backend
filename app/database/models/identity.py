@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database.db import Base
 from app.database.models.columns import id_column, timestamp_column
 from app.database.models.enums import (
+    BillingStatus,
     ClassLevel,
     Role,
     SchoolType,
@@ -50,6 +51,32 @@ class User(Base):
     tier: Mapped[str] = mapped_column(SubscriptionTier, default="FREEMIUM")
     tier_updated_at: Mapped[datetime | None] = mapped_column(
         "tierUpdatedAt", DateTime(timezone=True)
+    )
+    plan_code: Mapped[str] = mapped_column("planCode", String, default="freemium")
+    billing_status: Mapped[str] = mapped_column(
+        "billingStatus", BillingStatus, default="freemium"
+    )
+    paystack_authorization_code: Mapped[str | None] = mapped_column(
+        "paystackAuthorizationCode", String
+    )
+    paystack_customer_code: Mapped[str | None] = mapped_column(
+        "paystackCustomerCode", String
+    )
+    paystack_card_last4: Mapped[str | None] = mapped_column("paystackCardLast4", String)
+    paystack_subscription_code: Mapped[str | None] = mapped_column(
+        "paystackSubscriptionCode", String
+    )
+    paystack_email_token: Mapped[str | None] = mapped_column(
+        "paystackEmailToken", String
+    )
+    next_billing_at: Mapped[datetime | None] = mapped_column(
+        "nextBillingAt", DateTime(timezone=True)
+    )
+    intro_ends_at: Mapped[datetime | None] = mapped_column(
+        "introEndsAt", DateTime(timezone=True)
+    )
+    lago_subscription_external_id: Mapped[str | None] = mapped_column(
+        "lagoSubscriptionExternalId", String
     )
     is_active: Mapped[bool] = mapped_column("isActive", Boolean, default=True)
     suspended_at: Mapped[datetime | None] = mapped_column(
