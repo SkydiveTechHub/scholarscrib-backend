@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from enum import StrEnum
 
 import httpx
 
 from app.database.models import ProviderFetch
+from app.services.provider import rules
 
 PROVIDER_PAPER_PAGE_LIMIT = 15
 PROVIDER_PAPER_MAX_PAGES = 20
@@ -38,6 +40,13 @@ class NormalizedQuestion:
     explanation: str
     image_url: str | None
     raw: dict
+    # What the item says about itself, read through each provider's own keys so
+    # the mapper never has to know which provider produced it.
+    exam_type: str | None = None
+    exam_year: int | None = None
+    question_number: int | None = None
+    passage: str | None = None
+    instruction: str | None = None
 
 
 @dataclass
@@ -96,6 +105,56 @@ class QuestionProvider(ABC):
         return (
             PaperFetchMode.COMPLETE if self.supports_search else PaperFetchMode.SAMPLED
         )
+
+    @property
+    def sample_draws(self) -> int:
+        """Parallel draws merged into one sampled paper snapshot."""
+        return 1
+
+    @property
+    def supports_topic_filter(self) -> bool:
+        """Whether ``search`` can filter by the provider's own topic taxonomy."""
+        return False
+
+    @property
+    def native_discovery(self) -> bool:
+        """Whether one cheap call answers "which years exist" for a subject."""
+        return False
+
+    def next_circuit(self, status_code: int, body: str, current: str) -> str:
+        """The circuit state after a failed call. Providers may refine the rules."""
+        return rules.next_circuit(status_code, body, current)
+
+    async def catalogue_subjects(self, exam: str | None = None) -> set[str] | None:
+        """The slugs under which the provider holds a subject, or ``None`` if unknown.
+
+        Every name the provider is known by is included (our slug, its own key,
+        its aliases), so a caller can test one of our own subjects with a plain
+        membership check. ``exam`` is a lowercase ``jamb``/``waec``/``neco``;
+        providers with no per-exam information ignore it.
+        """
+        return None
+
+    async def catalogue_years(
+        self,
+        subject_slug: str,
+        exam: str,
+        *,
+        known: Collection[int] = (),
+        progress: dict[int, int | None] | None = None,
+    ) -> dict[int, int | None] | None:
+        """Years the provider has for one subject and exam, mapped to a question count.
+
+        A count is ``None`` when the provider cannot say. ``{}`` means the
+        provider was reached and has nothing; ``None`` means the answer is not
+        trustworthy (unsupported, unreachable or mostly failing), so the caller
+        must not remember it as "discovered".
+
+        ``known`` are years already confirmed earlier, which a probing provider
+        need not pay for again. ``progress`` is filled as years are found, so a
+        caller that gives up waiting still keeps what was learned.
+        """
+        return None
 
     @abstractmethod
     async def draw(

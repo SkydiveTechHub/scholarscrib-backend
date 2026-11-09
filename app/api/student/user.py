@@ -7,12 +7,14 @@ from app.api.responses import (
     AvatarOut,
     CompleteProfileOut,
     MessageOut,
+    OkOut,
     PreferencesOut,
     ProfileUpdateOut,
     SettingsProfileOut,
 )
 from app.api.schemas import (
     CompleteProfileIn,
+    DeleteAccountIn,
     PasswordIn,
     PreferencePatch,
     ProfilePatch,
@@ -25,6 +27,7 @@ from app.database.repositories.identity import users_repository
 from app.services.auth import (
     ChangePasswordService,
     CompleteProfileService,
+    DeleteAccountService,
     GetSettingsProfileService,
     SetAvatarService,
     UpdateNotificationPreferencesService,
@@ -77,6 +80,20 @@ async def change_password(
     return await ChangePasswordService(
         session, user, body.currentPassword, body.newPassword, student.device_id
     ).process()
+
+
+@router.post("/account/delete", response_model=OkOut)
+async def delete_account(
+    body: DeleteAccountIn,
+    response: Response,
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+):
+    result = await DeleteAccountService(
+        session, student.id, body.password, body.confirmEmail
+    ).process()
+    response.delete_cookie("scholarscrib.session", path="/")
+    return result
 
 
 @router.patch("/notification-preferences", response_model=PreferencesOut)

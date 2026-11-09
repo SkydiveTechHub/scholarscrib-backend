@@ -1,10 +1,12 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, Request
 from redis_fastapi import AsyncRedisDep, cache
 
 from app.api.deps import StudentPrincipal, require_student
 from app.api.responses import (
+    CatalogueSubjectsOut,
+    CatalogueYearsOut,
     CoverageOut,
     DiscoveryOut,
     ExplanationOut,
@@ -14,6 +16,7 @@ from app.api.responses import (
     TopicQuizQuestionsOut,
 )
 from app.api.schemas import ExamType, TopicAnswersIn
+from app.core.config import settings
 from app.core.rate_limit import hit
 from app.database.db import AnSession
 from app.database.repositories.curriculum import subjects_repository
@@ -28,6 +31,10 @@ from app.services.provider import (
     TopicQuizQuestionsService,
     schedule_provider_bank_page,
 )
+from app.services.provider.catalogue import (
+    CatalogueSubjectsService,
+    CatalogueYearsService,
+)
 
 router = APIRouter(prefix="/questions", tags=["Student / Questions"])
 
@@ -35,6 +42,7 @@ SubjectKey = Annotated[
     str, Path(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
 ]
 QuestionKey = SubjectKey
+ExamKey = Literal["jamb", "waec", "neco"]
 
 
 QUESTIONS_CACHE_TTL = 24 * 60 * 60
@@ -49,6 +57,9 @@ def questions_cache_key(request: Request, eviction_group: str = "", prefix: str 
     query = request.query_params
     limit = query.get("limit", "")
     parts = {
+        # Question ids and paper contents differ per provider, so a page cached
+        # under one must never be served after switching to the other.
+        "provider": settings.question_provider.strip().upper(),
         "subject": query.get("subjectId", "").strip().lower(),
         "exam": query.get("examType", "").strip().upper(),
         "year": query.get("examYear", "").strip(),
@@ -56,7 +67,7 @@ def questions_cache_key(request: Request, eviction_group: str = "", prefix: str 
         "cursor": query.get("cursor", "").strip(),
     }
     normalized = ":".join(f"{key}={value}" for key, value in parts.items() if value)
-    return f"{prefix}:{{{eviction_group}}}:questions:v2:{normalized}"
+    return f"{prefix}:{{{eviction_group}}}:questions:v3:{normalized}"
 
 
 @router.get(
@@ -201,6 +212,39 @@ async def past_papers(
     if subjectId:
         subjectId = await subjects_repository.resolve_id(session, subjectId)
     return await ListPastPapersService(session, examType, subjectId).process()
+
+
+@router.get("/catalogue/subjects", response_model=CatalogueSubjectsOut)
+async def catalogue_subjects(
+    session: AnSession,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+    exam: ExamKey | None = None,
+):
+    """Our subjects for an exam that the active provider also holds.
+
+    Provider-neutral: the same shape and the same subject slugs whichever
+    provider is configured. `/coverage*` keeps the provider's own listing.
+    """
+    hit(f"catalogue:{student.id}", 60, 60)
+    return await CatalogueSubjectsService(session, exam).process()
+
+
+@router.get("/catalogue/subjects/{subject}/years", response_model=CatalogueYearsOut)
+async def catalogue_subject_years(
+    subject: SubjectKey,
+    session: AnSession,
+    redis: AsyncRedisDep,
+    student: Annotated[StudentPrincipal, Depends(require_student)],
+    exam: ExamKey,
+):
+    """The papers on offer for one subject and exam, newest first.
+
+    Counts are null where only the provider lists a paper. `complete: false`
+    means year discovery is still in progress, so more years may appear.
+    """
+    # Opening a subject can fan out to the provider, so the limit is tight.
+    hit(f"catalogue-years:{student.id}", 30, 60)
+    return await CatalogueYearsService(session, redis, subject, exam).process()
 
 
 @router.get("/coverage", response_model=CoverageOut)

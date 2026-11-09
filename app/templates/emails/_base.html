@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>{% block title %}ScholarsCrib{% endblock %}</title>
+  <style>
+    body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table { border-collapse: collapse; }
+    img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+    a { text-decoration: none; }
+    .btn:hover { background-color: #1d4ed8 !important; }
+    @media only screen and (max-width: 620px) {
+      .px { padding-left: 24px !important; padding-right: 24px !important; }
+      .h1 { font-size: 24px !important; line-height: 32px !important; }
+      .otp { font-size: 32px !important; letter-spacing: 6px !important; }
+      .stack { display: block !important; width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;">
+  {# Inbox preview text. Hidden in the body, skipped in the plain-text part. #}
+  <div data-text="skip" style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#f1f5f9;">
+    {% block preheader %}{% endblock %}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1f5f9" style="background-color:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+
+          {# Brand lockup #}
+          <tr>
+            <td align="center" style="padding:0 0 22px 0;">
+              <a href="{{ brand.site_url }}" target="_blank" style="display:inline-block;">
+                <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" width="168" style="display:block;width:168px;max-width:100%;height:auto;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;color:#0f172a;">
+              </a>
+            </td>
+          </tr>
+
+          {# Card #}
+          <tr>
+            <td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td height="6" bgcolor="{% block accent_color %}#2563eb{% endblock %}" style="height:6px;font-size:0;line-height:0;background-color:{{ self.accent_color() }};background-image:linear-gradient(90deg,{% block accent_gradient %}#1d4ed8,#3b82f6{% endblock %});">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:40px 44px 36px 44px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#334155;">
+                    {% block content %}{% endblock %}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {# Footer #}
+          <tr>
+            <td align="center" class="px" style="padding:28px 24px 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 6px 0;font-size:12px;line-height:18px;font-weight:700;letter-spacing:2px;color:#2563eb;text-transform:uppercase;">Learn &nbsp;&bull;&nbsp; Practice &nbsp;&bull;&nbsp; Pass</p>
+              <p style="margin:0 0 14px 0;font-size:12px;line-height:18px;color:#5b6b7f;">Built for WAEC, JAMB and NECO candidates across Nigeria.</p>
+              <p style="margin:0 0 14px 0;font-size:12px;line-height:18px;color:#94a3b8;">{% block reason %}You received this email because of activity on your ScholarsCrib account.{% endblock %}</p>
+              <p style="margin:0;font-size:12px;line-height:18px;color:#94a3b8;">
+                <a href="{{ brand.site_url }}" target="_blank" style="color:#2563eb;text-decoration:underline;">scholarscrib.com</a>
+                &nbsp;&middot;&nbsp; &copy; {{ year }} {{ brand.name }}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

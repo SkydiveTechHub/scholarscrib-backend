@@ -3,6 +3,7 @@ import logging
 import re
 import secrets
 from datetime import timedelta
+from urllib.parse import quote
 
 import httpx
 from sqlalchemy.exc import IntegrityError
@@ -18,11 +19,13 @@ from app.api.schemas import (
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.core.ids import cuid
+from app.core.logger import logger
 from app.core.rate_limit import hit
 from app.core.security import hash_password, student_token, verify_password
 from app.core.timeutil import as_utc, utcnow
 from app.database.models import Account, NotificationPreference, User, UserDevice
 from app.database.repositories.billing import subscriptions_repository
+from app.database.repositories.chat import chat_threads_repository
 from app.database.repositories.identity import (
     accounts_repository,
     devices_repository,
@@ -37,6 +40,7 @@ from app.database.repositories.planner import plans_repository
 from app.domain import DEVICE_LIMIT, NIGERIAN_STATES, PHONE_PATTERN, TIER_RANK
 from app.services.auth.otp import StudentOTPService
 from app.services.auth.rules import is_session_revoked
+from app.services.auth.welcome import send_welcome_email
 from app.services.billing import RefreshUserTierService
 from app.services.billing.rules import resolve_live_tier
 from app.services.email import EmailService
@@ -424,6 +428,78 @@ class ChangePasswordService:
             raise ApiError(400, "Current password is wrong")
 
 
+class DeleteAccountService:
+    """Permanently delete a student and everything that cascades from them."""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        password: str | None,
+        confirm_email: str | None,
+    ) -> None:
+        self.session = session
+        self.user_id = user_id
+        self.password = password
+        self.confirm_email = confirm_email
+
+    async def process(self) -> dict:
+        hit(f"delete-account:{self.user_id}", 5, 3600)
+        user = await users_repository.by_id(self.session, self.user_id)
+        if user is None:
+            raise ApiError(404, "Account not found")
+        if user.role != "STUDENT":
+            raise ApiError(403, "Only student accounts can be deleted here")
+        self._confirm_identity(user)
+        thread_ids = [
+            thread.id
+            for thread in await chat_threads_repository.for_user(
+                self.session, user.id, include_archived=True
+            )
+        ]
+        user_id, tier = user.id, user.tier
+        await users_repository.remove(self.session, user)
+        # Flush so a failed cascade surfaces before any external data is wiped.
+        await self.session.flush()
+        await self._purge_tutor_data(user_id, thread_ids)
+        capture(user_id, "account_deleted", {"tier": tier})
+        return {"ok": True}
+
+    def _confirm_identity(self, user: User) -> None:
+        if user.password_hash:
+            if not self.password or not verify_password(
+                self.password, user.password_hash
+            ):
+                raise ApiError(400, "Incorrect password")
+            return
+        typed = (self.confirm_email or "").strip().lower()
+        if not user.email or typed != user.email.lower():
+            raise ApiError(400, "Type your email address exactly to confirm")
+
+    @staticmethod
+    async def _purge_tutor_data(user_id: str, thread_ids: list[str]) -> None:
+        """Best-effort removal of LangGraph state, which has no FK to User."""
+        # Imported lazily: the AI package is heavy and not needed by other auth flows.
+        from app.ai.core.checkpointer import get_checkpointer
+        from app.ai.core.memory import get_memory_store, memory_namespace
+
+        checkpointer = get_checkpointer()
+        if checkpointer is not None:
+            for thread_id in thread_ids:
+                try:
+                    await checkpointer.adelete_thread(thread_id)
+                except Exception:  # noqa: BLE001
+                    logger.warning("Checkpoint cleanup failed for thread %s", thread_id)
+        store = get_memory_store()
+        if store is not None:
+            try:
+                namespace = memory_namespace(user_id)
+                for item in await store.asearch(namespace, limit=1000):
+                    await store.adelete(namespace, item.key)
+            except Exception:  # noqa: BLE001
+                logger.warning("Memory cleanup failed for user %s", user_id)
+
+
 class GetSettingsProfileService:
     def __init__(self, session: AsyncSession, user_id: str) -> None:
         self.session = session
@@ -605,6 +681,7 @@ class GoogleSignInService:
         await RefreshUserTierService(self.session, user.id).process()
         device = await RegisterDeviceService(self.session, user, self.label).process()
         if created:
+            await send_welcome_email(user)
             capture(
                 user.id,
                 "user_signed_up",
@@ -724,6 +801,8 @@ class StudentForgotPasswordService:
 
     async def process(self) -> dict:
         normalised = self.email.strip().lower()
+        url_safe_email = quote(normalised, safe="")
+
         self._limit(normalised)
         user = await users_repository.by_email(self.session, normalised)
         if user is not None and user.is_active:
@@ -733,8 +812,8 @@ class StudentForgotPasswordService:
             await verification_tokens_repository.create_token(
                 self.session, identifier=identifier, token=token, expires=expires
             )
-            base = settings.app_url.rstrip("/")
-            reset_url = f"{base}/reset-password?token={token}&email={normalised}"
+            base = settings.frontend_url.rstrip("/")
+            reset_url = f"{base}/reset-password?token={token}&email={url_safe_email}"
             await EmailService.send_email(
                 to_email=normalised,
                 subject="Reset your ScholarsCrib password",

@@ -19,6 +19,7 @@ from app.services.provider.base import (
     DrawResult,
     PaperFetchMode,
     QuestionProvider,
+    SearchPage,
 )
 
 logger = logging.getLogger(__name__)
@@ -400,12 +401,20 @@ async def fetch_provider_paper(
             exam_year=exam_year,
         )
 
+    draws = max(1, provider.sample_draws)
     if provider.supports_search:
-        page = await provider.search(
-            subject_slug=subject_slug,
-            exam_type=exam_type,
-            exam_year=exam_year,
-            limit=PROVIDER_SAMPLE_BATCH_LIMIT,
+        page, batch_count = _merge_draws(
+            await asyncio.gather(
+                *(
+                    provider.search(
+                        subject_slug=subject_slug,
+                        exam_type=exam_type,
+                        exam_year=exam_year,
+                        limit=PROVIDER_SAMPLE_BATCH_LIMIT,
+                    )
+                    for _ in range(draws)
+                )
+            )
         )
     elif subject_slug and exam_type and exam_year is not None:
         result = await provider.draw(
@@ -448,8 +457,11 @@ async def fetch_provider_paper(
             body=page.body,
             credits_remaining=page.credits_remaining,
         )
-    batch_count = len(page.items)
     items = _deduplicate_sample(provider, page.items)
+    if draws > 1:
+        # Draws arrive in random order; a stable order keeps the snapshot's
+        # offset cursors meaningful and the paper reproducible.
+        items.sort(key=lambda item: _id_order(provider, item))
     if not items:
         return DrawResult(
             status_code=502,
@@ -461,6 +473,62 @@ async def fetch_provider_paper(
         cacheable=True,
         last_batch_count=batch_count,
     )
+
+
+def _merge_draws(
+    pages: list[SearchPage | None],
+) -> tuple[SearchPage | None, int]:
+    """One page out of several parallel draws, and the largest draw's size.
+
+    A 404 from any draw means the paper does not exist. Otherwise a failed
+    draw is tolerated while another succeeded: the snapshot is a sample either
+    way, and refusing it would waste the draws that did work.
+    """
+    if len(pages) == 1:
+        only = pages[0]
+        return only, len(only.items) if only is not None else 0
+    reached = [page for page in pages if page is not None]
+    if not reached:
+        return None, 0
+    for page in reached:
+        if page.status_code == 404:
+            return page, 0
+    good = [page for page in reached if not page.failed]
+    if not good:
+        return reached[0], 0
+    credits = [p.credits_remaining for p in good if p.credits_remaining is not None]
+    merged = SearchPage(
+        items=[item for page in good for item in page.items],
+        credits_remaining=min(credits) if credits else None,
+    )
+    return merged, max(len(page.items) for page in good)
+
+
+def _id_order(provider: QuestionProvider, item: dict) -> tuple[int, int, str]:
+    identity = provider.normalize(item).provider_id.strip()
+    if identity.isdigit():
+        return 0, int(identity), identity
+    return 1, 0, identity
+
+
+def local_cursor_cache_id(cursor: str) -> str | None:
+    """The paper a locally issued (offset) cursor belongs to, else ``None``.
+
+    Provider cursors are opaque to us; ours are base64 JSON naming the paper.
+    """
+    try:
+        padded = cursor + "=" * (-len(cursor) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded).decode())
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if (
+        isinstance(payload, dict)
+        and payload.get("version") == 1
+        and isinstance(payload.get("cache"), str)
+        and isinstance(payload.get("offset"), int)
+    ):
+        return payload["cache"]
+    return None
 
 
 def sample_item_identity(provider: QuestionProvider, item: dict) -> str:

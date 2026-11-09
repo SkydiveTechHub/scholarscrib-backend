@@ -11,6 +11,7 @@ from app.database.repositories.identity import (
     users_repository,
     verification_tokens_repository,
 )
+from app.services.auth.welcome import send_welcome_email
 from app.services.email import EmailService
 
 OTP_LIFETIME = timedelta(minutes=10)
@@ -42,7 +43,7 @@ class StudentOTPService:
 
         await EmailService.send_email(
             to_email=normalised,
-            subject=f"{code} is your ScholarsCrib verification code",
+            subject="ScholarsCrib verification code",
             template_name="student_otp.html",
             context={"otp_code": code, "email": normalised},
         )
@@ -71,5 +72,7 @@ class StudentOTPService:
             await users_repository.update(
                 self.session, user, update_data={"email_verified": user.email_verified}
             )
+            # Only on the first verification, so it is sent once per account.
+            await send_welcome_email(user)
 
         return True, "Email verified successfully"

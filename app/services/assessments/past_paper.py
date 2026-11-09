@@ -34,15 +34,29 @@ from app.services.assessments.service import (
 )
 from app.services.catalogue import public_question
 from app.services.provider.base import DiscoveryResource, QuestionProvider
-from app.services.provider.factory import ProviderFactory
+from app.services.provider.cache import AsyncRedisClient
+from app.services.provider.factory import ProviderFactory, normalize_stored_item
 from app.services.provider.ingest import ProviderPaperIngest
 from app.services.provider.mapping import exam_type_for, subject_slug_candidates
 from app.services.provider.service import ProviderDiscoveryService
 
 # Questions per provider page (the provider caps search at 15).
 PAST_PAPER_PAGE_SIZE = 15
-# Past papers run at a minute a question; each extra page adds its minutes.
-MINUTES_PER_QUESTION = 1
+# Past-paper clock, fixed per exam (students spend ~45-60s a question):
+# WAEC and NECO get an hour; JAMB gets 40 minutes for English, 30 otherwise.
+# Later pages of the same paper share this clock rather than extending it.
+WAEC_NECO_MINUTES = 60
+JAMB_ENGLISH_MINUTES = 40
+JAMB_OTHER_MINUTES = 30
+ENGLISH_SLUG = "english-language"
+
+
+def past_paper_minutes(exam_type: str, subject: Subject) -> int:
+    if exam_type != "JAMB":
+        return WAEC_NECO_MINUTES
+    if subject.slug == ENGLISH_SLUG:
+        return JAMB_ENGLISH_MINUTES
+    return JAMB_OTHER_MINUTES
 
 
 class PastPaperIngest(ProviderPaperIngest):
@@ -57,6 +71,7 @@ class PastPaperIngest(ProviderPaperIngest):
         subject: Subject,
         exam_type: str,
         exam_year: int,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         super().__init__(
             session,
@@ -66,28 +81,29 @@ class PastPaperIngest(ProviderPaperIngest):
             exam_type=exam_type,
             exam_year=exam_year,
             page_limit=PAST_PAPER_PAGE_SIZE,
+            redis=redis,
         )
 
 
 def paper_question(question: Question, item: dict | None) -> dict:
     """The question as the exam surface gets it: no answer, context attached.
 
-    ALOC's `section` means two things (checked against live English papers):
-    with `hasPassage` it is the comprehension passage itself (its `passage`
-    field stays empty); without, it is the instruction shared by a group of
-    questions ("select the option that best explains ..."), which the
-    question text alone does not make sense without.
+    A provider's shared `section` means two things (checked against live ALOC
+    English papers): a comprehension passage, or the instruction shared by a
+    group of questions ("select the option that best explains ..."), which the
+    question text alone does not make sense without. Each provider's
+    normalizer decides which, so this reads only the normalized fields.
     """
     payload = public_question(question, include_answers=False)
-    section = item.get("section") if item else None
-    if not isinstance(section, str) or not section.strip():
+    if not item:
         return payload
-    if item and item.get("hasPassage"):
+    normalized = normalize_stored_item(item)
+    if normalized.passage:
         payload["hasPassage"] = True
-        payload["passage"] = section
+        payload["passage"] = normalized.passage
         payload["passageGroup"] = item.get("category")
-    else:
-        payload["instruction"] = section
+    elif normalized.instruction:
+        payload["instruction"] = normalized.instruction
     return payload
 
 
@@ -141,6 +157,7 @@ class StartPastPaperService:
         exam: str,
         exam_year: int,
         provider: QuestionProvider | None = None,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
@@ -148,6 +165,7 @@ class StartPastPaperService:
         self.exam = exam
         self.exam_year = exam_year
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
 
     async def process(self) -> dict:
         subject, exam_type = await _subject_and_exam(
@@ -161,6 +179,7 @@ class StartPastPaperService:
             subject=subject,
             exam_type=exam_type,
             exam_year=self.exam_year,
+            redis=self.redis,
         ).page_with_questions()
         if not stored:
             raise ApiError(404, "No questions found for this paper yet.")
@@ -175,7 +194,7 @@ class StartPastPaperService:
             exam_year=self.exam_year,
             title=f"{exam_type} {subject.name} {self.exam_year}",
             untimed=False,
-            time_override=len(questions) * MINUTES_PER_QUESTION,
+            time_override=past_paper_minutes(exam_type, subject),
         )
         items = {question.id: item for question, item in stored}
         payload["questions"] = [
@@ -197,6 +216,7 @@ class ContinuePastPaperService:
         subject_key: str,
         cursor: str,
         provider: QuestionProvider | None = None,
+        redis: AsyncRedisClient | None = None,
     ) -> None:
         self.session = session
         self.student_id = student_id
@@ -204,6 +224,7 @@ class ContinuePastPaperService:
         self.subject_key = subject_key
         self.cursor = cursor
         self.provider = provider or ProviderFactory.create()
+        self.redis = redis
 
     async def process(self) -> dict:
         attempt, assessment = await self._load()
@@ -223,6 +244,7 @@ class ContinuePastPaperService:
             subject=subject,
             exam_type=assessment.exam_type,
             exam_year=assessment.exam_year,
+            redis=self.redis,
         ).page_with_questions(self.cursor, exclude=on_paper)
         added = [
             question

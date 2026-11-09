@@ -20,6 +20,51 @@ SUBJECT_ALIASES = {
     "english": "english",
 }
 
+# Our Subject.slug -> SDash's subject key, where they differ. Anything absent
+# is sent as-is (mathematics, physics, biology... share a name). Documented at
+# https://sdashapi.com/docs under GET /v1/subjects.
+SDASH_SUBJECT_SLUGS = {
+    "english-language": "english",
+    "literature-in-english": "englishlit",
+    "literature": "englishlit",
+    "christian-religious-studies": "crk",
+    "christian-religious-knowledge": "crk",
+    "crs": "crk",
+    "islamic-studies": "irk",
+    "islamic-religious-knowledge": "irk",
+    "irs": "irk",
+    "civic-education": "civiledu",
+    "computer-studies": "computer",
+    "agricultural-science": "agriculture",
+    "financial-accounting": "accounting",
+    "fine-art": "fineart",
+    "home-economics": "homeeconomics",
+    "general-science": "gscience",
+    "current-affairs": "currentaffairs",
+}
+
+# Our exam keys -> SDash's ``type`` values (neco is the same on both sides).
+SDASH_EXAM_TYPES = {"jamb": "utme", "waec": "wassce", "neco": "neco"}
+
+
+def sdash_subject(slug: str) -> str:
+    """The key SDash knows one of our subjects by."""
+    slug = slug.strip().lower()
+    return SDASH_SUBJECT_SLUGS.get(slug, slug)
+
+
+def sdash_exam_type(exam: str) -> str:
+    exam = exam.strip().lower()
+    return SDASH_EXAM_TYPES.get(exam, exam)
+
+
+def our_slugs_for_sdash(sdash_key: str) -> set[str]:
+    """Every slug of ours that resolves to one SDash subject key."""
+    key = sdash_key.strip().lower()
+    return {key} | {
+        ours for ours, theirs in SDASH_SUBJECT_SLUGS.items() if theirs == key
+    }
+
 
 def cache_key(subject_slug: str, exam_type: str, exam_year: int) -> str:
     slug = subject_slug.strip().lower().replace("|", "%7C")

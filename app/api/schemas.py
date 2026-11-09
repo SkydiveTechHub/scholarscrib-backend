@@ -34,10 +34,10 @@ type Phone = Annotated[str, Field(pattern=PHONE_PATTERN)]
 
 class RegisterIn(BaseModel):
     role: Literal["STUDENT"] = "STUDENT"
-    firstName: str = Field(min_length=2)
-    lastName: str = Field(min_length=2)
+    firstName: str = Field(min_length=2, max_length=50)
+    lastName: str = Field(min_length=2, max_length=50)
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=6, max_length=25)
     classLevel: ClassLevel
     track: Track
     state: NigerianState
@@ -50,8 +50,8 @@ class LoginIn(BaseModel):
 
 
 class ProfilePatch(BaseModel):
-    firstName: str | None = Field(default=None, min_length=2)
-    lastName: str | None = Field(default=None, min_length=2)
+    firstName: str | None = Field(default=None, min_length=2, max_length=50)
+    lastName: str | None = Field(default=None, min_length=2, max_length=50)
     phone: Phone | Literal[""] | None = None
     state: NigerianState | Literal[""] | None = None
     classLevel: ClassLevel | None = None
@@ -66,7 +66,18 @@ class CompleteProfileIn(BaseModel):
 
 class PasswordIn(BaseModel):
     currentPassword: str = Field(min_length=1)
-    newPassword: str = Field(min_length=6)
+    newPassword: str = Field(min_length=6, max_length=25)
+
+
+class DeleteAccountIn(BaseModel):
+    """Identity check for self-service deletion.
+
+    Password accounts send ``password``; Google-only accounts (no password) send
+    ``confirmEmail`` instead.
+    """
+
+    password: str | None = None
+    confirmEmail: str | None = None
 
 
 class ForgotPasswordIn(BaseModel):
@@ -76,7 +87,7 @@ class ForgotPasswordIn(BaseModel):
 class ResetPasswordIn(BaseModel):
     email: EmailStr
     token: str
-    newPassword: str = Field(min_length=6)
+    newPassword: str = Field(min_length=6, max_length=25)
 
 
 class AdminForgotPasswordIn(BaseModel):
@@ -205,6 +216,9 @@ class ScopedMockIn(BaseModel):
     from_: ScopePoint = Field(alias="from")
     to: ScopePoint
     count: int = Field(default=40, ge=5, le=80)
+    # Omitted for the default, an untimed sitting; otherwise the student's own
+    # clock, up to half an hour.
+    timeLimitMinutes: int | None = Field(default=None, ge=5, le=30)
 
     model_config = {"populate_by_name": True}
 
