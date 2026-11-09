@@ -63,7 +63,9 @@ async def create_thread(
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
-    return await CreateTutorThreadService(session, student.id, body).process()
+    return await CreateTutorThreadService(
+        session, student.id, body, tier=student.tier
+    ).process()
 
 
 @router.post("/threads/stream")
@@ -79,7 +81,7 @@ async def create_thread_stream(
     event always carries the authoritative ``threadId`` (new or existing).
     """
     prepared, existing_thread_id = await prepare_new_thread_stream(
-        session, student.id, body
+        session, student.id, body, tier=student.tier
     )
     run = start_new_thread_run(
         prepared, student.id, existing_thread_id=existing_thread_id
@@ -144,7 +146,9 @@ async def post_message(
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
-    return await PostTutorMessageService(session, student.id, thread_id, body).process()
+    return await PostTutorMessageService(
+        session, student.id, thread_id, body, tier=student.tier
+    ).process()
 
 
 @router.post("/threads/{thread_id}/messages/stream")
@@ -154,7 +158,9 @@ async def post_message_stream(
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
-    run = await start_message_run(session, student.id, thread_id, body.content)
+    run = await start_message_run(
+        session, student.id, thread_id, body.content, tier=student.tier
+    )
     return await sse_response(run.iter_after(0))
 
 

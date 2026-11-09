@@ -5,6 +5,7 @@ from app.api.admin.announcements import router as announcements_router
 from app.api.admin.astra import router as astra_router
 from app.api.admin.audit import router as audit_router
 from app.api.admin.auth import router as auth_router
+from app.api.admin.billing import router as billing_router
 from app.api.admin.calibration import router as calibration_router
 from app.api.admin.catalogue import (
     curriculums_router,
@@ -25,6 +26,7 @@ from app.api.admin.terms import router as terms_router
 
 router = APIRouter(prefix="/admin/api")
 router.include_router(auth_router)
+router.include_router(billing_router)
 router.include_router(admins_router)
 router.include_router(subjects_router)
 router.include_router(curriculums_router)

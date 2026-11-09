@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button with context %}
+
+{% block title %}Payment received{% endblock %}
+{% block preheader %}You're on {{ plan_name }}. Thanks for learning with ScholarsCrib.{% endblock %}
+{% block reason %}You received this because a ScholarsCrib payment succeeded.{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  {{ eyebrow("Payment confirmed", "success") }}
+  {{ heading("You're on " ~ plan_name) }}
+  <p style="margin:0 0 28px 0;">We received ₦{{ amount_naira }}. Your plan features are ready to use.</p>
+  {{ button(billing_url, "View billing") }}
+</div>
+{% endblock %}

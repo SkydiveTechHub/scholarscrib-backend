@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button with context %}
+
+{% block title %}We couldn't renew your plan{% endblock %}
+{% block preheader %}Update your payment method to keep {{ plan_name }}.{% endblock %}
+{% block reason %}You received this because a ScholarsCrib renewal payment failed.{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  {{ eyebrow("Payment failed", "slate") }}
+  {{ heading("We couldn't renew " ~ plan_name) }}
+  <p style="margin:0 0 28px 0;">Please update your card within {{ grace_days }} days to keep your plan. After that we'll move you to Free.</p>
+  {{ button(billing_url, "Update payment") }}
+</div>
+{% endblock %}

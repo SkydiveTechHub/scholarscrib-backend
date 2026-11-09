@@ -87,6 +87,9 @@ class RegisterStudentService:
         email = self.body.email.strip().lower()
         await self._ensure_available(email)
         user = await self._create(email)
+        from app.services.billing.provisioning import provision_signup_billing
+
+        await provision_signup_billing(self.session, user)
         await StudentOTPService(self.session).send_otp(email)
         capture(
             user.id,
@@ -97,6 +100,8 @@ class RegisterStudentService:
                 "track": user.track,
                 "state": user.state,
                 "tier": user.tier,
+                "plan_code": user.plan_code,
+                "billing_status": user.billing_status,
             },
             set_once={"signup_method": "email"},
         )
@@ -545,6 +550,10 @@ class GetSettingsProfileService:
             "image": user.image,
             "tier": tier,
             "tierExpiresAt": expires.isoformat() if expires else None,
+            "billingStatus": user.billing_status,
+            "nextBillingAt": (
+                user.next_billing_at.isoformat() if user.next_billing_at else None
+            ),
             "hasPassword": bool(user.password_hash),
             "notificationPreferences": {
                 "studyReminders": True if prefs is None else prefs.study_reminders,
@@ -678,7 +687,12 @@ class GoogleSignInService:
         user = await self._ensure_user(user)
         await self._ensure_account(account, user)
         self._assert_active(user)
-        await RefreshUserTierService(self.session, user.id).process()
+        if created:
+            from app.services.billing.provisioning import provision_signup_billing
+
+            await provision_signup_billing(self.session, user)
+        else:
+            await RefreshUserTierService(self.session, user.id).process()
         device = await RegisterDeviceService(self.session, user, self.label).process()
         if created:
             await send_welcome_email(user)
@@ -691,6 +705,8 @@ class GoogleSignInService:
                     "track": user.track,
                     "state": user.state,
                     "tier": user.tier,
+                    "plan_code": user.plan_code,
+                    "billing_status": user.billing_status,
                 },
                 set_once={"signup_method": "google"},
             )

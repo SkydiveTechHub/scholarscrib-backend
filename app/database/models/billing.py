@@ -17,6 +17,8 @@ from app.database.db import Base
 from app.database.models.columns import id_column, timestamp_column
 from app.database.models.enums import (
     BillingPeriod,
+    EmailOutboxStatus,
+    SubscriptionKind,
     SubscriptionSource,
     SubscriptionStatus,
     SubscriptionTier,
@@ -51,6 +53,19 @@ class Subscription(Base):
         "grantedById", ForeignKey("Admin.id")
     )
     note: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str | None] = mapped_column(SubscriptionKind, nullable=True)
+    # Snapshot of User.paystack_* at checkout — used to disable the *old*
+    # subscription on upgrade without racing subscription.create.
+    prior_paystack_subscription_code: Mapped[str | None] = mapped_column(
+        "priorPaystackSubscriptionCode", String
+    )
+    prior_paystack_email_token: Mapped[str | None] = mapped_column(
+        "priorPaystackEmailToken", String
+    )
+    lago_subscription_external_id: Mapped[str | None] = mapped_column(
+        "lagoSubscriptionExternalId", String
+    )
+    lago_invoice_id: Mapped[str | None] = mapped_column("lagoInvoiceId", String)
     created_at: Mapped[datetime] = timestamp_column("createdAt")
 
 
@@ -60,3 +75,27 @@ class PaystackEvent(Base):
     event_key: Mapped[str] = mapped_column("eventKey", String, primary_key=True)
     payload: Mapped[dict] = mapped_column(JSONB)
     created_at: Mapped[datetime] = timestamp_column("createdAt")
+
+
+class EmailOutbox(Base):
+    """Durable email queue — cron drain sends; billing never calls Resend inline."""
+
+    __tablename__ = "EmailOutbox"
+    __table_args__ = (Index("EmailOutbox_pending_idx", "status", "availableAt"),)
+
+    id: Mapped[str] = id_column()
+    idempotency_key: Mapped[str] = mapped_column(
+        "idempotencyKey", String, unique=True, index=True
+    )
+    to_email: Mapped[str] = mapped_column("toEmail", String)
+    subject: Mapped[str] = mapped_column(String)
+    template: Mapped[str] = mapped_column(String)
+    context: Mapped[dict] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(EmailOutboxStatus, default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    available_at: Mapped[datetime] = mapped_column(
+        "availableAt", DateTime(timezone=True)
+    )
+    last_error: Mapped[str | None] = mapped_column("lastError", Text)
+    created_at: Mapped[datetime] = timestamp_column("createdAt")
+    updated_at: Mapped[datetime] = timestamp_column("updatedAt", onupdate=True)

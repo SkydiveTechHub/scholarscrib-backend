@@ -77,19 +77,20 @@ def test_evidence_prior_blocks_a_perfect_score():
 
 
 def test_entitlements_and_session_revocation():
-    # Beta: flashcards, the study planner and the AI tutor are open to every tier.
-    assert can("FREEMIUM", "flashcards") is True
-    assert can("FREEMIUM", "studyPlanner") is True
+    # Beta opens are empty: flashcards and planner need Standard+.
+    assert can("FREEMIUM", "flashcards") is False
+    assert can("STANDARD", "flashcards") is True
+    assert can("FREEMIUM", "studyPlanner") is False
+    assert can("STANDARD", "studyPlanner") is True
+    # Tutor is on every plan (daily caps differ in the catalog).
     assert can("FREEMIUM", "aiTutor") is True
-    # The paid tiers still gate everything else.
     assert can("FREEMIUM", "premiumLibrary") is False
     assert can("STANDARD", "advancedAnalytics") is False
     assert can("PREMIUM", "advancedAnalytics") is True
     assert can("PREMIUM", "aiTutor") is True
-    # Ending the beta restores the original tiers without touching this table.
     assert PAID_ENTITLEMENTS["flashcards"] == "STANDARD"
     assert PAID_ENTITLEMENTS["studyPlanner"] == "STANDARD"
-    assert PAID_ENTITLEMENTS["aiTutor"] == "PREMIUM"
+    assert PAID_ENTITLEMENTS["aiTutor"] == "FREEMIUM"
     moment = datetime(2026, 1, 1, tzinfo=UTC)
     assert is_session_revoked(False, None, 10) is True
     assert is_session_revoked(True, None, 10) is False
@@ -97,12 +98,19 @@ def test_entitlements_and_session_revocation():
     assert is_session_revoked(True, moment, int(moment.timestamp()) + 5) is False
 
 
-def test_cron_fails_open_and_rejects_a_wrong_bearer():
+def test_cron_fails_closed_and_rejects_a_wrong_bearer():
+    from unittest.mock import patch
+
     assert cron_decision("GET", "x" * 16, "x" * 16) == 405
-    assert cron_decision("POST", None, None) == 204
-    assert cron_decision("POST", "short", None) == 204
-    assert cron_decision("POST", "a" * 16, "wrong-bearer-value") == 401
-    assert cron_decision("POST", "a" * 16, "a" * 16) is None
+    with patch("app.core.config.settings") as settings:
+        settings.cron_fail_open = False
+        assert cron_decision("POST", None, None) == 503
+        assert cron_decision("POST", "short", None) == 503
+        assert cron_decision("POST", "a" * 16, "wrong-bearer-value") == 401
+        assert cron_decision("POST", "a" * 16, "a" * 16) is None
+    with patch("app.core.config.settings") as settings:
+        settings.cron_fail_open = True
+        assert cron_decision("POST", None, None) == 204
 
 
 def test_billing_month_clamp_and_signature():

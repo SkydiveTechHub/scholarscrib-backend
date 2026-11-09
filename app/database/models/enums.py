@@ -15,10 +15,17 @@ TrackCategory = pg_enum(
 )
 SubscriptionTier = pg_enum("SubscriptionTier", "FREEMIUM", "STANDARD", "PREMIUM")
 BillingPeriod = pg_enum("BillingPeriod", "MONTHLY", "YEARLY")
-SubscriptionSource = pg_enum("SubscriptionSource", "PAYSTACK", "COMP")
+SubscriptionSource = pg_enum("SubscriptionSource", "PAYSTACK", "COMP", "LAGO")
 SubscriptionStatus = pg_enum(
     "SubscriptionStatus", "PENDING", "ACTIVE", "FAILED", "ABANDONED", "REVOKED"
 )
+BillingStatus = pg_enum(
+    "BillingStatus", "freemium", "trialing", "active", "canceling", "past_due"
+)
+SubscriptionKind = pg_enum(
+    "SubscriptionKind", "intro", "checkout", "renewal", "comp", "freemium"
+)
+EmailOutboxStatus = pg_enum("EmailOutboxStatus", "pending", "sent", "failed")
 Term = pg_enum("Term", "FIRST", "SECOND", "THIRD")
 ExamType = pg_enum("ExamType", "WAEC", "JAMB", "NECO", "CUSTOM")
 QuestionType = pg_enum("QuestionType", "OBJECTIVE", "THEORY", "FILL_IN_BLANK")

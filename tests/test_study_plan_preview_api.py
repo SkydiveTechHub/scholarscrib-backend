@@ -119,13 +119,17 @@ def test_preview_requires_a_signed_in_student(writes):
 
 
 def test_preview_follows_the_study_planner_entitlement(client, monkeypatch, writes):
-    from app import domain
+    # Force catalog miss so domain.ENTITLEMENTS (studyPlanner = STANDARD) applies.
+    from unittest.mock import MagicMock
 
-    # The planner is open to every tier during the beta; end the beta for this test.
-    monkeypatch.setitem(domain.ENTITLEMENTS, "studyPlanner", "STANDARD")
     monkeypatch.setattr(
         "app.api.deps.users_repository.by_id", AsyncMock(return_value=None)
     )
+    monkeypatch.setattr("app.api.deps.can_gate", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "app.api.deps.required_tier_for_gate", AsyncMock(return_value="STANDARD")
+    )
+    monkeypatch.setattr("app.api.deps.capture", MagicMock())
     app.dependency_overrides[require_student] = lambda: principal(tier="FREEMIUM")
     denied = client.post(URL, json=settings_body())
     assert denied.status_code == 403
@@ -135,9 +139,18 @@ def test_preview_follows_the_study_planner_entitlement(client, monkeypatch, writ
     assert client.post(URL, json=settings_body()).status_code == 200
 
 
-def test_preview_is_open_to_every_tier_while_the_planner_is_in_beta(client, writes):
+def test_preview_requires_standard_after_beta_ended(client, monkeypatch, writes):
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr("app.api.deps.can_gate", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "app.api.deps.required_tier_for_gate", AsyncMock(return_value="STANDARD")
+    )
+    monkeypatch.setattr("app.api.deps.capture", MagicMock())
     app.dependency_overrides[require_student] = lambda: principal(tier="FREEMIUM")
-    assert client.post(URL, json=settings_body()).status_code == 200
+    denied = client.post(URL, json=settings_body())
+    assert denied.status_code == 403
+    assert denied.json()["feature"] == "studyPlanner"
 
 
 # --- contract ---------------------------------------------------------------------

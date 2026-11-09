@@ -3,11 +3,19 @@ import hmac
 
 
 def cron_decision(method: str, secret: str | None, bearer: str | None) -> int | None:
-    """None means the caller may proceed. 204 is the fail-open skip."""
+    """None means the caller may proceed.
+
+    204 — only when ``settings.cron_fail_open`` and secret unset (dev skip).
+    503 — secret unset/short in production (fail closed).
+    401 — bearer missing or mismatch.
+    405 — non-POST.
+    """
+    from app.core.config import settings
+
     if method.upper() != "POST":
         return 405
     if not secret or len(secret) < 16:
-        return 204
+        return 204 if settings.cron_fail_open else 503
     if not bearer:
         return 401
     left = hashlib.sha256(secret.encode()).digest()

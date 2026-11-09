@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import StudentPrincipal, require_student
+from app.api.deps import StudentPrincipal, require_feature, require_student
 from app.api.responses import PerformanceOut, TopicStandingsOut
 from app.database.db import AnSession
 from app.services.learning import GetTopicStandingsService
@@ -23,7 +23,11 @@ async def performance(
     ).process()
 
 
-@router.get("/topics", response_model=TopicStandingsOut)
+@router.get(
+    "/topics",
+    response_model=TopicStandingsOut,
+    dependencies=[Depends(require_feature("advancedAnalytics"))],
+)
 async def topic_standings(
     session: AnSession,
     student: Annotated[StudentPrincipal, Depends(require_student)],
