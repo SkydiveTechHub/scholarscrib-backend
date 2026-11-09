@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button with context %}
+
+{% block title %}Your free Standard month ends soon{% endblock %}
+{% block preheader %}You have {{ lead_days }} day{{ 's' if lead_days != 1 else '' }} left on Standard. Upgrade to keep explanations and more tutor capacity.{% endblock %}
+{% block reason %}You received this because your free Standard intro is ending soon.{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  {{ eyebrow("Plan reminder", "primary") }}
+  {{ heading("Your free Standard month ends in " ~ lead_days ~ " day" ~ ("s" if lead_days != 1 else "")) }}
+  <p style="margin:0 0 28px 0;">After that you'll move to Free unless you upgrade. Keep explanations, study planning, and higher AI tutor limits by choosing Standard or Premium.</p>
+  {{ button(billing_url, "See plans") }}
+</div>
+{% endblock %}

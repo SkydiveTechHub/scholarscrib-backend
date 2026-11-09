@@ -1,15 +1,21 @@
 """Generic transactional email service with Jinja2 template rendering."""
 
+from datetime import timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
 import httpx
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.ids import cuid
 from app.core.logger import logger
 from app.core.timeutil import utcnow
+from app.database.models import EmailOutbox
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "emails"
 
@@ -22,6 +28,9 @@ _jinja_env = Environment(
 _BLOCK_TAGS = {"p", "div", "tr", "h1", "h2", "h3", "li", "table"}
 # Void elements have no end tag, so they must not touch the skip depth.
 _VOID_TAGS = {"meta", "br", "img", "link", "hr", "input"}
+
+# Lease while a worker is sending — crash mid-send retries after this window.
+_CLAIM_LEASE = timedelta(minutes=15)
 
 
 class _TextExtractor(HTMLParser):
@@ -111,6 +120,95 @@ class EmailService:
         template = _jinja_env.get_template(template_name)
         shared = {"brand": cls._brand(), "year": utcnow().year}
         return await template.render_async(**{**shared, **context})
+
+    @classmethod
+    async def enqueue(
+        cls,
+        session: AsyncSession,
+        *,
+        to_email: str,
+        subject: str,
+        template: str,
+        context: dict[str, Any],
+        idempotency_key: str,
+    ) -> bool:
+        """Persist an outbox row (idempotent). Drain cron actually sends."""
+        now = utcnow()
+        try:
+            async with session.begin_nested():
+                session.add(
+                    EmailOutbox(
+                        id=cuid(),
+                        idempotency_key=idempotency_key,
+                        to_email=to_email,
+                        subject=subject,
+                        template=template,
+                        context=context,
+                        status="pending",
+                        attempts=0,
+                        available_at=now,
+                    )
+                )
+                await session.flush()
+        except IntegrityError:
+            return False
+        return True
+
+    @classmethod
+    async def drain_outbox(
+        cls, session: AsyncSession, *, limit: int = 40
+    ) -> dict[str, int]:
+        """Claim pending rows, commit the lease, then send one-by-one.
+
+        Committing the claim before Resend means a crash after delivery cannot
+        roll sent rows back to ``pending`` (which would re-mail customers).
+        At most one duplicate is possible if we crash after Resend succeeds but
+        before the ``sent`` commit — preferable to bulk duplicates.
+        """
+        now = utcnow()
+        rows = (
+            (
+                await session.execute(
+                    select(EmailOutbox)
+                    .where(
+                        EmailOutbox.status == "pending",
+                        EmailOutbox.available_at <= now,
+                    )
+                    .order_by(EmailOutbox.available_at)
+                    .limit(limit)
+                    .with_for_update(skip_locked=True)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not rows:
+            return {"sent": 0, "failed": 0, "skipped": 0}
+
+        for row in rows:
+            row.attempts = (row.attempts or 0) + 1
+            row.available_at = now + _CLAIM_LEASE
+        await session.commit()
+
+        sent = failed = 0
+        for row in rows:
+            ok = await cls.send_email(
+                row.to_email, row.subject, row.template, row.context or {}
+            )
+            if ok:
+                row.status = "sent"
+                row.last_error = None
+                sent += 1
+            else:
+                row.last_error = "send_failed"
+                if row.attempts >= 5:
+                    row.status = "failed"
+                else:
+                    delay = min(2 ** (row.attempts - 1), 60)
+                    row.available_at = now + timedelta(minutes=delay)
+                failed += 1
+            await session.commit()
+        return {"sent": sent, "failed": failed, "skipped": 0}
 
     @classmethod
     async def send_email(

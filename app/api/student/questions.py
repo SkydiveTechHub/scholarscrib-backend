@@ -200,7 +200,36 @@ async def question_explanation(
     student: Annotated[StudentPrincipal, Depends(require_student)],
 ):
     hit(f"explain:{student.id}", 20, 60)
-    return await GetQuestionExplanationService(session, question_id).process()
+    from app.domain import PAST_QUESTIONS_DETAIL_FALLBACK, TIER_DISPLAY
+    from app.services.billing.catalog import past_questions_detail
+    from app.services.product_events import capture
+
+    detail = await past_questions_detail(session, student.tier)
+    if detail not in {"explanation", "ai_explanation"}:
+        detail = PAST_QUESTIONS_DETAIL_FALLBACK.get(student.tier, "answers")
+    if detail == "answers":
+        capture(
+            student.id,
+            "billing_entitlement_blocked",
+            {
+                "feature": "past_questions",
+                "required_plan": "STANDARD",
+                "plan_code": student.tier.lower(),
+                "source": "gate",
+            },
+        )
+        from app.core.errors import ApiError
+
+        raise ApiError(
+            403,
+            f"Explanations are part of {TIER_DISPLAY['STANDARD']}.",
+            requiredTier="STANDARD",
+            feature="past_questions",
+        )
+    payload = await GetQuestionExplanationService(session, question_id).process()
+    if detail != "ai_explanation":
+        payload["simplifiedExplanation"] = None
+    return payload
 
 
 @router.get("/past-papers", response_model=PapersOut)

@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button with context %}
+
+{% block title %}Your plan renews soon{% endblock %}
+{% block preheader %}{{ plan_name }} renews in {{ lead_days }} day{% if lead_days != 1 %}s{% endif %} for ₦{{ amount_naira }}.{% endblock %}
+{% block reason %}You received this because your ScholarsCrib subscription renews soon.{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  {{ eyebrow("Renewal", "primary") }}
+  {{ heading(plan_name ~ " renews in " ~ lead_days|string ~ (" days" if lead_days != 1 else " day")) }}
+  <p style="margin:0 0 28px 0;">We'll charge ₦{{ amount_naira }} using your saved payment method. Update your card or change plans anytime.</p>
+  {{ button(billing_url, "Manage billing") }}
+</div>
+{% endblock %}

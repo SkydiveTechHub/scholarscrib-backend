@@ -20,6 +20,16 @@ class SubscriptionRepository(BaseRepository[Subscription]):
     ) -> Subscription | None:
         return await self.first(session, Subscription.reference == reference)
 
+    async def by_reference_for_update(
+        self, session: AsyncSession, reference: str
+    ) -> Subscription | None:
+        """Lock the row for settlement so verify + webhook cannot race."""
+        return await session.scalar(
+            select(Subscription)
+            .where(Subscription.reference == reference)
+            .with_for_update()
+        )
+
     async def latest_live_end(
         self, session: AsyncSession, user_id: str, now: datetime
     ) -> datetime | None:
