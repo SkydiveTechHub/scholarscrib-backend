@@ -369,6 +369,7 @@ async def test_activate_syncs_row_ends_at_for_provider(monkeypatch):
     row = SimpleNamespace(
         id="s1",
         user_id="u1",
+        tier="STANDARD",
         status="PENDING",
         period="MONTHLY",
         starts_at=None,
@@ -379,12 +380,14 @@ async def test_activate_syncs_row_ends_at_for_provider(monkeypatch):
     session = AsyncMock()
     svc = ApplyChargeSuccessService(session, "ref", {"channel": "card"})
     monkeypatch.setattr(
-        "app.services.billing.service.subscriptions_repository.latest_live_end",
-        AsyncMock(return_value=None),
+        "app.services.billing.service.subscriptions_repository.for_user",
+        AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
-        "app.services.billing.service.term_start", lambda *_a, **_k: now
+        "app.services.billing.service.subscriptions_repository.end_active_below",
+        AsyncMock(return_value=0),
     )
+    monkeypatch.setattr("app.services.billing.service.utcnow", lambda: now)
     monkeypatch.setattr("app.services.billing.service.term_end", lambda *_a, **_k: end)
     monkeypatch.setattr(
         "app.services.billing.service.subscriptions_repository.activate",
@@ -394,6 +397,133 @@ async def test_activate_syncs_row_ends_at_for_provider(monkeypatch):
     assert row.ends_at == end
     assert row.status == "ACTIVE"
     assert row.starts_at == now
+
+
+@pytest.mark.asyncio
+async def test_activate_upgrade_starts_now_and_ends_lower(monkeypatch):
+    from app.services.billing.service import ApplyChargeSuccessService
+
+    now = datetime.now(UTC)
+    end = now + timedelta(days=30)
+    live_end = now + timedelta(days=20)
+    pending = SimpleNamespace(
+        id="prem",
+        user_id="u1",
+        tier="PREMIUM",
+        status="PENDING",
+        period="MONTHLY",
+        starts_at=None,
+        ends_at=None,
+        paid_at=None,
+        channel=None,
+    )
+    standard = SimpleNamespace(
+        id="std",
+        user_id="u1",
+        tier="STANDARD",
+        status="ACTIVE",
+        starts_at=now - timedelta(days=5),
+        ends_at=live_end,
+    )
+    ended = {}
+
+    async def fake_end_below(session, user_id, tier, at):
+        ended["tier"] = tier
+        ended["at"] = at
+        return 1
+
+    session = AsyncMock()
+    svc = ApplyChargeSuccessService(session, "ref", {"channel": "card"})
+    monkeypatch.setattr(
+        "app.services.billing.service.subscriptions_repository.for_user",
+        AsyncMock(return_value=[standard, pending]),
+    )
+    monkeypatch.setattr(
+        "app.services.billing.service.subscriptions_repository.end_active_below",
+        fake_end_below,
+    )
+    monkeypatch.setattr("app.services.billing.service.term_end", lambda *_a, **_k: end)
+    monkeypatch.setattr(
+        "app.services.billing.service.subscriptions_repository.activate",
+        AsyncMock(return_value=SimpleNamespace(rowcount=1)),
+    )
+    monkeypatch.setattr("app.services.billing.service.utcnow", lambda: now)
+    assert await svc._activate(pending) is True
+    assert pending.starts_at == now
+    assert ended["tier"] == "PREMIUM"
+
+
+@pytest.mark.asyncio
+async def test_checkout_rejects_existing_active_tier(monkeypatch):
+    from app.core.errors import ApiError
+    from app.services.billing.service import CheckoutService
+
+    user = SimpleNamespace(
+        id="u1",
+        email="a@b.com",
+        tier="PREMIUM",
+        billing_status="active",
+    )
+    session = AsyncMock()
+    monkeypatch.setattr(
+        "app.services.billing.service.settings",
+        SimpleNamespace(billing_enabled=True),
+    )
+    monkeypatch.setattr(
+        "app.services.billing.service.is_purchasable", lambda *_a, **_k: True
+    )
+    monkeypatch.setattr(
+        "app.services.billing.service.plan_by_code",
+        AsyncMock(return_value=SimpleNamespace(is_purchasable=True)),
+    )
+    monkeypatch.setattr(
+        "app.services.billing.service.promote_deferred_upgrade",
+        AsyncMock(return_value=False),
+    )
+    monkeypatch.setattr(
+        "app.services.billing.service.subscriptions_repository.for_user",
+        AsyncMock(
+            return_value=[
+                SimpleNamespace(status="ACTIVE", tier="PREMIUM"),
+            ]
+        ),
+    )
+    with pytest.raises(ApiError) as err:
+        await CheckoutService(session, user, "PREMIUM")._validate()
+    assert err.value.status_code == 400
+    assert "already on" in str(err.value.payload["error"]).lower()
+
+
+@pytest.mark.asyncio
+async def test_promote_deferred_upgrade_starts_premium_now(monkeypatch):
+    from app.services.billing.service import promote_deferred_upgrade
+
+    now = datetime.now(UTC)
+    standard = SimpleNamespace(
+        id="std",
+        status="ACTIVE",
+        tier="STANDARD",
+        starts_at=now - timedelta(days=2),
+        ends_at=now + timedelta(days=28),
+    )
+    premium = SimpleNamespace(
+        id="prem",
+        status="ACTIVE",
+        tier="PREMIUM",
+        starts_at=now + timedelta(days=28),
+        ends_at=now + timedelta(days=58),
+    )
+    monkeypatch.setattr(
+        "app.services.billing.service.subscriptions_repository.for_user",
+        AsyncMock(return_value=[standard, premium]),
+    )
+    monkeypatch.setattr(
+        "app.services.billing.service.subscriptions_repository.end_active_below",
+        AsyncMock(return_value=1),
+    )
+    monkeypatch.setattr("app.services.billing.service.utcnow", lambda: now)
+    assert await promote_deferred_upgrade(AsyncMock(), "u1") is True
+    assert premium.starts_at == now
 
 
 @pytest.mark.asyncio

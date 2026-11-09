@@ -512,6 +512,16 @@ class GetSettingsProfileService:
 
     async def process(self) -> dict:
         user = await self._load()
+        # Heal upgrades that were stacked after an intro term so billing UI
+        # matches User.tier / the paid Premium row already in the DB.
+        from app.services.billing.service import (
+            RefreshUserTierService,
+            promote_deferred_upgrade,
+        )
+
+        if await promote_deferred_upgrade(self.session, self.user_id):
+            await RefreshUserTierService(self.session, self.user_id).process()
+            user = await self._load()
         prefs = await preferences_repository.by_id(self.session, self.user_id)
         tier, expires = await self._tier()
         return self._payload(user, prefs, tier, expires)

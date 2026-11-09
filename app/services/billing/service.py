@@ -20,7 +20,7 @@ from app.database.repositories.billing import (
     subscriptions_repository,
 )
 from app.database.repositories.identity import users_repository
-from app.domain import is_purchasable, price_kobo
+from app.domain import TIER_DISPLAY, TIER_RANK, is_purchasable, price_kobo
 from app.services.billing import lago_client
 from app.services.billing.catalog import (
     load_catalog,
@@ -46,6 +46,61 @@ from app.services.product_events import capture
 
 def _billing_settings_url() -> str:
     return f"{settings.frontend_url.rstrip('/')}/settings/billing"
+
+
+async def promote_deferred_upgrade(session: AsyncSession, user_id: str) -> bool:
+    """If a higher-tier ACTIVE term is queued after a lower live term, start it now.
+
+    Paid upgrades used to stack onto the intro Standard month, so profile (live
+    Subscription resolve) stayed Standard while User.tier was already Premium.
+    """
+    now = utcnow()
+    rows = await subscriptions_repository.for_user(session, user_id)
+    if not rows:
+        return False
+    live_tier, _ = resolve_live_tier(
+        [
+            {
+                "status": row.status,
+                "tier": row.tier,
+                "startsAt": row.starts_at,
+                "endsAt": row.ends_at,
+            }
+            for row in rows
+        ],
+        now,
+    )
+    active = [row for row in rows if row.status == "ACTIVE"]
+    if not active:
+        return False
+    best = max(
+        active,
+        key=lambda row: (
+            TIER_RANK.get(row.tier, 0),
+            row.ends_at or now,
+        ),
+    )
+    if TIER_RANK.get(best.tier, 0) <= TIER_RANK.get(live_tier, 0):
+        return False
+    if best.starts_at is not None and best.starts_at > now:
+        logger.info(
+            "promote_deferred_upgrade user=%s live=%s deferred=%s starts_at=%s→now",
+            user_id,
+            live_tier,
+            best.tier,
+            best.starts_at,
+        )
+        best.starts_at = now
+    ended = await subscriptions_repository.end_active_below(
+        session, user_id, best.tier, now
+    )
+    logger.info(
+        "promote_deferred_upgrade user=%s promoted=%s ended_lower=%s",
+        user_id,
+        best.tier,
+        ended,
+    )
+    return True
 
 
 class CheckoutService:
@@ -89,6 +144,16 @@ class CheckoutService:
         plan = await plan_by_code(self.session, self.plan_code)
         if plan is not None and not plan.is_purchasable:
             raise ApiError(400, "That plan cannot be purchased")
+        await promote_deferred_upgrade(self.session, self.user.id)
+        rows = await subscriptions_repository.for_user(self.session, self.user.id)
+        if any(row.status == "ACTIVE" and row.tier == self.tier for row in rows):
+            label = TIER_DISPLAY.get(self.tier, self.tier)
+            raise ApiError(400, f"You're already on {label}")
+        if self.user.billing_status in {"active", "canceling", "past_due"} and (
+            TIER_RANK.get(self.tier, 0) <= TIER_RANK.get(self.user.tier, 0)
+        ):
+            label = TIER_DISPLAY.get(self.user.tier, self.user.tier)
+            raise ApiError(400, f"You're already on {label} or a higher plan")
 
     async def _amount(self) -> int:
         plan = await plan_by_code(self.session, self.plan_code)
@@ -419,10 +484,39 @@ class ApplyChargeSuccessService:
 
     async def _activate(self, row: Subscription) -> bool:
         now = utcnow()
-        live_end = await subscriptions_repository.latest_live_end(
-            self.session, row.user_id, now
+        rows = await subscriptions_repository.for_user(self.session, row.user_id)
+        live_tier, _ = resolve_live_tier(
+            [
+                {
+                    "status": existing.status,
+                    "tier": existing.tier,
+                    "startsAt": existing.starts_at,
+                    "endsAt": existing.ends_at,
+                }
+                for existing in rows
+                if existing.id != row.id
+            ],
+            now,
         )
-        start = term_start(now, live_end)
+        is_upgrade = TIER_RANK.get(row.tier, 0) > TIER_RANK.get(live_tier, 0)
+        if is_upgrade:
+            # Paid upgrades start immediately — do not wait out intro/lower terms.
+            ended = await subscriptions_repository.end_active_below(
+                self.session, row.user_id, row.tier, now
+            )
+            start = now
+            logger.info(
+                "checkout upgrade activate user=%s live=%s new=%s ended_lower=%s",
+                row.user_id,
+                live_tier,
+                row.tier,
+                ended,
+            )
+        else:
+            live_end = await subscriptions_repository.latest_live_end(
+                self.session, row.user_id, now
+            )
+            start = term_start(now, live_end)
         end = term_end(start, row.period)
         channel = self.transaction.get("channel")
         result = await subscriptions_repository.activate(
