@@ -7,7 +7,58 @@ def pg_enum(name: str, *values: str) -> Enum:
     return Enum(*values, name=name, native_enum=True, create_constraint=True)
 
 
-Role = pg_enum("Role", "STUDENT", "TEACHER", "ADMIN")
+# TEACHER stays reserved for a future School portal; centers use TUTOR.
+Role = pg_enum("Role", "STUDENT", "TEACHER", "ADMIN", "TUTOR")
+CenterMembershipKind = pg_enum(
+    "CenterMembershipKind", "OWNER", "FACILITATOR", "STUDENT"
+)
+CenterMembershipStatus = pg_enum(
+    "CenterMembershipStatus", "INVITED", "ACTIVE", "LEFT", "REMOVED"
+)
+CenterInviteKind = pg_enum("CenterInviteKind", "STUDENT", "FACILITATOR")
+CenterPlan = pg_enum("CenterPlan", "FREE", "PRO", "TEAM")
+CenterCheckoutStatus = pg_enum(
+    "CenterCheckoutStatus", "PENDING", "ACTIVE", "FAILED", "ABANDONED"
+)
+CenterTokenLedgerKind = pg_enum(
+    "CenterTokenLedgerKind",
+    "PURCHASE",
+    "SPEND",
+    "STARTER",
+    "ADJUSTMENT",
+    "WALLET",  # M7 hook: fund tokens from referral wallet
+)
+TutorWalletLedgerKind = pg_enum(
+    "TutorWalletLedgerKind",
+    "COMMISSION",
+    "REFUND_REVERSE",
+    "SPEND_TOKENS",
+    "WITHDRAW_HOLD",
+    "WITHDRAW_REJECT",
+    "ADJUSTMENT",
+)
+TutorWithdrawStatus = pg_enum(
+    "TutorWithdrawStatus", "PENDING", "FULFILLED", "REJECTED", "CANCELLED"
+)
+CenterAbuseReportKind = pg_enum(
+    "CenterAbuseReportKind", "TUTOR", "INVITE", "RECOMMENDATION"
+)
+CenterAbuseReportStatus = pg_enum(
+    "CenterAbuseReportStatus", "OPEN", "REVIEWING", "RESOLVED", "DISMISSED"
+)
+AssignmentLifecycle = pg_enum(
+    "AssignmentLifecycle", "DRAFT", "SCHEDULED", "OPEN", "CLOSED"
+)
+AssignmentTaskType = pg_enum(
+    "AssignmentTaskType",
+    "TOPIC_QUIZ",
+    "PAST_PAPER",
+    "MOCK_EXAM",
+    "LESSON",
+    "FLASHCARDS",
+)
+AssignmentTargetKind = pg_enum("AssignmentTargetKind", "STUDENT", "GROUP", "CENTER")
+RecommendationStatus = pg_enum("RecommendationStatus", "DELIVERED", "SEEN", "ACTED")
 ClassLevel = pg_enum("ClassLevel", "SS1", "SS2", "SS3")
 Track = pg_enum("Track", "SCIENCE", "ARTS", "COMMERCIAL")
 TrackCategory = pg_enum(

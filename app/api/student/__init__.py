@@ -5,6 +5,7 @@ from app.api.student.announcements import router as announcements_router
 from app.api.student.assessments import router as assessments_router
 from app.api.student.auth import router as auth_router
 from app.api.student.billing import router as billing_router
+from app.api.student.centers import router as centers_router
 from app.api.student.classroom import router as classroom_router
 from app.api.student.dashboard import router as dashboard_router
 from app.api.student.flashcards import router as flashcards_router
@@ -40,5 +41,6 @@ router.include_router(dashboard_router)
 router.include_router(performance_router)
 router.include_router(classroom_router)
 router.include_router(billing_router)
+router.include_router(centers_router)
 router.include_router(push_router)
 router.include_router(tutor_router)

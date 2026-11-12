@@ -108,6 +108,51 @@ class UserRepository(BaseRepository[User]):
         )
         return rows, int(total or 0)
 
+    async def search_tutors(
+        self,
+        session: AsyncSession,
+        query: str | None,
+        page: int,
+        page_size: int,
+        *,
+        status: str | None = None,
+        state: str | None = None,
+        verified: bool | None = None,
+    ) -> tuple[list[User], int]:
+        statement = select(User).where(User.role == "TUTOR")
+        if query:
+            like = f"%{query.lower()}%"
+            statement = statement.where(
+                or_(
+                    User.email.ilike(like),
+                    User.phone.ilike(like),
+                    User.first_name.ilike(like),
+                    User.last_name.ilike(like),
+                )
+            )
+        if status == "active":
+            statement = statement.where(User.is_active.is_(True))
+        elif status == "suspended":
+            statement = statement.where(User.is_active.is_(False))
+        if state == "none":
+            statement = statement.where(User.state.is_(None))
+        elif state:
+            statement = statement.where(User.state == state)
+        if verified is True:
+            statement = statement.where(User.tutor_verified_at.is_not(None))
+        elif verified is False:
+            statement = statement.where(User.tutor_verified_at.is_(None))
+        total = await session.scalar(
+            select(func.count()).select_from(statement.subquery())
+        )
+        rows = await self.many(
+            session,
+            statement.order_by(User.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size),
+        )
+        return rows, int(total or 0)
+
     async def for_audience(self, session: AsyncSession, audience: dict) -> list[User]:
         statement = select(User).where(
             User.role == "STUDENT",

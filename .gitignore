@@ -177,3 +177,4 @@ release.yml
 
 dump_todo.md
 .agents/
+.DS_Store

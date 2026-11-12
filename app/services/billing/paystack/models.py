@@ -109,6 +109,8 @@ class PaystackManageLinkResponse(PaystackMessage):
 
 class PaystackEvents(StrEnum):
     CHARGE_SUCCESS = "charge.success"
+    CHARGE_REFUNDED = "charge.refunded"
+    REFUND_PROCESSED = "refund.processed"
     INVOICE_CREATE = "invoice.create"
     INVOICE_UPDATE = "invoice.update"
     INVOICE_PAYMENT_FAILED = "invoice.payment_failed"

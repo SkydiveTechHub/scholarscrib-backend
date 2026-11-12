@@ -7,6 +7,7 @@ from app.core.config import settings
 
 BCRYPT_ROUNDS = 12
 STUDENT_MAX_AGE = timedelta(days=30)
+TUTOR_MAX_AGE = timedelta(days=30)
 ADMIN_MAX_AGE = timedelta(hours=8)
 ALGORITHM = "HS256"
 
@@ -45,6 +46,10 @@ def decode_token(token: str, secret: str) -> dict | None:
 
 def student_token(claims: dict) -> str:
     return encode_token(claims, settings.auth_secret, STUDENT_MAX_AGE)
+
+
+def tutor_token(claims: dict) -> str:
+    return encode_token(claims, settings.tutor_auth_secret, TUTOR_MAX_AGE)
 
 
 def admin_token(admin_id: str) -> str:

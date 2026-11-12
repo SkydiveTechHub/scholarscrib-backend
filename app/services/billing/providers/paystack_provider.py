@@ -206,6 +206,11 @@ class PaystackSubscriptionProvider:
             return {"handled": True, "event": event_type}
         if event_type == PaystackEvents.CHARGE_SUCCESS:
             return await self._on_renewal_charge(session, data)
+        if event_type in {
+            PaystackEvents.REFUND_PROCESSED,
+            PaystackEvents.CHARGE_REFUNDED,
+        }:
+            return await self._on_refund(session, data, event_type)
         logger.info("Paystack event unhandled by provider event=%s", event_type)
         return None
 
@@ -456,6 +461,8 @@ class PaystackSubscriptionProvider:
             channel = auth.get("channel")
         channel = channel or data.get("channel")
 
+        renewal_ref = str(reference or new_reference())
+        renewal_sub_id = cuid()
         await apply_billing_state(
             session,
             user,
@@ -465,11 +472,11 @@ class PaystackSubscriptionProvider:
             next_billing_at=next_at,
             intro_ends_at=None,
             subscription=Subscription(
-                id=cuid(),
+                id=renewal_sub_id,
                 user_id=user.id,
                 tier=tier_for_plan_code(plan_code),
                 period="MONTHLY",
-                reference=str(reference or new_reference()),
+                reference=renewal_ref,
                 amount_kobo=amount,
                 currency=str(data.get("currency") or "NGN"),
                 status="ACTIVE",
@@ -519,9 +526,54 @@ class PaystackSubscriptionProvider:
                     f"renewal_ok:{reference or user.id}:{now.date().isoformat()}"
                 ),
             )
+        try:
+            from app.services.centers.wallet import credit_referral_commission
+
+            await credit_referral_commission(
+                session,
+                student_id=user.id,
+                amount_kobo=amount,
+                tier=tier_for_plan_code(plan_code),
+                subscription_id=renewal_sub_id,
+                reference=renewal_ref,
+                source="paystack_renewal",
+            )
+        except Exception:
+            logger.exception(
+                "referral commission credit failed renewal user=%s ref=%s",
+                user.id,
+                reference,
+            )
         return {
             "handled": True,
             "event": "charge.success",
             "renewal": True,
             "userId": user.id,
+        }
+
+    async def _on_refund(
+        self, session: AsyncSession, data: dict, event_type: str
+    ) -> dict:
+        """D12: reverse referral commission when Paystack reports a refund."""
+        reference = data.get("transaction_reference") or data.get("reference")
+        if not reference and isinstance(data.get("transaction"), dict):
+            reference = data["transaction"].get("reference")
+        try:
+            from app.services.centers.wallet import reverse_referral_commission
+
+            entry = await reverse_referral_commission(
+                session, reference=str(reference) if reference else None
+            )
+        except Exception:
+            logger.exception(
+                "referral commission reverse failed event=%s ref=%s",
+                event_type,
+                reference,
+            )
+            return {"handled": False, "event": event_type, "reason": "reverse-error"}
+        return {
+            "handled": True,
+            "event": event_type,
+            "reversed": entry is not None,
+            "reference": reference,
         }

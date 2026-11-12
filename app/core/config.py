@@ -35,6 +35,8 @@ class Settings(BaseSettings):
 
     auth_secret: str
     admin_auth_secret: str
+    # Separate cookie/JWT realm for Tutor Centers (`/center/api/*`).
+    tutor_auth_secret: str
     auth_google_id: str | None
     auth_google_secret: str | None
     app_url: str
@@ -136,6 +138,11 @@ class Settings(BaseSettings):
         if self.auth_secret == self.admin_auth_secret:
             raise ValueError(
                 "ADMIN_AUTH_SECRET must be set and must differ from AUTH_SECRET"
+            )
+        if self.tutor_auth_secret in {self.auth_secret, self.admin_auth_secret}:
+            raise ValueError(
+                "TUTOR_AUTH_SECRET must be set and must differ from "
+                "AUTH_SECRET and ADMIN_AUTH_SECRET"
             )
         return self
 

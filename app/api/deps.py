@@ -39,9 +39,29 @@ class StudentPrincipal:
     email_verified: datetime | None
 
 
+@dataclass
+class TutorPrincipal:
+    id: str
+    email: str | None
+    device_id: str | None
+    state: str | None
+    first_name: str | None
+    last_name: str | None
+    image: str | None
+    has_password: bool
+    issued_at: int | None
+    email_verified: datetime | None
+
+
 def _student_token(request: Request) -> str | None:
     return read_bearer(request.headers.get("authorization")) or request.cookies.get(
         "scholarscrib.session"
+    )
+
+
+def _tutor_token(request: Request) -> str | None:
+    return read_bearer(request.headers.get("authorization")) or request.cookies.get(
+        "scholarscrib.tutor-session"
     )
 
 
@@ -55,7 +75,7 @@ async def optional_student(
     if not claims or not claims.get("sub"):
         return None
     user = await users_repository.by_id(session, claims["sub"])
-    if user is None:
+    if user is None or user.role != "STUDENT":
         return None
     issued = claims.get("sessionStartedAt") or claims.get("iat")
     if is_session_revoked(user.is_active, user.sessions_valid_from, issued):
@@ -144,6 +164,50 @@ def require_feature(feature: str):
         )
 
     return checker
+
+
+async def optional_tutor(request: Request, session: AnSession) -> TutorPrincipal | None:
+    raw = _tutor_token(request)
+    if not raw:
+        return None
+    claims = decode_token(raw, settings.tutor_auth_secret)
+    if not claims or not claims.get("sub"):
+        return None
+    user = await users_repository.by_id(session, claims["sub"])
+    if user is None or user.role != "TUTOR":
+        return None
+    issued = claims.get("sessionStartedAt") or claims.get("iat")
+    if is_session_revoked(user.is_active, user.sessions_valid_from, issued):
+        return None
+    device_id = claims.get("deviceId")
+    if device_id:
+        device = await devices_repository.by_id(session, device_id)
+        if device is None or device.revoked_at is not None or device.user_id != user.id:
+            return None
+        if (
+            utcnow() - as_utc(device.last_seen_at)
+        ).total_seconds() >= DEVICE_TOUCH_SECONDS:
+            device.last_seen_at = utcnow()
+    return TutorPrincipal(
+        id=user.id,
+        email=user.email,
+        device_id=device_id,
+        state=user.state,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        image=user.image,
+        has_password=bool(user.password_hash),
+        issued_at=issued,
+        email_verified=user.email_verified,
+    )
+
+
+async def require_tutor(request: Request, session: AnSession) -> TutorPrincipal:
+    tutor = await optional_tutor(request, session)
+    if tutor is None:
+        raise unauthorized()
+    note_user_active(tutor.id)
+    return tutor
 
 
 async def require_admin(request: Request, session: AnSession) -> Admin:

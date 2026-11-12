@@ -33,14 +33,21 @@ type Phone = Annotated[str, Field(pattern=PHONE_PATTERN)]
 
 
 class RegisterIn(BaseModel):
-    role: Literal["STUDENT"] = "STUDENT"
+    # TEACHER is intentionally omitted — reserved for a future School portal.
+    role: Literal["STUDENT", "TUTOR"] = "STUDENT"
     firstName: str = Field(min_length=2, max_length=50)
     lastName: str = Field(min_length=2, max_length=50)
     email: EmailStr
     password: str = Field(min_length=6, max_length=25)
-    classLevel: ClassLevel
-    track: Track
+    classLevel: ClassLevel | None = None
+    track: Track | None = None
     state: NigerianState
+
+    @model_validator(mode="after")
+    def student_profile_required(self) -> "RegisterIn":
+        if self.role == "STUDENT" and (self.classLevel is None or self.track is None):
+            raise ValueError("classLevel and track are required for students")
+        return self
 
 
 class LoginIn(BaseModel):
@@ -694,3 +701,33 @@ class AdminAstraResumeIn(BaseModel):
     actionId: str | None = Field(default=None, min_length=1)
     args: dict | None = None
     stream: bool = False
+
+
+class CenterAstraThreadCreateIn(BaseModel):
+    title: str | None = Field(default=None, max_length=120)
+    firstMessage: str | None = Field(default=None, max_length=8000)
+
+
+class CenterAstraMessageIn(BaseModel):
+    content: str = Field(min_length=1, max_length=8000)
+
+
+class CenterAstraStreamStopIn(BaseModel):
+    streamId: str | None = Field(default=None, min_length=1)
+
+
+class CenterAstraResumeIn(BaseModel):
+    """Approve or reject a paused Tutor Astra action."""
+
+    approved: bool
+    actionId: str | None = Field(default=None, min_length=1)
+    args: dict | None = None
+    stream: bool = False
+
+
+class CenterTokenCheckoutIn(BaseModel):
+    packCode: str = Field(min_length=1, max_length=64)
+
+
+class CenterTokenVerifyIn(BaseModel):
+    reference: str = Field(min_length=1, max_length=128)

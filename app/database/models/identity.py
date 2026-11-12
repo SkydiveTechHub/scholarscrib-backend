@@ -89,6 +89,9 @@ class User(Base):
     email_verified: Mapped[datetime | None] = mapped_column(
         "emailVerified", DateTime(timezone=True)
     )
+    tutor_verified_at: Mapped[datetime | None] = mapped_column(
+        "tutorVerifiedAt", DateTime(timezone=True)
+    )
     created_at: Mapped[datetime] = timestamp_column("createdAt")
     updated_at: Mapped[datetime] = timestamp_column("updatedAt", onupdate=True)
 

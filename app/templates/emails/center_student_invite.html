@@ -1,0 +1,35 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import heading, eyebrow, button, muted with context %}
+
+{% block title %}Join {{ center_name }} on ScholarsCrib{% endblock %}
+{% block preheader %}{{ tutor_name }} invited you to join {{ center_name }}.{% endblock %}
+{% block reason %}You received this email because {{ tutor_name }} invited {{ email if email else "you" }} to join their tutor center on ScholarsCrib.{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  {{ eyebrow("Center invite", "primary") }}
+  {{ heading("You're invited to join " ~ center_name) }}
+  <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;color:#334155;">
+    <strong style="color:#0f172a;">{{ tutor_name }}</strong> wants you on their ScholarsCrib center so they can assign practice and send short recommendations.
+  </p>
+  <p style="margin:0 0 28px 0;font-size:14px;line-height:22px;color:#64748b;">
+    This invite is for your email only
+    {% if expires_days %} and expires in {{ expires_days }} day{% if expires_days != 1 %}s{% endif %}{% endif %}.
+  </p>
+  {{ button(invite_url, "Accept invite") }}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:32px 0 0 0;">
+  <tr>
+    <td bgcolor="#f8fafc" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;text-align:center;">
+      <p style="margin:0 0 6px 0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748b;">Invite code</p>
+      <p style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:22px;line-height:28px;font-weight:800;letter-spacing:3px;color:#0f172a;">{{ invite_code }}</p>
+      <p style="margin:10px 0 0 0;font-size:13px;line-height:20px;color:#94a3b8;">Or open this link:<br><a href="{{ invite_url }}" style="color:#2563eb;word-break:break-all;">{{ invite_url }}</a></p>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:28px 0 0 0;font-size:13px;line-height:20px;color:#94a3b8;text-align:center;">
+  You stay in control — you can leave the center anytime. If you did not expect this, you can ignore this email.
+</p>
+{% endblock %}

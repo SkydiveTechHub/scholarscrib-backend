@@ -227,6 +227,11 @@ class QuestionRepository(BaseRepository[Question]):
         statement = statement.order_by(func.random()).limit(count)
         return await self.many(session, statement)
 
+    async def by_ids(self, session: AsyncSession, ids: list[str]) -> list[Question]:
+        if not ids:
+            return []
+        return await self.many(session, select(Question).where(Question.id.in_(ids)))
+
     async def for_assessment(
         self, session: AsyncSession, assessment_id: str
     ) -> list[Question]:

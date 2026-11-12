@@ -494,6 +494,12 @@ class SubmitAttemptService:
         attempt, assessment = await self._load()
         if attempt.status == "COMPLETED":
             return await self._existing_result(attempt.id), False
+        if attempt.assignment_id:
+            from app.services.centers.assignments import (
+                assert_assignment_submit_allowed,
+            )
+
+            await assert_assignment_submit_allowed(self.session, attempt)
         paper = await _paper_questions(self.session, assessment.id)
         answers = {item.questionId: item for item in self.body.answers}
         score, total, percentage, grade, remark, credit, extra = await self._score(
@@ -732,7 +738,7 @@ class GetAttemptResultService:
             jamb = _jamb_payload(
                 score_jamb_paper(await _jamb_sections(self.session, paper, selected))
             )
-        return {
+        payload = {
             "attemptId": attempt.id,
             "assessmentTitle": assessment.title,
             "assessmentType": assessment.assessment_type,
@@ -751,6 +757,57 @@ class GetAttemptResultService:
             "results": results,
             "topicBreakdown": topic_rows,
         }
+        if attempt.assignment_id:
+            payload["assignmentId"] = attempt.assignment_id
+            from app.database.repositories.centers import (
+                assignments_repository,
+                centers_repository,
+            )
+            from app.database.repositories.identity import users_repository
+            from app.services.centers.assignments import reveal_answers_allowed
+
+            assignment = await assignments_repository.by_id(
+                self.session, attempt.assignment_id
+            )
+            if not await reveal_answers_allowed(assignment):
+                for row in payload["results"]:
+                    row["correctAnswer"] = None
+                    row["explanation"] = None
+                    row["explanationImageUrl"] = None
+            if assignment is not None:
+                due = assignment.due_at
+                completed = attempt.completed_at
+                payload["late"] = bool(
+                    due is not None
+                    and completed is not None
+                    and as_utc(completed) > as_utc(due)
+                )
+                payload["sharedWithTutor"] = True
+                # S-2 badge: tutor + center names on assignment results.
+                center = await centers_repository.by_id(
+                    self.session, assignment.center_id
+                )
+                tutor = (
+                    await users_repository.by_id(self.session, center.owner_id)
+                    if center
+                    else None
+                )
+                tutor_name = ""
+                if tutor is not None:
+                    tutor_name = " ".join(
+                        part
+                        for part in (tutor.first_name or "", tutor.last_name or "")
+                        if part
+                    ).strip() or (tutor.email or "Tutor")
+                payload["sharedWith"] = {
+                    "tutorName": tutor_name or "Tutor",
+                    "centerName": center.name if center else "",
+                }
+                payload["focusLoss"] = {
+                    "flagged": int(attempt.away_events or 0) >= 1,
+                    "awayEvents": int(attempt.away_events or 0),
+                }
+        return payload
 
     async def _load(self) -> tuple[AssessmentAttempt, Assessment]:
         attempt = await attempts_repository.by_id(self.session, self.attempt_id)

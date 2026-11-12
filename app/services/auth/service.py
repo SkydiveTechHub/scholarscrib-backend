@@ -21,7 +21,12 @@ from app.core.errors import ApiError
 from app.core.ids import cuid
 from app.core.logger import logger
 from app.core.rate_limit import hit
-from app.core.security import hash_password, student_token, verify_password
+from app.core.security import (
+    hash_password,
+    student_token,
+    tutor_token,
+    verify_password,
+)
 from app.core.timeutil import as_utc, utcnow
 from app.database.models import Account, NotificationPreference, User, UserDevice
 from app.database.repositories.billing import subscriptions_repository
@@ -76,6 +81,26 @@ def issue_student_token(user: User, device_id: str) -> str:
     )
 
 
+def issue_tutor_token(user: User, device_id: str) -> str:
+    now = int(utcnow().timestamp())
+    return tutor_token(
+        {
+            "sub": user.id,
+            "realm": "tutor",
+            "role": "TUTOR",
+            "profile": {
+                "role": user.role,
+                "firstName": user.first_name,
+                "lastName": user.last_name,
+                "state": user.state,
+                "image": user.image,
+            },
+            "sessionStartedAt": now,
+            "deviceId": device_id,
+        }
+    )
+
+
 class RegisterStudentService:
     def __init__(self, session: AsyncSession, body: RegisterIn, ip: str) -> None:
         self.session = session
@@ -84,17 +109,21 @@ class RegisterStudentService:
 
     async def process(self) -> dict:
         self._limit()
+        if self.body.role == "TEACHER":
+            # Schema already rejects TEACHER; keep an explicit guard for callers.
+            raise ApiError(400, "Teacher registration is not available")
         email = self.body.email.strip().lower()
         await self._ensure_available(email)
         user = await self._create(email)
-        from app.services.billing.provisioning import provision_signup_billing
+        if user.role == "STUDENT":
+            from app.services.billing.provisioning import provision_signup_billing
 
-        await provision_signup_billing(self.session, user)
+            await provision_signup_billing(self.session, user)
         await StudentOTPService(self.session).send_otp(email)
         capture(
             user.id,
             "user_signed_up",
-            {"signup_method": "email"},
+            {"signup_method": "email", "role": user.role},
             set_props={
                 "class_level": user.class_level,
                 "track": user.track,
@@ -102,6 +131,7 @@ class RegisterStudentService:
                 "tier": user.tier,
                 "plan_code": user.plan_code,
                 "billing_status": user.billing_status,
+                "role": user.role,
             },
             set_once={"signup_method": "email"},
         )
@@ -116,15 +146,16 @@ class RegisterStudentService:
             raise ApiError(409, "An account with this email already exists")
 
     async def _create(self, email: str) -> User:
+        role = self.body.role
         user = User(
             id=cuid(),
             email=email,
             first_name=self.body.firstName.strip(),
             last_name=self.body.lastName.strip(),
             password_hash=hash_password(self.body.password),
-            role="STUDENT",
-            class_level=self.body.classLevel,
-            track=self.body.track,
+            role=role,
+            class_level=self.body.classLevel if role == "STUDENT" else None,
+            track=self.body.track if role == "STUDENT" else None,
             state=self.body.state,
         )
         try:
@@ -141,6 +172,7 @@ class RegisterStudentService:
                 "email": user.email,
                 "firstName": user.first_name,
                 "lastName": user.last_name,
+                "role": user.role,
                 "classLevel": user.class_level,
                 "track": user.track,
             },
@@ -220,6 +252,9 @@ class LoginStudentService:
         user = await users_repository.by_email(self.session, normalised)
         if user is None or not user.password_hash or not user.is_active:
             return None
+        # Student realm only — tutors authenticate via /center/api/auth/login.
+        if user.role != "STUDENT":
+            return None
         if not verify_password(self.password, user.password_hash):
             return None
         return user
@@ -232,6 +267,59 @@ class LoginStudentService:
                 "email": user.email,
                 **profile_dict(user),
                 "deviceId": device.id,
+            },
+        }
+
+
+class LoginTutorService:
+    def __init__(
+        self, session: AsyncSession, email: str, password: str, ip: str, label: str
+    ) -> None:
+        self.session = session
+        self.email = email
+        self.password = password
+        self.ip = ip
+        self.label = label
+
+    async def process(self) -> dict | None:
+        normalised = self.email.strip().lower()
+        if len(self.password) < 6:
+            return None
+        self._limit(normalised)
+        user = await self._authenticate(normalised)
+        if user is None:
+            return None
+        device = await RegisterDeviceService(self.session, user, self.label).process()
+        capture(user.id, "tutor_logged_in", {"method": "email"})
+        return self._payload(user, device)
+
+    def _limit(self, normalised: str) -> None:
+        hit(f"tutor-login:{normalised}:{self.ip}", 5, 900)
+        hit(f"tutor-login-email:{normalised}", 20, 3600)
+
+    async def _authenticate(self, normalised: str) -> User | None:
+        user = await users_repository.by_email(self.session, normalised)
+        if user is None or not user.password_hash or not user.is_active:
+            return None
+        if user.role != "TUTOR":
+            return None
+        if not verify_password(self.password, user.password_hash):
+            return None
+        return user
+
+    def _payload(self, user: User, device: UserDevice) -> dict:
+        return {
+            "accessToken": issue_tutor_token(user, device.id),
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "firstName": user.first_name,
+                "lastName": user.last_name,
+                "state": user.state,
+                "image": user.image,
+                "deviceId": device.id,
+                "emailVerified": user.email_verified,
             },
         }
 

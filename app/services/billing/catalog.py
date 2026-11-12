@@ -333,11 +333,15 @@ async def seed_catalog(session: AsyncSession) -> dict[str, int]:
             entitlement_count += 1
 
     await session.flush()
+    from app.services.centers.plans import seed_center_catalog
+
+    center_plans = await seed_center_catalog(session)
     invalidate_catalog_cache()
     return {
         "plans": len(plans_by_code),
         "features": len(features_by_code),
         "entitlements": entitlement_count,
+        "centerPlans": center_plans,
     }
 
 

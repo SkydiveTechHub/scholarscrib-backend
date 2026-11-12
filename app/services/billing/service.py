@@ -104,18 +104,54 @@ async def promote_deferred_upgrade(session: AsyncSession, user_id: str) -> bool:
 
 
 class CheckoutService:
+    """Student monthly checkout, or center Pro/Team yearly when ``center_id`` is set."""
+
     def __init__(
-        self, session: AsyncSession, user: User, tier: str, period: str = "MONTHLY"
+        self,
+        session: AsyncSession,
+        user: User,
+        tier: str,
+        period: str = "MONTHLY",
+        *,
+        center_id: str | None = None,
     ) -> None:
+        from app.services.centers.plans import is_center_plan_code
+
         self.session = session
         self.user = user
-        self.tier = tier
-        self.period = "MONTHLY"  # yearly dropped for this pass
-        self.plan_code = plan_code_for_tier(tier)
+        self.center_id = center_id
+        requested = (period or "MONTHLY").upper()
+        if center_id is not None:
+            # M4/M5: center Pro/Team are yearly-only.
+            plan_name = (tier or "PRO").upper()
+            if plan_name.startswith("CENTER_"):
+                plan_name = plan_name.removeprefix("CENTER_")
+            self.tier = plan_name
+            self.plan_code = f"center_{plan_name.lower()}"
+            if not is_center_plan_code(self.plan_code):
+                raise ApiError(400, "Unknown center plan")
+            # Yearly for center Pro/Team; reject monthly to match catalog interval.
+            self.period = "YEARLY" if requested in {"YEARLY", "MONTHLY"} else requested
+            if self.period != "YEARLY":
+                raise ApiError(400, "Center plans are billed yearly")
+        else:
+            self.tier = tier
+            # Student yearly dropped for this pass — keep monthly.
+            self.period = "MONTHLY"
+            self.plan_code = plan_code_for_tier(tier)
 
     async def process(self) -> dict:
         await self._validate()
-        await subscriptions_repository.abandon_pending(self.session, self.user.id)
+        if self.center_id is not None:
+            from app.database.repositories.centers import (
+                center_plan_checkouts_repository,
+            )
+
+            await center_plan_checkouts_repository.abandon_pending(
+                self.session, self.user.id, self.center_id
+            )
+        else:
+            await subscriptions_repository.abandon_pending(self.session, self.user.id)
         reference = new_reference()
         amount = await self._amount()
         await self._store_pending(reference, amount)
@@ -129,19 +165,40 @@ class CheckoutService:
                 "period": self.period,
                 "amount_kobo": amount,
                 "currency": "NGN",
-                "source": "checkout",
+                "source": "center_checkout" if self.center_id else "checkout",
+                "center_id": self.center_id,
             },
         )
-        return {"authorizationUrl": url}
+        return {"authorizationUrl": url, "reference": reference}
 
     async def _validate(self) -> None:
         if not settings.billing_enabled:
             raise ApiError(503, "Billing is not configured")
-        if not is_purchasable(self.tier):
-            raise ApiError(400, "That plan cannot be purchased")
         if not self.user.email:
             raise ApiError(400, "Add an email address before paying")
         plan = await plan_by_code(self.session, self.plan_code)
+        if self.center_id is not None:
+            from app.database.repositories.centers import centers_repository
+
+            if self.tier not in {"PRO", "TEAM"}:
+                raise ApiError(400, "Only Pro or Team plans can be purchased")
+            if plan is None or not plan.is_purchasable:
+                raise ApiError(400, "That plan cannot be purchased")
+            center = await centers_repository.owned_by(
+                self.session, self.center_id, self.user.id
+            )
+            if center is None:
+                raise ApiError(404, "Center not found")
+            paid = center.plan_paid_until is None or center.plan_paid_until > utcnow()
+            if center.plan == "TEAM" and paid:
+                raise ApiError(400, "This center is already on Team")
+            if self.tier == "PRO" and center.plan == "PRO" and paid:
+                raise ApiError(400, "This center is already on Pro")
+            if self.tier == "PRO" and center.plan == "TEAM":
+                raise ApiError(400, "This center is already on a higher plan")
+            return
+        if not is_purchasable(self.tier):
+            raise ApiError(400, "That plan cannot be purchased")
         if plan is not None and not plan.is_purchasable:
             raise ApiError(400, "That plan cannot be purchased")
         await promote_deferred_upgrade(self.session, self.user.id)
@@ -159,9 +216,34 @@ class CheckoutService:
         plan = await plan_by_code(self.session, self.plan_code)
         if plan is not None:
             return plan.amount_kobo
+        if self.center_id is not None:
+            from app.domain import CENTER_PRO_YEARLY_KOBO, CENTER_TEAM_YEARLY_KOBO
+
+            if self.tier == "TEAM":
+                return CENTER_TEAM_YEARLY_KOBO
+            return CENTER_PRO_YEARLY_KOBO
         return price_kobo(self.tier, self.period)
 
     async def _store_pending(self, reference: str, amount: int) -> None:
+        if self.center_id is not None:
+            from app.database.models import CenterPlanCheckout
+            from app.database.repositories.centers import (
+                center_plan_checkouts_repository,
+            )
+
+            row = CenterPlanCheckout(
+                id=cuid(),
+                center_id=self.center_id,
+                user_id=self.user.id,
+                plan=self.tier,
+                period=self.period,
+                reference=reference,
+                amount_kobo=amount,
+                currency="NGN",
+                status="PENDING",
+            )
+            await center_plan_checkouts_repository.add(self.session, row, flush=True)
+            return
         # Freeze the active Paystack subscription at checkout start. Activation
         # disables *this* code only — not whatever subscription.create stamped.
         row = Subscription(
@@ -200,19 +282,28 @@ class CheckoutService:
         ):
             await provider.sync_plan(self.session, plan)
         extras = await provider.checkout_extras(plan, self.user)
+        callback = (
+            f"{settings.frontend_url.rstrip('/')}/center/billing"
+            if self.center_id
+            else f"{settings.frontend_url.rstrip('/')}/settings/billing"
+        )
+        metadata = {
+            "userId": self.user.id,
+            "tier": self.tier,
+            "plan_code": self.plan_code,
+            "period": self.period,
+        }
+        if self.center_id:
+            metadata["centerId"] = self.center_id
+            metadata["source"] = "center_checkout"
         try:
             result = await paystack.initialize(
                 email=self.user.email or "",
                 amount_kobo=amount,
                 reference=reference,
                 # Paystack returns the browser here (frontend), appending ?reference=.
-                callback_url=(f"{settings.frontend_url.rstrip('/')}/settings/billing"),
-                metadata={
-                    "userId": self.user.id,
-                    "tier": self.tier,
-                    "plan_code": self.plan_code,
-                    "period": self.period,
-                },
+                callback_url=callback,
+                metadata=metadata,
                 plan=extras.get("plan"),
             )
         except Exception as exc:
@@ -313,6 +404,20 @@ class ApplyChargeSuccessService:
         row = await subscriptions_repository.by_reference_for_update(
             self.session, self.reference
         )
+        if row is None:
+            from app.services.centers.billing import ApplyCenterChargeSuccessService
+            from app.services.centers.tokens import ApplyCenterTokenChargeSuccessService
+
+            center_outcome = await ApplyCenterChargeSuccessService(
+                self.session, self.reference, self.transaction
+            ).process()
+            if center_outcome is not None:
+                return center_outcome
+            token_outcome = await ApplyCenterTokenChargeSuccessService(
+                self.session, self.reference, self.transaction
+            ).process()
+            if token_outcome is not None:
+                return token_outcome
         outcome = self._outcome(row)
         logger.info(
             "ApplyChargeSuccess reference=%s outcome=%s row=%s txn_status=%s "
@@ -469,6 +574,17 @@ class ApplyChargeSuccessService:
                     "billing_url": _billing_settings_url(),
                 },
                 idempotency_key=f"checkout_ok:{self.reference}",
+            )
+        # M7: 5% referral commission for center owners (D12).
+        try:
+            from app.services.centers.wallet import maybe_credit_from_subscription
+
+            await maybe_credit_from_subscription(self.session, row, source="checkout")
+        except Exception:
+            logger.exception(
+                "referral commission credit failed reference=%s user=%s",
+                self.reference,
+                row.user_id,
             )
         return "activate"
 
@@ -968,6 +1084,7 @@ class ChargeRenewalService:
 
         now = utcnow()
         next_bill = term_end(now, "MONTHLY")
+        renewal_sub_id = cuid()
         await apply_billing_state(
             self.session,
             self.user,
@@ -977,7 +1094,7 @@ class ChargeRenewalService:
             next_billing_at=next_bill,
             intro_ends_at=None,
             subscription=Subscription(
-                id=cuid(),
+                id=renewal_sub_id,
                 user_id=self.user.id,
                 tier=self.user.tier,
                 period="MONTHLY",
@@ -1018,6 +1135,24 @@ class ChargeRenewalService:
                     "billing_url": _billing_settings_url(),
                 },
                 idempotency_key=f"renewal_ok:{reference}",
+            )
+        try:
+            from app.services.centers.wallet import credit_referral_commission
+
+            await credit_referral_commission(
+                self.session,
+                student_id=self.user.id,
+                amount_kobo=self.amount_kobo,
+                tier=self.user.tier,
+                subscription_id=renewal_sub_id,
+                reference=reference,
+                source="lago_renewal",
+            )
+        except Exception:
+            logger.exception(
+                "referral commission credit failed renewal user=%s ref=%s",
+                self.user.id,
+                reference,
             )
         return "success"
 
@@ -1413,9 +1548,13 @@ class ListPublicPlansService:
 
     async def process(self) -> list[dict]:
         from app.services.billing.catalog import public_plan_payload, seed_catalog
+        from app.services.centers.plans import is_center_plan_code
 
         plans = await load_catalog(self.session)
         if not plans:
             await seed_catalog(self.session)
             plans = await load_catalog(self.session)
-        return [public_plan_payload(p) for p in plans]
+        # Center Free/Pro/Team rows share BillingPlan but are not student SKUs.
+        return [
+            public_plan_payload(p) for p in plans if not is_center_plan_code(p.code)
+        ]

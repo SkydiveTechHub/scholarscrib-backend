@@ -9,6 +9,7 @@ from redis_fastapi import FastAPIRedis
 from sqlalchemy.exc import InterfaceError, OperationalError
 
 from app.api.admin import router as admin_router
+from app.api.center import router as center_router
 from app.api.cron import router as cron_router
 from app.api.student import router as student_router
 from app.api.system.views import router as system_router
@@ -48,6 +49,7 @@ def get_app() -> FastAPI:
     )
     api.include_router(system_router)
     api.include_router(student_router)
+    api.include_router(center_router)
     api.include_router(admin_router)
     api.include_router(cron_router)
     add_pagination(api)

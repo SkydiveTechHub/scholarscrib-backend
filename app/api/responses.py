@@ -58,6 +58,7 @@ class RegisterUserOut(ApiOut):
     email: str | None = None
     firstName: str | None = None
     lastName: str | None = None
+    role: str | None = None
     classLevel: str | None = None
     track: str | None = None
 
@@ -991,6 +992,22 @@ class AdminAstraThreadOut(ApiOut):
 
 class AdminAstraThreadsOut(ApiOut):
     threads: list[AdminAstraThreadOut]
+
+
+class CenterAstraThreadOut(ApiOut):
+    id: str
+    centerId: str | None = None
+    title: str | None = None
+    archived: bool = False
+    activeRun: TutorActiveRunOut | None = None
+    createdAt: str | None = None
+    updatedAt: str | None = None
+    messages: list[TutorMessageOut] | None = None
+    assistantMessage: TutorMessageOut | None = None
+
+
+class CenterAstraThreadsOut(ApiOut):
+    threads: list[CenterAstraThreadOut]
 
 
 class RagJobOut(ApiOut):

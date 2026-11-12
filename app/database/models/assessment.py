@@ -76,6 +76,7 @@ class AssessmentAttempt(Base):
             "status",
             "completedAt",
         ),
+        Index("AssessmentAttempt_assignmentId_idx", "assignmentId"),
     )
 
     id: Mapped[str] = id_column()
@@ -84,6 +85,10 @@ class AssessmentAttempt(Base):
     )
     assessment_id: Mapped[str] = mapped_column(
         "assessmentId", ForeignKey("Assessment.id")
+    )
+    # Set when the attempt is for a tutor-assigned task; tutor analytics filter on this.
+    assignment_id: Mapped[str | None] = mapped_column(
+        "assignmentId", ForeignKey("Assignment.id", ondelete="SET NULL")
     )
     status: Mapped[str] = mapped_column(AttemptStatus, default="IN_PROGRESS")
     score: Mapped[float | None] = mapped_column(Float)
